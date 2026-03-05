@@ -77,7 +77,7 @@ export default function App(){
   const tbs=[{id:"db",l:"Dashboard",i:""},{id:"seo",l:"SEO",i:"🔍"},{id:"gbp",l:"Google Business",i:"📍"},{id:"ga",l:"Google Ads",i:"📢"},{id:"ma",l:"Meta Ads",i:"📱"},{id:"so",l:"Organic Social",i:"🎬"},{id:"em",l:"Email",i:"✉️"},{id:"cr",l:"Creative",i:"🎨"},{id:"bm",l:"Benchmarks",i:"🎯"}];
 
   return(
-    <div style={{minHeight:"100vh",backgroundImage:"linear-gradient(rgba(240,240,240,0.6),rgba(240,240,240,0.6)),url('/white-brick-wall-texture-brick-with-white-filling.jpg')",backgroundRepeat:"repeat",backgroundSize:"300px"}}>
+    <div style={{minHeight:"100vh",backgroundColor:"#f0f2f5",backgroundImage:"linear-gradient(#d0d0d0 1px, transparent 1px),linear-gradient(90deg, #d0d0d0 1px, transparent 1px),linear-gradient(#e0e0e0 2px, transparent 2px),linear-gradient(90deg, #e0e0e0 2px, transparent 2px)",backgroundSize:"60px 30px, 60px 30px, 60px 30px, 60px 30px"}}>
       {/* Header */}
       <div style={{background:C.white,padding:"0 24px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.bd}`,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
