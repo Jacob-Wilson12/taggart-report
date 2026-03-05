@@ -80,7 +80,7 @@ export default function App(){
 
   const tbs=[{id:"db",l:"Dashboard",i:""},{id:"seo",l:"SEO",i:"🔍"},{id:"gbp",l:"Google Business",i:"📍"},{id:"ga",l:"Google Ads",i:"📢"},{id:"ma",l:"Meta Ads",i:"📱"},{id:"so",l:"Organic Social",i:"🎬"},{id:"em",l:"Email",i:"✉️"},{id:"cr",l:"Creative",i:"🎨"},{id:"bm",l:"Benchmarks",i:"🎯"}];
 
-  return<div style={{minHeight:"100vh",background:`url('/pale-blue-brick-wall.jpg') repeat`,backgroundColor:"#ebedf1"}}>
+  return<div style={{minHeight:"100vh",background:`url('/white-brick-wall-texture-brick-with-white-filling.jpg') repeat`,backgroundColor:"#ebedf1"}}>
     {/* Header */}
     <div style={{background:C.white,padding:"0 24px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.bd}`,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
