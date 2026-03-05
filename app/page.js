@@ -80,11 +80,11 @@ export default function App(){
 
   const tbs=[{id:"db",l:"Dashboard",i:""},{id:"seo",l:"SEO",i:"🔍"},{id:"gbp",l:"Google Business",i:"📍"},{id:"ga",l:"Google Ads",i:"📢"},{id:"ma",l:"Meta Ads",i:"📱"},{id:"so",l:"Organic Social",i:"🎬"},{id:"em",l:"Email",i:"✉️"},{id:"cr",l:"Creative",i:"🎨"},{id:"bm",l:"Benchmarks",i:"🎯"}];
 
-  return<div style={{minHeight:"100vh",background:`url('/white-brick-wall-texture-brick-with-white-filling.jpg') repeat`,backgroundColor:"#ebedf1"}}>
+  return<div style={{minHeight:"100vh",background:"#ebedf1"}}>
     {/* Header */}
     <div style={{background:C.white,padding:"0 24px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.bd}`,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
-       <img src="/Taggart Advertising Logo.png" alt="Taggart Advertising" style={{height:44,width:"auto"}}/>
+        <div style={{width:40,height:40,borderRadius:"50%",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",border:`2px solid ${C.bd}`}}><span style={{fontFamily:"'Permanent Marker'",fontSize:16,color:C.cyan}}>TA</span></div>
         <span style={{fontFamily:"'Permanent Marker'",fontSize:24,color:C.navy}}>TAGGART</span>
         <span style={{fontFamily:"'Permanent Marker'",fontSize:24,color:C.cyan}}>ADVERTISING</span>
         <div style={{width:1,height:30,background:C.bd,margin:"0 8px"}}/>
@@ -122,6 +122,6 @@ export default function App(){
     </div>
 
     {/* Footer */}
-    <div style={{padding:"18px 24px",textAlign:"center",marginTop:30,background:C.white,borderTop:`1px solid ${C.bd}`}}><div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><div style={{width:24,height:24,borderRadius:"50%",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Permanent Marker'",fontSize:15,color:C.navy}}>TAGGART</span><span style={{fontFamily:"'Permanent Marker'",fontSize:15,color:C.cyan}}>ADVERTISING</span></div></div>
+    <div style={{padding:"18px 24px",textAlign:"center",marginTop:30,background:C.white,borderTop:`1px solid ${C.bd}`}}><div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><div style={{width:24,height:24,borderRadius:"50%",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Permanent Marker'",fontSize:10,color:C.cyan}}>TA</span></div><span style={{fontFamily:"'Permanent Marker'",fontSize:15,color:C.navy}}>TAGGART</span><span style={{fontFamily:"'Permanent Marker'",fontSize:15,color:C.cyan}}>ADVERTISING</span></div></div>
   </div>;
 }
