@@ -84,7 +84,7 @@ export default function App(){
     {/* Header */}
     <div style={{background:C.white,padding:"0 24px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.bd}`,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
-       <img src="/Taggart_Advertising_Logo.png" alt="Taggart Advertising" style={{height:44,width:"auto"}}/>
+       <img src="/Taggart Advertising Logo.png" alt="Taggart Advertising" style={{height:44,width:"auto"}}/>
         <span style={{fontFamily:"'Permanent Marker'",fontSize:24,color:C.navy}}>TAGGART</span>
         <span style={{fontFamily:"'Permanent Marker'",fontSize:24,color:C.cyan}}>ADVERTISING</span>
         <div style={{width:1,height:30,background:C.bd,margin:"0 8px"}}/>
