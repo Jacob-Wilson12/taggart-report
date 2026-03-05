@@ -4,7 +4,6 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 
 const C={white:"#fff",navy:"#0c1a2e",cyan:"#00c9e8",cyanD:"#00a5bf",cyanL:"#e6f9fc",bc:"#1b3254",bl:"#243e63",bb:"#2d5080",t:"#1a1a2e",tm:"#4a5568",tl:"#8892a4",bd:"#d0d5dd",bl2:"#e4e7ec",g:"#10b981",gL:"#ecfdf5",gB:"#d1fae5",r:"#ef4444",rL:"#fef2f2",rB:"#fecaca",o:"#f59e0b",p:"#8b5cf6",sh:"0 2px 6px rgba(0,0,0,0.08)"};
 
-// Sample data - will be replaced by Supabase queries
 const CL=[{id:1,n:"Goode Motor Ford",g:"Goode Motor"},{id:2,n:"Goode Motor Mazda",g:"Goode Motor"},{id:3,n:"Twin Falls Volkswagen",g:"Goode Motor"},{id:4,n:"Juneau Subaru",g:"Juneau Auto Mall"},{id:5,n:"Juneau Auto Mall",g:"Juneau Auto Mall"},{id:6,n:"Juneau CDJR",g:"Juneau Auto Mall"},{id:7,n:"Juneau Toyota",g:"Juneau Auto Mall"},{id:8,n:"Juneau Chevrolet",g:"Juneau Auto Mall"},{id:9,n:"Juneau Honda",g:"Juneau Auto Mall"},{id:10,n:"Goode Motor Group",g:"Goode Motor"},{id:11,n:"Juneau Powersports",g:"Juneau Auto Mall"},{id:12,n:"Cassia Car Rental",g:"Independent"},{id:13,n:"Explore Juneau",g:"Independent"}];
 const PR=[{l:"This Month",v:"tm",c:["vs Last Month","vs Same Month Last Year"]},{l:"Last Month",v:"lm",c:["vs Prior Month","vs Same Month Last Year"]},{l:"Last 90 Days",v:"l90",c:["vs Prior 90 Days","vs Same Period Last Year"]},{l:"This Quarter",v:"tq",c:["vs Last Quarter","vs Same Quarter Last Year"]},{l:"Last Quarter",v:"lq",c:["vs Prior Quarter","vs Same Quarter Last Year"]},{l:"This Year",v:"ty",c:["vs Last Year"]},{l:"Custom",v:"cu",c:["vs Prior Period","vs Same Period Last Year"]}];
 
@@ -34,9 +33,8 @@ const BM=({l,v,ch,pre="",suf="",ci})=>{const c=ch?ch[ci]:undefined;return<div st
 const BC=({ic,la,hl,ch})=><div style={{background:`linear-gradient(135deg,${C.bc},${C.bl})`,borderRadius:12,padding:"18px 22px",border:`1px solid ${C.bb}`,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:18}}>{ic}</span><span style={{fontSize:15,fontWeight:700,color:"#fff"}}>{la}</span></div>{ch}{hl&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,0.1)",fontSize:12}}><span style={{color:"rgba(255,255,255,0.4)",fontSize:10,textTransform:"uppercase",fontWeight:600}}>Highlight: </span><span style={{color:"#fff",fontWeight:500}}>{hl}</span></div>}</div>;
 
 const th={textAlign:"left",padding:"8px 11px",fontSize:10,color:C.tl,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:`2px solid ${C.bd}`};
-const td={padding:"9px 11px",fontSize:12,color:C.t,borderBottom:`1px solid ${C.bl2}`};
+const td2={padding:"9px 11px",fontSize:12,color:C.t,borderBottom:`1px solid ${C.bl2}`};
 
-// ===== DASHBOARD =====
 function Dashboard({ci,cls}){
   return<>
     <SH title="Lead Summary" sub="Total leads across all channels"/>
@@ -59,12 +57,10 @@ function Dashboard({ci,cls}){
   </>;
 }
 
-// ===== PLACEHOLDER for detail pages =====
 function DetailPage({icon,title,msg}){
   return<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:44,marginBottom:14}}>{icon}</div><h2 style={{fontSize:22,fontWeight:700,color:C.t,margin:"0 0 6px",fontFamily:"'Instrument Serif', Georgia, serif"}}>{title}</h2><p style={{fontSize:13,color:C.tl}}>{msg || "Full detail page — data loads from Supabase when connected."}</p></div>;
 }
 
-// ===== MAIN APP =====
 export default function App(){
   const[cl,sCl]=useState(CL[0]);
   const[dt,sDt]=useState("lm");
@@ -80,48 +76,57 @@ export default function App(){
 
   const tbs=[{id:"db",l:"Dashboard",i:""},{id:"seo",l:"SEO",i:"🔍"},{id:"gbp",l:"Google Business",i:"📍"},{id:"ga",l:"Google Ads",i:"📢"},{id:"ma",l:"Meta Ads",i:"📱"},{id:"so",l:"Organic Social",i:"🎬"},{id:"em",l:"Email",i:"✉️"},{id:"cr",l:"Creative",i:"🎨"},{id:"bm",l:"Benchmarks",i:"🎯"}];
 
-  return<div style={{minHeight:"100vh",background:"#ebedf1"}}>
-    {/* Header */}
-    <div style={{background:C.white,padding:"0 24px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.bd}`,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
-      <div style={{display:"flex",alignItems:"center",gap:12}}>
-        <div style={{width:40,height:40,borderRadius:"50%",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",border:`2px solid ${C.bd}`}}><span style={{fontFamily:"'Permanent Marker'",fontSize:16,color:C.cyan}}>TA</span></div>
-        <span style={{fontFamily:"'Permanent Marker'",fontSize:24,color:C.navy}}>TAGGART</span>
-        <span style={{fontFamily:"'Permanent Marker'",fontSize:24,color:C.cyan}}>ADVERTISING</span>
-        <div style={{width:1,height:30,background:C.bd,margin:"0 8px"}}/>
-        <div style={{position:"relative"}}><button onClick={()=>{sCm(!cm);sDm(false)}} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 16px",color:C.t,fontSize:14,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>{cl.n} <span style={{fontSize:10,color:C.tl}}>▼</span></button>
-          {cm&&<div style={{position:"absolute",top:"calc(100% + 5px)",left:0,background:C.white,border:`1px solid ${C.bd}`,borderRadius:10,padding:"6px 0",zIndex:200,width:260,maxHeight:400,overflowY:"auto",boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>{["Goode Motor","Juneau Auto Mall","Independent"].map(g=><div key={g}><div style={{padding:"8px 14px",fontSize:10,fontWeight:700,color:C.tl,textTransform:"uppercase",letterSpacing:"0.08em"}}>{g}</div>{CL.filter(c=>c.g===g).map(c=><button key={c.id} onClick={()=>{sCl(c);sCm(false)}} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 14px",border:"none",cursor:"pointer",background:c.id===cl.id?C.cyanL:"transparent",color:c.id===cl.id?C.cyanD:C.t,fontSize:13,fontWeight:c.id===cl.id?600:400}}>{c.n}</button>)}</div>)}</div>}
+  return(
+    <div style={{minHeight:"100vh",background:"#ebedf1"}}>
+      {/* Header */}
+      <div style={{background:C.white,padding:"0 24px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${C.bd}`,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <img src="/Taggart_Advertising_Logo.png" alt="Taggart Advertising" style={{height:44,width:"auto"}}/>
+          <span style={{fontFamily:"'Permanent Marker',cursive",fontSize:24,color:C.navy}}>TAGGART</span>
+          <span style={{fontFamily:"'Permanent Marker',cursive",fontSize:24,color:C.cyan}}>ADVERTISING</span>
+          <div style={{width:1,height:30,background:C.bd,margin:"0 8px"}}/>
+          <div style={{position:"relative"}}>
+            <button onClick={()=>{sCm(!cm);sDm(false)}} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 16px",color:C.t,fontSize:14,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>{cl.n} <span style={{fontSize:10,color:C.tl}}>▼</span></button>
+            {cm&&<div style={{position:"absolute",top:"calc(100% + 5px)",left:0,background:C.white,border:`1px solid ${C.bd}`,borderRadius:10,padding:"6px 0",zIndex:200,width:260,maxHeight:400,overflowY:"auto",boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>{["Goode Motor","Juneau Auto Mall","Independent"].map(g=><div key={g}><div style={{padding:"8px 14px",fontSize:10,fontWeight:700,color:C.tl,textTransform:"uppercase",letterSpacing:"0.08em"}}>{g}</div>{CL.filter(c=>c.g===g).map(c=><button key={c.id} onClick={()=>{sCl(c);sCm(false)}} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 14px",border:"none",cursor:"pointer",background:c.id===cl.id?C.cyanL:"transparent",color:c.id===cl.id?C.cyanD:C.t,fontSize:13,fontWeight:c.id===cl.id?600:400}}>{c.n}</button>)}</div>)}</div>}
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{position:"relative"}}>
+            <button onClick={()=>{sDm(!dm);sCm(false)}} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 16px",color:C.t,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>📅 {dl} <span style={{fontSize:10,color:C.tl}}>▼</span></button>
+            {dm&&<div style={{position:"absolute",top:"calc(100% + 5px)",right:0,background:C.white,border:`1px solid ${C.bd}`,borderRadius:10,padding:"6px 0",zIndex:200,width:220,boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>{PR.map(p=><button key={p.v} onClick={()=>{sDt(p.v);sDm(false)}} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 14px",border:"none",cursor:"pointer",background:p.v===dt?C.cyanL:"transparent",color:p.v===dt?C.cyanD:C.t,fontSize:13,fontWeight:p.v===dt?600:400}}>{p.l}<div style={{fontSize:10,color:C.tl,marginTop:1}}>{p.c.join(" • ")}</div></button>)}</div>}
+          </div>
+          <button style={{background:C.navy,border:"none",borderRadius:8,padding:"8px 18px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>📄 Export PDF</button>
         </div>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <div style={{position:"relative"}}><button onClick={()=>{sDm(!dm);sCm(false)}} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 16px",color:C.t,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>📅 {dl} <span style={{fontSize:10,color:C.tl}}>▼</span></button>
-          {dm&&<div style={{position:"absolute",top:"calc(100% + 5px)",right:0,background:C.white,border:`1px solid ${C.bd}`,borderRadius:10,padding:"6px 0",zIndex:200,width:220,boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>{PR.map(p=><button key={p.v} onClick={()=>{sDt(p.v);sDm(false)}} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 14px",border:"none",cursor:"pointer",background:p.v===dt?C.cyanL:"transparent",color:p.v===dt?C.cyanD:C.t,fontSize:13,fontWeight:p.v===dt?600:400}}>{p.l}<div style={{fontSize:10,color:C.tl,marginTop:1}}>{p.c.join(" • ")}</div></button>)}</div>}
+
+      {/* Tabs */}
+      <div style={{background:C.white,borderBottom:`1px solid ${C.bd}`,padding:"0 24px",display:"flex",overflowX:"auto"}}>{tbs.map(t=><button key={t.id} onClick={()=>sPg(t.id)} style={{padding:"11px 16px",border:"none",cursor:"pointer",background:"transparent",fontSize:13,fontWeight:600,color:pg===t.id?C.cyanD:C.tl,borderBottom:pg===t.id?`2px solid ${C.cyan}`:"2px solid transparent",whiteSpace:"nowrap"}}>{t.i?t.i+" ":""}{t.l}</button>)}</div>
+
+      {/* Comparison bar */}
+      <div style={{background:"rgba(230,249,252,0.92)",padding:"7px 24px",borderBottom:`1px solid ${C.bd}`,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:12,color:C.cyanD,fontWeight:600}}>📊 Comparing:</span>{pr.c.map((x,i)=><button key={i} onClick={()=>sCi(i)} style={{fontSize:12,fontWeight:600,padding:"4px 12px",borderRadius:6,cursor:"pointer",background:ci===i?C.cyanD:C.white,color:ci===i?"#fff":C.t,border:`1px solid ${ci===i?C.cyanD:C.bd}`}}>{x}</button>)}</div>
+
+      {/* Content */}
+      <div style={{padding:"22px 24px",maxWidth:1200,margin:"0 auto"}} onClick={()=>{sCm(false);sDm(false)}}>
+        <div style={{marginBottom:18}}><h1 style={{fontSize:26,fontWeight:700,color:C.t,margin:0,fontFamily:"'Instrument Serif', Georgia, serif"}}>{cl.n}</h1><p style={{fontSize:13,color:C.tl,margin:"3px 0 0"}}>Performance Overview — {dl}</p></div>
+        {pg==="db"&&<Dashboard ci={ci} cls={cls}/>}
+        {pg==="seo"&&<DetailPage icon="🔍" title="SEO Performance" msg="SEO detail page with queries, keywords, competitors, and traffic data."/>}
+        {pg==="gbp"&&<DetailPage icon="📍" title="Google Business Profile" msg="Reviews, posts, profile views, and engagement data."/>}
+        {pg==="ga"&&<DetailPage icon="📢" title="Google Ads" msg="Campaigns, spend, conversions, and Performance Max breakdown."/>}
+        {pg==="ma"&&<DetailPage icon="📱" title="Meta Ads" msg="Campaigns, placements, reach, and conversion tracking."/>}
+        {pg==="so"&&<DetailPage icon="🎬" title="Organic Social" msg="Cross-platform content performance and follower growth."/>}
+        {pg==="em"&&<DetailPage icon="✉️" title="Email Marketing" msg="Campaign showcase with open rates and site visits."/>}
+        {pg==="cr"&&<DetailPage icon="🎨" title="Creative Deliverables" msg="Asset timeline with deliverables and destinations."/>}
+        {pg==="bm"&&<DetailPage icon="🎯" title="Industry Benchmarks" msg="36 metrics compared against automotive industry averages."/>}
+      </div>
+
+      {/* Footer */}
+      <div style={{padding:"18px 24px",textAlign:"center",marginTop:30,background:C.white,borderTop:`1px solid ${C.bd}`}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <img src="/Taggart_Advertising_Logo.png" alt="Taggart Advertising" style={{height:28,width:"auto"}}/>
+          <span style={{fontFamily:"'Permanent Marker',cursive",fontSize:15,color:C.navy}}>TAGGART</span>
+          <span style={{fontFamily:"'Permanent Marker',cursive",fontSize:15,color:C.cyan}}>ADVERTISING</span>
         </div>
-        <button style={{background:C.navy,border:"none",borderRadius:8,padding:"8px 18px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>📄 Export PDF</button>
       </div>
     </div>
-
-    {/* Tabs */}
-    <div style={{background:C.white,borderBottom:`1px solid ${C.bd}`,padding:"0 24px",display:"flex",overflowX:"auto"}}>{tbs.map(t=><button key={t.id} onClick={()=>sPg(t.id)} style={{padding:"11px 16px",border:"none",cursor:"pointer",background:"transparent",fontSize:13,fontWeight:600,color:pg===t.id?C.cyanD:C.tl,borderBottom:pg===t.id?`2px solid ${C.cyan}`:"2px solid transparent",whiteSpace:"nowrap"}}>{t.i?t.i+" ":""}{t.l}</button>)}</div>
-
-    {/* Comparison bar */}
-    <div style={{background:"rgba(230,249,252,0.92)",padding:"7px 24px",borderBottom:`1px solid ${C.bd}`,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:12,color:C.cyanD,fontWeight:600}}>📊 Comparing:</span>{pr.c.map((x,i)=><button key={i} onClick={()=>sCi(i)} style={{fontSize:12,fontWeight:600,padding:"4px 12px",borderRadius:6,cursor:"pointer",background:ci===i?C.cyanD:C.white,color:ci===i?"#fff":C.t,border:`1px solid ${ci===i?C.cyanD:C.bd}`}}>{x}</button>)}</div>
-
-    {/* Content */}
-    <div style={{padding:"22px 24px",maxWidth:1200,margin:"0 auto"}} onClick={()=>{sCm(false);sDm(false)}}>
-      <div style={{marginBottom:18}}><h1 style={{fontSize:26,fontWeight:700,color:C.t,margin:0,fontFamily:"'Instrument Serif', Georgia, serif"}}>{cl.n}</h1><p style={{fontSize:13,color:C.tl,margin:"3px 0 0"}}>Performance Overview — {dl}</p></div>
-
-      {pg==="db"&&<Dashboard ci={ci} cls={cls}/>}
-      {pg==="seo"&&<DetailPage icon="🔍" title="SEO Performance" msg="SEO detail page with queries, keywords, competitors, and traffic data."/>}
-      {pg==="gbp"&&<DetailPage icon="📍" title="Google Business Profile" msg="Reviews, posts, profile views, and engagement data."/>}
-      {pg==="ga"&&<DetailPage icon="📢" title="Google Ads" msg="Campaigns, spend, conversions, and Performance Max breakdown."/>}
-      {pg==="ma"&&<DetailPage icon="📱" title="Meta Ads" msg="Campaigns, placements, reach, and conversion tracking."/>}
-      {pg==="so"&&<DetailPage icon="🎬" title="Organic Social" msg="Cross-platform content performance and follower growth."/>}
-      {pg==="em"&&<DetailPage icon="✉️" title="Email Marketing" msg="Campaign showcase with open rates and site visits."/>}
-      {pg==="cr"&&<DetailPage icon="🎨" title="Creative Deliverables" msg="Asset timeline with deliverables and destinations."/>}
-      {pg==="bm"&&<DetailPage icon="🎯" title="Industry Benchmarks" msg="36 metrics compared against automotive industry averages."/>}
-    </div>
-
-    {/* Footer */}
-    <div style={{padding:"18px 24px",textAlign:"center",marginTop:30,background:C.white,borderTop:`1px solid ${C.bd}`}}><div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><div style={{width:24,height:24,borderRadius:"50%",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Permanent Marker'",fontSize:10,color:C.cyan}}>TA</span></div><span style={{fontFamily:"'Permanent Marker'",fontSize:15,color:C.navy}}>TAGGART</span><span style={{fontFamily:"'Permanent Marker'",fontSize:15,color:C.cyan}}>ADVERTISING</span></div></div>
-  </div>;
+  );
 }
