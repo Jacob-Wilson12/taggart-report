@@ -26,7 +26,7 @@ function getMonthRange(year, month) {
 }
 
 async function runGadsQuery(accessToken, customerId, mccId, query) {
-  const url = `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:search`;
+  const url = `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`;
 
   const response = await fetch(url, {
     method: "POST",
