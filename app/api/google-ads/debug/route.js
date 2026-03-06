@@ -50,4 +50,5 @@ export async function GET() {
   } catch (err) {
     return Response.json({ error: err.message });
   }
+  // debug route
 }
