@@ -143,6 +143,46 @@ const DEPT_FIELDS = {
   ],
 };
 
+// ─── SPECIAL CLIENT CONFIGS ───
+const GOODE_MOTOR_GROUP = "Goode Motor Group";
+
+// Juneau OEM stores: same as standard leads but "Third Party" → OEM brand name
+const JUNEAU_OEM_LABEL = {
+  "Juneau Auto Mall":  "OEM",
+  "Juneau Subaru":     "Subaru",
+  "Juneau CDJR":       "CDJR",
+  "Juneau Toyota":     "Toyota",
+  "Juneau Chevrolet":  "Chevrolet",
+  "Juneau Honda":      "Honda",
+};
+
+// Build leads fields for a Juneau store — identical to standard except Third Party → OEM brand
+const leadsFieldsJuneau = (oemLabel) => [
+  { key: "total_leads",      label: "Total Leads",              type: "number" },
+  { key: "website_leads",    label: "Website Leads",            type: "number" },
+  { key: "oem_leads",        label: `${oemLabel} Leads`,        type: "number" },
+  { key: "facebook_leads",   label: "Facebook Leads",           type: "number" },
+  { key: "total_sold",       label: "Total Sold",               type: "number" },
+  { key: "website_sold",     label: "Website Sold",             type: "number" },
+  { key: "oem_sold",         label: `${oemLabel} Sold`,         type: "number" },
+  { key: "facebook_sold",    label: "Facebook Sold",            type: "number" },
+  { key: "phone_sold",       label: "Phone Sold",               type: "number" },
+  { key: "notes",            label: "Notes",                    type: "textarea" },
+];
+
+// Custom leads fields for Goode Motor Group
+const LEADS_FIELDS_GOODE = [
+  { key: "total_leads",    label: "Total Leads (All Brands)", type: "number" },
+  { key: "ford_leads",     label: "Ford Leads",               type: "number" },
+  { key: "ford_sold",      label: "Ford Sold",                type: "number" },
+  { key: "mazda_leads",    label: "Mazda Leads",              type: "number" },
+  { key: "mazda_sold",     label: "Mazda Sold",               type: "number" },
+  { key: "vw_leads",       label: "Volkswagen Leads",         type: "number" },
+  { key: "vw_sold",        label: "Volkswagen Sold",          type: "number" },
+  { key: "total_sold",     label: "Total Sold",               type: "number" },
+  { key: "notes",          label: "Notes",                    type: "textarea" },
+];
+
 const MONTHS = [
   "January","February","March","April","May","June",
   "July","August","September","October","November","December"
@@ -234,24 +274,30 @@ const FieldInput = ({ field, value, onChange, disabled }) => {
 };
 
 /* ─── DEPARTMENT FORM ─── */
-function DeptForm({ dept, clientId, month, userRole, userDept, onSaved }) {
+function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSaved }) {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const fields = DEPT_FIELDS[dept.id] || [];
+
+  const isGoode      = dept.id === "leads" && clientName === GOODE_MOTOR_GROUP;
+  const oemLabel     = dept.id === "leads" ? JUNEAU_OEM_LABEL[clientName] : null;
+  const isJuneau     = !!oemLabel;
+
+  const fields = isGoode
+    ? LEADS_FIELDS_GOODE
+    : isJuneau
+      ? leadsFieldsJuneau(oemLabel)
+      : (DEPT_FIELDS[dept.id] || []);
+
   const editable = canEdit(userRole, userDept, dept.id);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       const { data: row } = await supabase
-        .from("report_data")
-        .select("data")
-        .eq("client_id", clientId)
-        .eq("month", month)
-        .eq("department", dept.id)
-        .single();
+        .from("report_data").select("data")
+        .eq("client_id", clientId).eq("month", month).eq("department", dept.id).single();
       setData(row?.data || {});
       setLoading(false);
     };
@@ -266,17 +312,10 @@ function DeptForm({ dept, clientId, month, userRole, userDept, onSaved }) {
   const handleSave = async () => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
-
-    // Save the department data
     await supabase.from("report_data").upsert({
-      client_id: clientId,
-      month,
-      department: dept.id,
-      data,
-      last_updated_by: user.id,
-      last_updated_at: new Date().toISOString(),
+      client_id: clientId, month, department: dept.id, data,
+      last_updated_by: user.id, last_updated_at: new Date().toISOString(),
     }, { onConflict: "client_id,month,department" });
-
     setSaving(false);
     setSaved(true);
     if (onSaved) onSaved(dept.id);
@@ -284,29 +323,38 @@ function DeptForm({ dept, clientId, month, userRole, userDept, onSaved }) {
 
   const filledCount = fields.filter(f => data[f.key] && String(data[f.key]).trim() !== "").length;
 
-  if (loading) return (
-    <div style={{ padding: 24, textAlign: "center", color: C.tl, fontFamily: F, fontSize: 13 }}>Loading...</div>
-  );
+  const goodeStats = isGoode ? [
+    { brand: "Ford",       leads: data.ford_leads,  sold: data.ford_sold },
+    { brand: "Mazda",      leads: data.mazda_leads, sold: data.mazda_sold },
+    { brand: "Volkswagen", leads: data.vw_leads,    sold: data.vw_sold },
+  ] : null;
+
+  if (loading) return <div style={{ padding: 24, textAlign: "center", color: C.tl, fontFamily: F, fontSize: 13 }}>Loading...</div>;
 
   return (
     <div>
+      {isGoode && (
+        <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
+          ℹ️ Goode Motor Group uses brand-level lead tracking. Sold % is calculated automatically.
+        </div>
+      )}
+      {isJuneau && (
+        <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
+          ℹ️ <strong>{oemLabel} Leads/Sold</strong> replaces Third Party for this store.
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 13, color: C.tl, fontFamily: F }}>
-            {filledCount} of {fields.length} fields filled
-          </div>
+          <div style={{ fontSize: 13, color: C.tl, fontFamily: F }}>{filledCount} of {fields.length} fields filled</div>
           <CompletionBar filled={filledCount} total={fields.length} />
         </div>
         {editable && (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              background: saved ? C.g : C.navy, color: "#fff", border: "none",
-              borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700,
-              cursor: "pointer", fontFamily: F, minWidth: 100,
-            }}
-          >
+          <button onClick={handleSave} disabled={saving} style={{
+            background: saved ? C.g : C.navy, color: "#fff", border: "none",
+            borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700,
+            cursor: "pointer", fontFamily: F, minWidth: 100,
+          }}>
             {saving ? "Saving..." : saved ? "✓ Saved" : "Save"}
           </button>
         )}
@@ -325,15 +373,29 @@ function DeptForm({ dept, clientId, month, userRole, userDept, onSaved }) {
               {field.label}
               {field.hint && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
             </label>
-            <FieldInput
-              field={field}
-              value={data[field.key]}
-              onChange={handleChange}
-              disabled={!editable}
-            />
+            <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable} />
           </div>
         ))}
       </div>
+
+      {/* Goode auto-calculated sold % */}
+      {isGoode && goodeStats?.some(s => s.leads) && (
+        <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>Sold % by Brand (auto-calculated)</div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {goodeStats.map(s => {
+              const pct = s.leads > 0 && s.sold >= 0 ? Math.round((Number(s.sold) / Number(s.leads)) * 1000) / 10 : null;
+              return (
+                <div key={s.brand} style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 20px", flex: 1, minWidth: 120, textAlign: "center", boxShadow: C.sh }}>
+                  <div style={{ fontSize: 11, color: C.tl, fontWeight: 700, textTransform: "uppercase", fontFamily: F, marginBottom: 4 }}>{s.brand}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: pct !== null ? C.cyan : C.tl, fontFamily: F }}>{pct !== null ? `${pct}%` : "—"}</div>
+                  <div style={{ fontSize: 11, color: C.tl, marginTop: 2, fontFamily: F }}>{s.sold || 0} sold / {s.leads || 0} leads</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -600,6 +662,7 @@ function ClientReport({ client, userRole, userDept, onBack }) {
           <DeptForm
             dept={activeDeptObj}
             clientId={client.id}
+            clientName={client.name}
             month={month}
             userRole={userRole}
             userDept={userDept}
