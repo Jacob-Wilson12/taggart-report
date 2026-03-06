@@ -8,15 +8,57 @@ const F="Inter,system-ui,sans-serif";
 const CLIENT_ORDER=["Goode Motor Group","Goode Motor Ford","Goode Motor Mazda","Twin Falls Volkswagen","Juneau Auto Mall","Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet","Juneau Honda","Juneau Powersports","Cassia Car Rental","Explore Juneau"];
 const PR=[{l:"This Month",v:"tm",c:["vs Last Month","vs Same Month Last Year"]},{l:"Last Month",v:"lm",c:["vs Prior Month","vs Same Month Last Year"]},{l:"Last 90 Days",v:"l90",c:["vs Prior 90 Days","vs Same Period Last Year"]},{l:"This Quarter",v:"tq",c:["vs Last Quarter","vs Same Quarter Last Year"]},{l:"Last Quarter",v:"lq",c:["vs Prior Quarter","vs Same Quarter Last Year"]},{l:"This Year",v:"ty",c:["vs Last Year"]},{l:"Custom",v:"cu",c:["vs Prior Period","vs Same Period Last Year"]}];
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const GOODE_MOTOR_GROUP="Goode Motor Group";
+const JUNEAU_OEM_LABEL={"Juneau Auto Mall":"OEM","Juneau Subaru":"Subaru","Juneau CDJR":"CDJR","Juneau Toyota":"Toyota","Juneau Chevrolet":"Chevrolet","Juneau Honda":"Honda"};
 
 // ─── MAP SUPABASE report_data ROWS → LIVE DATA SHAPE ───
-function mapReportData(rd){
+function mapReportData(rd,clientName){
   if(!rd)return null;
   const n=(dept,key)=>{const v=rd[dept]?.[key];return(v!==undefined&&v!==null&&v!=='')? Number(v):null;};
   const s=(dept,key)=>rd[dept]?.[key]||null;
-  const wb=n('leads','website_leads'),ws=n('leads','website_sold');
-  const tp=n('leads','third_party'),ts=n('leads','third_party_sold');
-  const fb=n('leads','facebook_leads'),fs=n('leads','facebook_sold');
+  const isGoode=clientName===GOODE_MOTOR_GROUP;
+  const oemLabel=JUNEAU_OEM_LABEL[clientName]||null;
+  const isJuneau=!!oemLabel;
+
+  // Leads mapping
+  let leadsData;
+  if(isGoode){
+    const fl=n('leads','ford_leads'),fs=n('leads','ford_sold');
+    const ml=n('leads','mazda_leads'),ms=n('leads','mazda_sold');
+    const vl=n('leads','vw_leads'),vs=n('leads','vw_sold');
+    leadsData={
+      _goode:true,
+      tl:n('leads','total_leads'),ts:n('leads','total_sold'),
+      ford_leads:fl,ford_sold:fs,ford_pct:fl>0&&fs!==null?Math.round((fs/fl)*1000)/10:null,
+      mazda_leads:ml,mazda_sold:ms,mazda_pct:ml>0&&ms!==null?Math.round((ms/ml)*1000)/10:null,
+      vw_leads:vl,vw_sold:vs,vw_pct:vl>0&&vs!==null?Math.round((vs/vl)*1000)/10:null,
+      notes:s('leads','notes'),
+    };
+  }else if(isJuneau){
+    const wb=n('leads','website_leads'),ws=n('leads','website_sold');
+    const ol=n('leads','oem_leads'),os=n('leads','oem_sold');
+    const fb=n('leads','facebook_leads'),fs=n('leads','facebook_sold');
+    leadsData={
+      _oemLabel:oemLabel,
+      tl:n('leads','total_leads'),wb,ol,fb,
+      wS:ws,oS:os,fS:fs,pS:n('leads','phone_sold'),
+      wP:wb>0&&ws!==null?Math.round((ws/wb)*1000)/10:null,
+      oP:ol>0&&os!==null?Math.round((os/ol)*1000)/10:null,
+      fP:fb>0&&fs!==null?Math.round((fs/fb)*1000)/10:null,
+    };
+  }else{
+    const wb=n('leads','website_leads'),ws=n('leads','website_sold');
+    const tp=n('leads','third_party'),ts=n('leads','third_party_sold');
+    const fb=n('leads','facebook_leads'),fs=n('leads','facebook_sold');
+    leadsData={
+      tl:n('leads','total_leads'),wb,tp,fb,
+      wS:ws,tS:ts,fS:fs,pS:n('leads','phone_sold'),
+      wP:wb>0&&ws!==null?Math.round((ws/wb)*1000)/10:null,
+      tP:tp>0&&ts!==null?Math.round((ts/tp)*1000)/10:null,
+      fP:fb>0&&fs!==null?Math.round((fs/fb)*1000)/10:null,
+      pP:null,
+    };
+  }
   return{
     _live:true,
     seo:{
@@ -76,14 +118,7 @@ function mapReportData(rd){
       ba:n('creative','banners'),pr:n('creative','print'),
       vi:n('creative','videos'),next_month:s('creative','next_month'),
     },
-    le:{
-      tl:n('leads','total_leads'),wb,tp,fb,
-      wS:ws,tS:ts,fS:fs,pS:n('leads','phone_sold'),
-      wP:wb>0&&ws!==null?Math.round((ws/wb)*1000)/10:null,
-      tP:tp>0&&ts!==null?Math.round((ts/tp)*1000)/10:null,
-      fP:fb>0&&fs!==null?Math.round((fs/fb)*1000)/10:null,
-      pP:null,
-    },
+    le:leadsData,
   };
 }
 
@@ -145,28 +180,59 @@ const NoReport=({month})=><div style={{textAlign:"center",padding:"80px 40px"}}>
 /* ─── DASHBOARD ─── */
 function Dashboard({d,month}){
   if(!d)return<NoReport month={month}/>;
-  const na='N/A';
+  const isGoode=d.le._goode;
+  const oemLabel=d.le._oemLabel||null;
+  const tpLabel=oemLabel||"Third Party";
+  const tpLeads=oemLabel?d.le.ol:d.le.tp;
+  const tpSold=oemLabel?d.le.oS:d.le.tS;
+  const tpPct=oemLabel?d.le.oP:d.le.tP;
   return<>
     <SH title="Lead Summary" sub="Total leads across all channels"/>
-    <div style={{display:"flex",gap:12,marginBottom:22,flexWrap:"wrap"}}>
-      <KpiCard l="Total Leads" value={fmt(d.le.tl)} tip="All leads across every source this period."/>
-      <KpiCard label="Website" value={fmt(d.le.wb)} tip="Leads submitted directly from the dealership website."/>
-      <KpiCard label="Third Party" value={fmt(d.le.tp)} tip="Leads from third-party providers like Cars.com, AutoTrader, etc."/>
-      <KpiCard label="Facebook" value={fmt(d.le.fb)} tip="Leads generated from Facebook Lead Ad forms."/>
-    </div>
+    {isGoode?(
+      <>
+        <div style={{background:C.cyanL,border:`1px solid ${C.cyan}44`,borderRadius:8,padding:"8px 14px",marginBottom:14,fontSize:12,color:C.cyanD,fontFamily:F}}>
+          ℹ️ Goode Motor Group lead data is tracked by brand — Ford, Mazda, and Volkswagen are shown separately.
+        </div>
+        <div style={{display:"flex",gap:12,marginBottom:14,flexWrap:"wrap"}}>
+          <KpiCard label="Total Leads" value={fmt(d.le.tl)} tip="Combined leads across all three brands."/>
+          <KpiCard label="Total Sold" value={fmt(d.le.ts)} tip="Combined sold across all three brands."/>
+        </div>
+        <div style={{display:"flex",gap:12,marginBottom:22,flexWrap:"wrap"}}>
+          {[{l:"Ford",leads:d.le.ford_leads,sold:d.le.ford_sold,pct:d.le.ford_pct,c:"#003478"},{l:"Mazda",leads:d.le.mazda_leads,sold:d.le.mazda_sold,pct:d.le.mazda_pct,c:"#910A2D"},{l:"Volkswagen",leads:d.le.vw_leads,sold:d.le.vw_sold,pct:d.le.vw_pct,c:"#001E50"}].map((b,i)=>(
+            <div key={i} style={{flex:1,minWidth:180,background:C.white,borderRadius:10,border:`1px solid ${C.bd}`,padding:"18px 20px",boxShadow:C.sh,textAlign:"center"}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.tl,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:8,fontFamily:F}}>{b.l}</div>
+              <div style={{fontSize:32,fontWeight:700,color:b.pct!==null?b.c:C.tl,fontFamily:F,marginBottom:4}}>{fmtPct(b.pct)}</div>
+              <div style={{display:"flex",justifyContent:"center",gap:16,fontSize:12,color:C.tl,fontFamily:F}}>
+                <span>{fmt(b.leads)} leads</span>
+                <span>{fmt(b.sold)} sold</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    ):(
+      <>
+        <div style={{display:"flex",gap:12,marginBottom:22,flexWrap:"wrap"}}>
+          <KpiCard label="Total Leads" value={fmt(d.le.tl)} tip="All leads across every source this period."/>
+          <KpiCard label="Website" value={fmt(d.le.wb)} tip="Leads from the dealership website."/>
+          <KpiCard label={tpLabel} value={fmt(tpLeads)} tip={oemLabel?`Leads from the ${oemLabel} OEM program.`:"Leads from third-party providers."}/>
+          <KpiCard label="Facebook" value={fmt(d.le.fb)} tip="Leads from Facebook Lead Ads."/>
+        </div>
+        <div style={{display:"flex",gap:14,marginBottom:22,flexWrap:"wrap"}}>
+          <Sc s={{flex:1,minWidth:280}}><SH title="Sold % by Source"/>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              {[{l:"Website",p:d.le.wP,s:d.le.wS,ld:d.le.wb,c:C.cyan},{l:tpLabel,p:tpPct,s:tpSold,ld:tpLeads,c:C.p},{l:"Facebook",p:d.le.fP,s:d.le.fS,ld:d.le.fb,c:C.g},{l:"Phone",p:d.le.pP,s:d.le.pS,ld:d.cr.tl,c:C.o}].map((src,i)=><div key={i}style={{flex:1,minWidth:110,background:C.white,borderRadius:10,padding:"14px 12px",border:`1px solid ${C.bd}`,boxShadow:C.sh,textAlign:"center"}}><div style={{fontSize:10,color:C.tl,fontWeight:700,textTransform:"uppercase",marginBottom:3,fontFamily:F}}>{src.l}</div><div style={{fontSize:28,fontWeight:700,color:src.p!==null?src.c:C.tl,fontFamily:F}}>{fmtPct(src.p)}</div><div style={{fontSize:9,color:C.tl,marginTop:2,fontFamily:F}}>{fmt(src.s)} sold / {fmt(src.ld)} leads</div></div>)}
+            </div>
+          </Sc>
+        </div>
+      </>
+    )}
     <SH title="Phone Calls (CallRail)"/>
     <div style={{display:"flex",gap:12,marginBottom:22,flexWrap:"wrap"}}>
       <KpiCard label="Total Calls" value={fmt(d.cr.tl)} tip="Total tracked calls this period."/>
       <KpiCard label="From Website" value={fmt(d.cr.ws)} tip="Calls attributed to website visits."/>
       <KpiCard label="From Ads" value={fmt(d.cr.ad)} tip="Calls attributed to paid ad campaigns."/>
       <KpiCard label="From Google Business" value={fmt(d.cr.gm)} tip="Calls from the GBP call button."/>
-    </div>
-    <div style={{display:"flex",gap:14,marginBottom:22,flexWrap:"wrap"}}>
-      <Sc s={{flex:1,minWidth:280}}><SH title="Sold % by Source"/>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          {[{l:"Website",p:d.le.wP,s:d.le.wS,ld:d.le.wb,c:C.cyan},{l:"Third Party",p:d.le.tP,s:d.le.tS,ld:d.le.tp,c:C.p},{l:"Facebook",p:d.le.fP,s:d.le.fS,ld:d.le.fb,c:C.g},{l:"Phone",p:d.le.pP,s:d.le.pS,ld:d.cr.tl,c:C.o}].map((src,i)=><div key={i}style={{flex:1,minWidth:110,background:C.white,borderRadius:10,padding:"14px 12px",border:`1px solid ${C.bd}`,boxShadow:C.sh,textAlign:"center"}}><div style={{fontSize:10,color:C.tl,fontWeight:700,textTransform:"uppercase",marginBottom:3,fontFamily:F}}>{src.l}</div><div style={{fontSize:28,fontWeight:700,color:src.p!==null?src.c:C.tl,fontFamily:F}}>{fmtPct(src.p)}</div><div style={{fontSize:9,color:C.tl,marginTop:2,fontFamily:F}}>{fmt(src.s)} sold / {fmt(src.ld)} leads</div></div>)}
-        </div>
-      </Sc>
     </div>
     <SH title="Department Performance"/>
     <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:18}}>
@@ -419,7 +485,7 @@ export default function App(){
       const{data}=await supabase.from("report_data").select("department,data").eq("client_id",cl.id).eq("month",selectedMonth);
       const merged={};
       (data||[]).forEach(row=>{merged[row.department]=row.data;});
-      setLiveData(mapReportData(merged));
+      setLiveData(mapReportData(merged,cl?.name));
       const[y,m]=selectedMonth.split('-');
       setLiveMonthLabel(`${MONTHS[parseInt(m)-1]} ${y}`);
       setDataLoading(false);
