@@ -59,7 +59,7 @@ export async function GET(request) {
 
     // ─── Query 1: Total calls summary ───
     const callsData = await callRailFetch(
-      `/a/${companyId}/calls.json?start_date=${startDate}&end_date=${endDate}&per_page=250&fields=direction,answered,duration,tracking_source,first_call`
+      `/a/ACC36d8cf484f1442908d76e394a410a296/calls.json?company_id=${companyId}&start_date=${startDate}&end_date=${endDate}&per_page=250&fields=direction,answered,duration,tracking_source,first_call`
     );
 
     const calls = callsData.calls || [];
@@ -86,7 +86,7 @@ export async function GET(request) {
     let trackingNumbers = [];
     try {
       const trackersData = await callRailFetch(
-        `/a/${companyId}/trackers.json?status=active`
+        `/a/ACC36d8cf484f1442908d76e394a410a296/trackers.json?company_id=${companyId}&status=active`
       );
       trackingNumbers = (trackersData.trackers || []).map(t => ({
         name: t.name,
