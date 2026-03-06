@@ -1,10 +1,13 @@
 'use client';
 import { useState, useEffect } from "react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { supabase } from "../supabase";
 
 const C={white:"#fff",navy:"#0c1a2e",cyan:"#00c9e8",cyanD:"#00a5bf",cyanL:"#e6f9fc",bc:"#1b3254",bl:"#243e63",bb:"#2d5080",t:"#1a1a2e",tm:"#0c1a2e",tl:"#0c1a2e",bd:"#d0d5dd",bl2:"#e4e7ec",g:"#10b981",gL:"#ecfdf5",gB:"#d1fae5",r:"#ef4444",rL:"#fef2f2",rB:"#fecaca",o:"#f59e0b",p:"#8b5cf6",sh:"0 2px 6px rgba(0,0,0,0.08)"};
+const F="Inter, system-ui, sans-serif";
 
-const CL=[{id:1,n:"Goode Motor Group",g:"Goode Motor"},{id:2,n:"Goode Motor Ford",g:"Goode Motor"},{id:3,n:"Goode Motor Mazda",g:"Goode Motor"},{id:4,n:"Twin Falls Volkswagen",g:"Goode Motor"},{id:5,n:"Juneau Auto Mall",g:"Juneau Auto Mall"},{id:6,n:"Juneau Subaru",g:"Juneau Auto Mall"},{id:7,n:"Juneau CDJR",g:"Juneau Auto Mall"},{id:8,n:"Juneau Toyota",g:"Juneau Auto Mall"},{id:9,n:"Juneau Chevrolet",g:"Juneau Auto Mall"},{id:10,n:"Juneau Honda",g:"Juneau Auto Mall"},{id:11,n:"Juneau Powersports",g:"Juneau Auto Mall"},{id:12,n:"Cassia Car Rental",g:"Independent"},{id:13,n:"Explore Juneau",g:"Independent"}];
+const CLIENT_ORDER=["Goode Motor Group","Goode Motor Ford","Goode Motor Mazda","Twin Falls Volkswagen","Juneau Auto Mall","Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet","Juneau Honda","Juneau Powersports","Cassia Car Rental","Explore Juneau"];
+
 const PR=[{l:"This Month",v:"tm",c:["vs Last Month","vs Same Month Last Year"]},{l:"Last Month",v:"lm",c:["vs Prior Month","vs Same Month Last Year"]},{l:"Last 90 Days",v:"l90",c:["vs Prior 90 Days","vs Same Period Last Year"]},{l:"This Quarter",v:"tq",c:["vs Last Quarter","vs Same Quarter Last Year"]},{l:"Last Quarter",v:"lq",c:["vs Prior Quarter","vs Same Quarter Last Year"]},{l:"This Year",v:"ty",c:["vs Last Year"]},{l:"Custom",v:"cu",c:["vs Prior Period","vs Same Period Last Year"]}];
 
 const D={seo:{ca:142,caC:[20.3,44.9],fo:67,foC:[24.1,59.5],ctr:5.2,ctrC:[0.8,2.1],tr:8420,trC:[17.3,42.7],kw:47,kwC:[8,22],im:124500,imC:[15.1,38.4],w:'"F-150 Twin Falls" → Pos 1',gV:3240,gVC:[18.2,38.2],gCa:89,gCaC:[14.1,44.2],td:[{m:"Mar",v:5200},{m:"Apr",v:5800},{m:"May",v:6100},{m:"Jun",v:5900},{m:"Jul",v:6400},{m:"Aug",v:6800},{m:"Sep",v:7100},{m:"Oct",v:7400},{m:"Nov",v:7180},{m:"Dec",v:7600},{m:"Jan",v:7900},{m:"Feb",v:8420}]},
@@ -17,17 +20,14 @@ em:{cp:3,rc:4280,vs:312,vsC:[27.3,44.1]},
 cv:{tl:12,gr:6,ba:3,pr:2},
 le:{tl:198,tlC:[15.1,33.8],wb:89,wbC:[20.3,43.5],tp:62,tpC:[6.9,21.6],fb:47,fbC:[17.5,34.3],wS:21,tS:14,fS:7,pS:18,wP:23.6,wPC:[2.4,4.1],tP:22.6,tPC:[1.8,3.2],fP:14.9,fPC:[2.8,5.1],pP:23.1,pPC:[0.7,2.9],td:[{m:"Mar",l:145,s:28},{m:"Apr",l:152,s:30},{m:"May",l:161,s:33},{m:"Jun",l:158,s:31},{m:"Jul",l:164,s:35},{m:"Aug",l:170,s:34},{m:"Sep",l:168,s:36},{m:"Oct",l:175,s:37},{m:"Nov",l:172,s:36},{m:"Dec",l:180,s:38},{m:"Jan",l:188,s:40},{m:"Feb",l:198,s:42}]}};
 
-const F="Inter, system-ui, sans-serif";
 const ts={background:C.white,border:`1px solid ${C.bd}`,borderRadius:8,fontSize:12,color:C.t,fontFamily:F};
 const A=({v,s="%",z=13})=><span style={{display:"inline-flex",alignItems:"center",gap:3,color:v>0?C.g:v<0?C.r:C.tl,fontSize:z,fontWeight:700,fontFamily:F}}>{v>0?"▲":v<0?"▼":"—"} {Math.abs(v)}{s}</span>;
 const SH=({title,sub})=><div style={{marginBottom:10}}><h2 style={{fontSize:16,fontWeight:700,color:C.t,margin:0,fontFamily:F}}>{title}</h2>{sub&&<p style={{fontSize:11,color:C.tl,margin:"2px 0 0",fontFamily:F}}>{sub}</p>}</div>;
 const Sc=({children,s})=><div style={{background:C.white,borderRadius:10,padding:"16px 18px",border:`1px solid ${C.bd}`,boxShadow:C.sh,marginBottom:16,...s}}>{children}</div>;
 
-const LC=({l,v,ch,tp,cl})=><div style={{background:C.white,borderRadius:10,padding:"18px 20px",border:`1px solid ${C.bd}`,flex:1,minWidth:140,boxShadow:C.sh,textAlign:"center"}}><div style={{fontSize:11,color:C.tl,fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em",fontFamily:F}}>{l}</div><div style={{fontSize:32,fontWeight:700,color:C.t,fontFamily:F,lineHeight:1.1,marginBottom:6}}>{v.toLocaleString()}</div><div style={{display:"flex",flexDirection:"column",gap:2,alignItems:"center"}}>{ch?.[0]!==undefined&&cl?.[0]&&<div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:9,color:C.tl,fontWeight:600,fontFamily:F}}>{cl[0]}</span><A v={ch[0]} z={12}/></div>}{ch?.[1]!==undefined&&cl?.[1]&&<div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:9,color:C.tl,fontWeight:600,fontFamily:F}}>{cl[1]}</span><A v={ch[1]} z={12}/></div>}</div></div>;
+const LC=({l,v,ch,cl})=><div style={{background:C.white,borderRadius:10,padding:"18px 20px",border:`1px solid ${C.bd}`,flex:1,minWidth:140,boxShadow:C.sh,textAlign:"center"}}><div style={{fontSize:11,color:C.tl,fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em",fontFamily:F}}>{l}</div><div style={{fontSize:32,fontWeight:700,color:C.t,fontFamily:F,lineHeight:1.1,marginBottom:6}}>{v.toLocaleString()}</div><div style={{display:"flex",flexDirection:"column",gap:2,alignItems:"center"}}>{ch?.[0]!==undefined&&cl?.[0]&&<div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:9,color:C.tl,fontWeight:600,fontFamily:F}}>{cl[0]}</span><A v={ch[0]} z={12}/></div>}{ch?.[1]!==undefined&&cl?.[1]&&<div style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:9,color:C.tl,fontWeight:600,fontFamily:F}}>{cl[1]}</span><A v={ch[1]} z={12}/></div>}</div></div>;
 
 const CC=({l,v,ch,ci,cl})=>{const c=ch?.[ci];return<div style={{background:C.white,borderRadius:10,padding:"18px 20px",border:`1px solid ${C.bd}`,flex:1,minWidth:140,boxShadow:C.sh,textAlign:"center"}}><div style={{fontSize:11,color:C.tl,fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em",fontFamily:F}}>{l}</div><div style={{fontSize:32,fontWeight:700,color:C.t,fontFamily:F,lineHeight:1.1,marginBottom:6}}>{v.toLocaleString()}</div>{c!==undefined&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}><span style={{fontSize:9,color:C.tl,fontWeight:600,fontFamily:F}}>{cl}</span><A v={c} z={12}/></div>}</div>};
-
-const WC=({l,v,ch,pre="",suf="",tip})=><div style={{background:C.white,borderRadius:10,padding:"16px 18px",border:`1px solid ${C.bd}`,flex:1,minWidth:130,boxShadow:C.sh,textAlign:"center"}}><div style={{fontSize:11,color:C.tl,fontWeight:700,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em",fontFamily:F}}>{l}</div><div style={{fontSize:28,fontWeight:700,color:C.t,fontFamily:F,lineHeight:1.1,marginBottom:4}}>{pre}{typeof v==="number"?v.toLocaleString():v}{suf}</div>{ch!==undefined&&<A v={ch} z={12}/>}{tip&&<div style={{fontSize:9,color:C.tl,marginTop:3,fontFamily:F}}>{tip}</div>}</div>;
 
 const BM=({l,v,ch,pre="",suf="",ci})=>{const c=ch?ch[ci]:undefined;return<div style={{flex:1,minWidth:100,textAlign:"center",padding:"12px 6px"}}><div style={{fontSize:10,color:"rgba(255,255,255,0.6)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:4,fontFamily:F}}>{l}</div><div style={{fontSize:24,fontWeight:700,color:"#fff",fontFamily:F,lineHeight:1.1,marginBottom:4}}>{pre}{typeof v==="number"?v.toLocaleString():v}{suf}</div>{c!==undefined&&<span style={{fontSize:12,fontWeight:700,fontFamily:F,color:c>0?"#6ee7b7":c<0?"#fca5a5":"rgba(255,255,255,0.4)"}}>{c>0?"▲":c<0?"▼":"—"} {Math.abs(c)}%</span>}</div>};
 
@@ -59,23 +59,119 @@ function Dashboard({ci,cls}){
 }
 
 function DetailPage({icon,title,msg}){
-  return<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:44,marginBottom:14}}>{icon}</div><h2 style={{fontSize:22,fontWeight:700,color:C.t,margin:"0 0 6px",fontFamily:F}}>{title}</h2><p style={{fontSize:13,color:C.tl,fontFamily:F}}>{msg || "Full detail page — data loads from Supabase when connected."}</p></div>;
+  return<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:44,marginBottom:14}}>{icon}</div><h2 style={{fontSize:22,fontWeight:700,color:C.t,margin:"0 0 6px",fontFamily:F}}>{title}</h2><p style={{fontSize:13,color:C.tl,fontFamily:F}}>{msg||"Full detail page — data loads from Supabase when connected."}</p></div>;
+}
+
+function LoginPage({onSent}){
+  const[email,setEmail]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[error,setError]=useState("");
+  const handleLogin=async()=>{
+    if(!email){setError("Please enter your email.");return;}
+    setLoading(true);setError("");
+    const{error:err}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin}});
+    if(err){setError(err.message);setLoading(false);}
+    else{onSent(email);}
+  };
+  return(
+    <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}>
+      <div style={{background:C.white,borderRadius:16,padding:"48px 40px",width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,0.3)",textAlign:"center"}}>
+        <img src="/Taggart_Advertising_Logo.png" alt="Taggart Advertising" style={{height:56,width:"auto",marginBottom:24}}/>
+        <h1 style={{fontSize:22,fontWeight:700,color:C.navy,margin:"0 0 6px",fontFamily:F}}>Client Portal</h1>
+        <p style={{fontSize:13,color:C.tl,margin:"0 0 28px",fontFamily:F}}>Enter your email to receive a magic sign-in link.</p>
+        <input type="email" placeholder="your@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{width:"100%",padding:"12px 16px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,fontFamily:F,outline:"none",boxSizing:"border-box",marginBottom:12}}/>
+        {error&&<p style={{fontSize:12,color:C.r,margin:"0 0 10px",fontFamily:F}}>{error}</p>}
+        <button onClick={handleLogin} disabled={loading} style={{width:"100%",padding:"12px",background:C.navy,color:"#fff",border:"none",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>{loading?"Sending...":"Send Magic Link"}</button>
+      </div>
+    </div>
+  );
+}
+
+function CheckEmailPage({email}){
+  return(
+    <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}>
+      <div style={{background:C.white,borderRadius:16,padding:"48px 40px",width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,0.3)",textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:16}}>📧</div>
+        <h1 style={{fontSize:22,fontWeight:700,color:C.navy,margin:"0 0 10px",fontFamily:F}}>Check your email</h1>
+        <p style={{fontSize:13,color:C.tl,fontFamily:F}}>We sent a magic link to <strong style={{color:C.navy}}>{email}</strong>. Click the link to sign in.</p>
+      </div>
+    </div>
+  );
 }
 
 export default function App(){
-  const[cl,sCl]=useState(CL[0]);
+  const[session,setSession]=useState(null);
+  const[authLoading,setAuthLoading]=useState(true);
+  const[emailSent,setEmailSent]=useState("");
+  const[clients,setClients]=useState([]);
+  const[clientsLoading,setClientsLoading]=useState(false);
+  const[cl,sCl]=useState(null);
   const[dt,sDt]=useState("lm");
   const[pg,sPg]=useState("db");
   const[cm,sCm]=useState(false);
   const[dm,sDm]=useState(false);
   const[ci,sCi]=useState(0);
 
-  useEffect(()=>{sCi(0)},[dt]);
+  useEffect(()=>{
+    supabase.auth.getSession().then(({data:{session}})=>{setSession(session);setAuthLoading(false);});
+    const{data:{subscription}}=supabase.auth.onAuthStateChange((_,session)=>{setSession(session);setAuthLoading(false);});
+    return()=>subscription.unsubscribe();
+  },[]);
+
+  useEffect(()=>{
+    if(!session)return;
+    const fetchClients=async()=>{
+      setClientsLoading(true);
+      const{data,error}=await supabase
+        .from("clients")
+        .select("id, name, group_name")
+        .eq("active",true);
+      if(!error&&data){
+        const sorted=data.sort((a,b)=>{
+          const ai=CLIENT_ORDER.indexOf(a.name);
+          const bi=CLIENT_ORDER.indexOf(b.name);
+          // Both in order list — use defined order
+          if(ai!==-1&&bi!==-1)return ai-bi;
+          // Only a is in list — a comes first
+          if(ai!==-1)return -1;
+          // Only b is in list — b comes first
+          if(bi!==-1)return 1;
+          // Neither in list — sort alphabetically
+          return a.name.localeCompare(b.name);
+        });
+        setClients(sorted);
+        if(sorted.length>0)sCl(sorted[0]);
+      }
+      setClientsLoading(false);
+    };
+    fetchClients();
+  },[session]);
+
+  useEffect(()=>{sCi(0);},[dt]);
+
+  const handleLogout=async()=>{await supabase.auth.signOut();setSession(null);setEmailSent("");setClients([]);sCl(null);};
+
+  if(authLoading)return<div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"#fff",fontFamily:F,fontSize:16}}>Loading...</div></div>;
+  if(!session&&!emailSent)return<LoginPage onSent={setEmailSent}/>;
+  if(!session&&emailSent)return<CheckEmailPage email={emailSent}/>;
+  if(clientsLoading)return<div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"#fff",fontFamily:F,fontSize:16}}>Loading clients...</div></div>;
+  if(clients.length===0)return(
+    <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:C.white,borderRadius:16,padding:"48px 40px",maxWidth:400,textAlign:"center",fontFamily:F}}>
+        <div style={{fontSize:48,marginBottom:16}}>🚫</div>
+        <h2 style={{color:C.navy,fontFamily:F}}>No Access</h2>
+        <p style={{color:C.tl,fontFamily:F}}>Your account doesn't have access to any clients. Contact Taggart Advertising.</p>
+        <button onClick={handleLogout} style={{marginTop:16,padding:"10px 24px",background:C.navy,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontFamily:F}}>Sign Out</button>
+      </div>
+    </div>
+  );
+
+  const currentClient=cl||clients[0];
   const pr=PR.find(p=>p.v===dt)||PR[1];
   const dl=dt==="lm"?"February 2026":pr.l;
   const cls=pr.c.map(x=>x.replace("vs ",""));
-
   const tbs=[{id:"db",l:"Dashboard",i:""},{id:"seo",l:"SEO",i:"🔍"},{id:"gbp",l:"Google Business",i:"📍"},{id:"ga",l:"Google Ads",i:"📢"},{id:"ma",l:"Meta Ads",i:"📱"},{id:"so",l:"Organic Social",i:"🎬"},{id:"em",l:"Email",i:"✉️"},{id:"cr",l:"Creative",i:"🎨"},{id:"bm",l:"Benchmarks",i:"🎯"}];
+  const groups=[...new Set(clients.map(c=>c.group_name))];
 
   return(
     <div style={{minHeight:"100vh",fontFamily:F,fontWeight:600,backgroundColor:"#f0f2f5",backgroundImage:`url("data:image/svg+xml,%3Csvg width='120' height='60' viewBox='0 0 120 60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='1' y='1' width='118' height='28' rx='1' fill='none' stroke='rgba(180,180,180,0.15)' stroke-width='1'/%3E%3Crect x='61' y='31' width='118' height='28' rx='1' fill='none' stroke='rgba(180,180,180,0.15)' stroke-width='1'/%3E%3Crect x='-59' y='31' width='118' height='28' rx='1' fill='none' stroke='rgba(180,180,180,0.15)' stroke-width='1'/%3E%3C/svg%3E")`}}>
@@ -86,17 +182,21 @@ export default function App(){
           <img src="/Taggart_Advertising_Logo.png" alt="Taggart Advertising" style={{height:44,width:"auto"}}/>
           <span style={{fontFamily:"'Permanent Marker',cursive",fontSize:24,color:C.navy}}>TAGGART</span>
           <span style={{fontFamily:"'Permanent Marker',cursive",fontSize:24,color:C.cyan}}>ADVERTISING</span>
-          <div style={{width:1,height:30,background:C.bd,margin:"0 8px"}}/>
-          <div style={{position:"relative"}}>
-            <button onClick={()=>{sCm(!cm);sDm(false)}} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 16px",color:C.t,fontSize:14,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontFamily:F}}>{cl.n} <span style={{fontSize:10,color:C.tl}}>▼</span></button>
-            {cm&&<div style={{position:"absolute",top:"calc(100% + 5px)",left:0,background:C.white,border:`1px solid ${C.bd}`,borderRadius:10,padding:"6px 0",zIndex:200,width:260,maxHeight:400,overflowY:"auto",boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>{["Goode Motor","Juneau Auto Mall","Independent"].map(g=><div key={g}><div style={{padding:"8px 14px",fontSize:10,fontWeight:700,color:C.tl,textTransform:"uppercase",letterSpacing:"0.08em",fontFamily:F}}>{g}</div>{CL.filter(c=>c.g===g).map(c=><button key={c.id} onClick={()=>{sCl(c);sCm(false)}} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 14px",border:"none",cursor:"pointer",background:c.id===cl.id?C.cyanL:"transparent",color:c.id===cl.id?C.cyanD:C.t,fontSize:13,fontWeight:600,fontFamily:F}}>{c.n}</button>)}</div>)}</div>}
-          </div>
+          {clients.length>1&&<>
+            <div style={{width:1,height:30,background:C.bd,margin:"0 8px"}}/>
+            <div style={{position:"relative"}}>
+              <button onClick={()=>{sCm(!cm);sDm(false);}} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 16px",color:C.t,fontSize:14,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontFamily:F}}>{currentClient.name} <span style={{fontSize:10,color:C.tl}}>▼</span></button>
+              {cm&&<div style={{position:"absolute",top:"calc(100% + 5px)",left:0,background:C.white,border:`1px solid ${C.bd}`,borderRadius:10,padding:"6px 0",zIndex:200,width:260,maxHeight:400,overflowY:"auto",boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>{groups.map(g=><div key={g}><div style={{padding:"8px 14px",fontSize:10,fontWeight:700,color:C.tl,textTransform:"uppercase",letterSpacing:"0.08em",fontFamily:F}}>{g}</div>{clients.filter(c=>c.group_name===g).map(c=><button key={c.id} onClick={()=>{sCl(c);sCm(false);}} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 14px",border:"none",cursor:"pointer",background:c.id===currentClient.id?C.cyanL:"transparent",color:c.id===currentClient.id?C.cyanD:C.t,fontSize:13,fontWeight:600,fontFamily:F}}>{c.name}</button>)}</div>)}</div>}
+            </div>
+          </>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:12,color:C.tl,fontFamily:F}}>{session?.user?.email}</span>
           <div style={{position:"relative"}}>
-            <button onClick={()=>{sDm(!dm);sCm(false)}} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 16px",color:C.t,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontFamily:F}}>📅 {dl} <span style={{fontSize:10,color:C.tl}}>▼</span></button>
-            {dm&&<div style={{position:"absolute",top:"calc(100% + 5px)",right:0,background:C.white,border:`1px solid ${C.bd}`,borderRadius:10,padding:"6px 0",zIndex:200,width:220,boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>{PR.map(p=><button key={p.v} onClick={()=>{sDt(p.v);sDm(false)}} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 14px",border:"none",cursor:"pointer",background:p.v===dt?C.cyanL:"transparent",color:p.v===dt?C.cyanD:C.t,fontSize:13,fontWeight:600,fontFamily:F}}>{p.l}<div style={{fontSize:10,color:C.tl,marginTop:1,fontFamily:F}}>{p.c.join(" • ")}</div></button>)}</div>}
+            <button onClick={()=>{sDm(!dm);sCm(false);}} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 16px",color:C.t,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontFamily:F}}>📅 {dl} <span style={{fontSize:10,color:C.tl}}>▼</span></button>
+            {dm&&<div style={{position:"absolute",top:"calc(100% + 5px)",right:0,background:C.white,border:`1px solid ${C.bd}`,borderRadius:10,padding:"6px 0",zIndex:200,width:220,boxShadow:"0 8px 30px rgba(0,0,0,0.12)"}}>{PR.map(p=><button key={p.v} onClick={()=>{sDt(p.v);sDm(false);}} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 14px",border:"none",cursor:"pointer",background:p.v===dt?C.cyanL:"transparent",color:p.v===dt?C.cyanD:C.t,fontSize:13,fontWeight:600,fontFamily:F}}>{p.l}<div style={{fontSize:10,color:C.tl,marginTop:1,fontFamily:F}}>{p.c.join(" • ")}</div></button>)}</div>}
           </div>
+          <button onClick={handleLogout} style={{background:"#f0f2f5",border:`1px solid ${C.bd}`,borderRadius:8,padding:"8px 14px",color:C.t,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:F}}>Sign Out</button>
           <button style={{background:C.navy,border:"none",borderRadius:8,padding:"8px 18px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:F}}>📄 Export PDF</button>
         </div>
       </div>
@@ -108,9 +208,9 @@ export default function App(){
       <div style={{background:"rgba(230,249,252,0.92)",padding:"7px 24px",borderBottom:`1px solid ${C.bd}`,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:12,color:C.cyanD,fontWeight:700,fontFamily:F}}>📊 Comparing:</span>{pr.c.map((x,i)=><button key={i} onClick={()=>sCi(i)} style={{fontSize:12,fontWeight:600,padding:"4px 12px",borderRadius:6,cursor:"pointer",background:ci===i?C.cyanD:C.white,color:ci===i?"#fff":C.t,border:`1px solid ${ci===i?C.cyanD:C.bd}`,fontFamily:F}}>{x}</button>)}</div>
 
       {/* Content */}
-      <div style={{padding:"22px 24px",maxWidth:1200,margin:"0 auto"}} onClick={()=>{sCm(false);sDm(false)}}>
+      <div style={{padding:"22px 24px",maxWidth:1200,margin:"0 auto"}} onClick={()=>{sCm(false);sDm(false);}}>
         <div style={{marginBottom:18}}>
-          <h1 style={{fontSize:26,fontWeight:700,color:C.t,margin:0,fontFamily:F}}>{cl.n}</h1>
+          <h1 style={{fontSize:26,fontWeight:700,color:C.t,margin:0,fontFamily:F}}>{currentClient.name}</h1>
           <p style={{fontSize:13,color:C.tl,margin:"3px 0 0",fontFamily:F}}>Performance Overview — {dl}</p>
         </div>
         {pg==="db"&&<Dashboard ci={ci} cls={cls}/>}
