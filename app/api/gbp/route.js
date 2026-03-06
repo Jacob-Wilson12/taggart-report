@@ -21,46 +21,48 @@ function getOAuthClient() {
 function getMonthRange(year, month) {
   const start = new Date(year, month - 1, 1);
   const end = new Date(year, month, 0);
-  const fmt = (d) => ({
-    year: d.getFullYear(),
-    month: d.getMonth() + 1,
-    day: d.getDate(),
-  });
-  return { startDate: fmt(start), endDate: fmt(end) };
+  return {
+    startDate: { year: start.getFullYear(), month: start.getMonth() + 1, day: start.getDate() },
+    endDate: { year: end.getFullYear(), month: end.getMonth() + 1, day: end.getDate() },
+  };
 }
 
-async function fetchLocationMetrics(auth, locationId, startDate, endDate) {
-  const mybusinessperformance = google.mybusinessperformance({ version: "v1", auth });
+async function fetchLocationMetrics(accessToken, locationId, startDate, endDate) {
+  const metrics = [
+    "WEBSITE_CLICKS",
+    "CALL_CLICKS",
+    "BUSINESS_DIRECTION_REQUESTS",
+    "BUSINESS_IMPRESSIONS_DESKTOP_MAPS",
+    "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH",
+    "BUSINESS_IMPRESSIONS_MOBILE_MAPS",
+    "BUSINESS_IMPRESSIONS_MOBILE_SEARCH",
+  ];
 
-  const response = await mybusinessperformance.locations.getDailyMetricsTimeSeries({
-    name: `locations/${locationId}`,
-    "dailyRange.startDate.year": startDate.year,
-    "dailyRange.startDate.month": startDate.month,
-    "dailyRange.startDate.day": startDate.day,
-    "dailyRange.endDate.year": endDate.year,
-    "dailyRange.endDate.month": endDate.month,
-    "dailyRange.endDate.day": endDate.day,
-    dailyMetrics: [
-      "WEBSITE_CLICKS",
-      "CALL_CLICKS",
-      "BUSINESS_DIRECTION_REQUESTS",
-      "BUSINESS_IMPRESSIONS_DESKTOP_MAPS",
-      "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH",
-      "BUSINESS_IMPRESSIONS_MOBILE_MAPS",
-      "BUSINESS_IMPRESSIONS_MOBILE_SEARCH",
-    ],
+  const params = new URLSearchParams();
+  params.append("dailyRange.startDate.year", startDate.year);
+  params.append("dailyRange.startDate.month", startDate.month);
+  params.append("dailyRange.startDate.day", startDate.day);
+  params.append("dailyRange.endDate.year", endDate.year);
+  params.append("dailyRange.endDate.month", endDate.month);
+  params.append("dailyRange.endDate.day", endDate.day);
+  metrics.forEach(m => params.append("dailyMetrics", m));
+
+  const url = `https://mybusinessperformance.googleapis.com/v1/locations/${locationId}:getDailyMetricsTimeSeries?${params.toString()}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
   });
 
-  const timeSeries = response.data?.multiDailyMetricTimeSeries || [];
-  const totals = {
-    website_clicks: 0,
-    call_clicks: 0,
-    direction_requests: 0,
-    impressions_desktop_maps: 0,
-    impressions_desktop_search: 0,
-    impressions_mobile_maps: 0,
-    impressions_mobile_search: 0,
-  };
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || `HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const timeSeries = data.multiDailyMetricTimeSeries || [];
 
   const metricMap = {
     WEBSITE_CLICKS: "website_clicks",
@@ -70,6 +72,16 @@ async function fetchLocationMetrics(auth, locationId, startDate, endDate) {
     BUSINESS_IMPRESSIONS_DESKTOP_SEARCH: "impressions_desktop_search",
     BUSINESS_IMPRESSIONS_MOBILE_MAPS: "impressions_mobile_maps",
     BUSINESS_IMPRESSIONS_MOBILE_SEARCH: "impressions_mobile_search",
+  };
+
+  const totals = {
+    website_clicks: 0,
+    call_clicks: 0,
+    direction_requests: 0,
+    impressions_desktop_maps: 0,
+    impressions_desktop_search: 0,
+    impressions_mobile_maps: 0,
+    impressions_mobile_search: 0,
   };
 
   for (const series of timeSeries) {
@@ -96,13 +108,9 @@ export async function GET(request) {
     const month = parseInt(searchParams.get("month"));
 
     if (!clientId || !year || !month) {
-      return Response.json(
-        { error: "Missing required params: client_id, year, month" },
-        { status: 400 }
-      );
+      return Response.json({ error: "Missing required params: client_id, year, month" }, { status: 400 });
     }
 
-    // ─── Look up GBP integration ───
     const { data: integration, error: intErr } = await supabase
       .from("client_integrations")
       .select("config")
@@ -120,47 +128,35 @@ export async function GET(request) {
     }
 
     const auth = getOAuthClient();
+    const { token: accessToken } = await auth.getAccessToken();
     const { startDate, endDate } = getMonthRange(year, month);
 
-    // ─── Fetch metrics for each location ───
     const locationResults = [];
     for (const location of locations) {
       try {
-        const metrics = await fetchLocationMetrics(auth, location.id, startDate, endDate);
+        const metrics = await fetchLocationMetrics(accessToken, location.id, startDate, endDate);
         locationResults.push({ label: location.label, id: location.id, metrics });
       } catch (e) {
         locationResults.push({ label: location.label, id: location.id, error: e.message });
       }
     }
 
-    // ─── Aggregate totals across all locations ───
-    const aggregate = {
-      website_clicks: 0,
-      call_clicks: 0,
-      direction_requests: 0,
-      total_impressions: 0,
-    };
-
+    const aggregate = { website_clicks: 0, call_clicks: 0, direction_requests: 0, total_impressions: 0 };
     for (const loc of locationResults) {
       if (loc.metrics) {
-        aggregate.website_clicks    += loc.metrics.website_clicks || 0;
-        aggregate.call_clicks       += loc.metrics.call_clicks || 0;
+        aggregate.website_clicks     += loc.metrics.website_clicks || 0;
+        aggregate.call_clicks        += loc.metrics.call_clicks || 0;
         aggregate.direction_requests += loc.metrics.direction_requests || 0;
         aggregate.total_impressions  += loc.metrics.total_impressions || 0;
       }
     }
 
     const gbpData = {
-      // Aggregated totals
       website_clicks: aggregate.website_clicks,
       call_clicks: aggregate.call_clicks,
       direction_requests: aggregate.direction_requests,
       total_impressions: aggregate.total_impressions,
-
-      // Per-location breakdown
       locations: locationResults,
-
-      // Meta
       _source: "gbp",
       _pulled_at: new Date().toISOString(),
       _date_range: {
@@ -169,19 +165,13 @@ export async function GET(request) {
       },
     };
 
-    // ─── Auto-save if ?save=true ───
     const autoSave = searchParams.get("save") === "true";
     if (autoSave) {
       const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
 
-      // Merge direction_requests and call_clicks into SEO row
       const { data: existingSeo } = await supabase
-        .from("report_data")
-        .select("data")
-        .eq("client_id", clientId)
-        .eq("month", monthStr)
-        .eq("department", "seo")
-        .single();
+        .from("report_data").select("data")
+        .eq("client_id", clientId).eq("month", monthStr).eq("department", "seo").single();
 
       const mergedSeo = {
         ...(existingSeo?.data || {}),
@@ -194,14 +184,9 @@ export async function GET(request) {
         { onConflict: "client_id,month,department" }
       );
 
-      // Save full GBP data to gbp department row
       const { data: existingGbp } = await supabase
-        .from("report_data")
-        .select("data")
-        .eq("client_id", clientId)
-        .eq("month", monthStr)
-        .eq("department", "gbp")
-        .single();
+        .from("report_data").select("data")
+        .eq("client_id", clientId).eq("month", monthStr).eq("department", "gbp").single();
 
       const mergedGbp = { ...(existingGbp?.data || {}), ...gbpData };
 
