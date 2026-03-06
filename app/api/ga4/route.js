@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { google } from "googleapis";
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
 
 const supabase = createClient(
@@ -50,36 +49,49 @@ export async function GET(request) {
     const propertyId = integration.config.property_id;
     const { startDate, endDate } = getMonthRange(year, month);
 
-    // ─── Initialize GA4 client ───
     const credentials = getCredentials();
     const analyticsClient = new BetaAnalyticsDataClient({ credentials });
 
-    // ─── Query 1: Core session + conversion metrics ───
+    // ─── Query 1: Core metrics ───
     const [coreReport] = await analyticsClient.runReport({
       property: `properties/${propertyId}`,
       dateRanges: [{ startDate, endDate }],
       metrics: [
         { name: "sessions" },
-        { name: "organicGoogleSearchSessions" },
-        { name: "conversions" },
-        { name: "screenPageViews" },
         { name: "newUsers" },
+        { name: "screenPageViews" },
         { name: "bounceRate" },
         { name: "averageSessionDuration" },
       ],
-      dimensionFilter: null,
     });
 
     const coreRow = coreReport.rows?.[0]?.metricValues || [];
-    const totalSessions       = Math.round(Number(coreRow[0]?.value || 0));
-    const organicSessions     = Math.round(Number(coreRow[1]?.value || 0));
-    const totalConversions    = Math.round(Number(coreRow[2]?.value || 0));
-    const pageViews           = Math.round(Number(coreRow[3]?.value || 0));
-    const newUsers            = Math.round(Number(coreRow[4]?.value || 0));
-    const bounceRate          = Math.round(Number(coreRow[5]?.value || 0) * 100) / 100;
-    const avgSessionDuration  = Math.round(Number(coreRow[6]?.value || 0));
+    const totalSessions      = Math.round(Number(coreRow[0]?.value || 0));
+    const newUsers           = Math.round(Number(coreRow[1]?.value || 0));
+    const pageViews          = Math.round(Number(coreRow[2]?.value || 0));
+    const bounceRate         = Math.round(Number(coreRow[3]?.value || 0) * 100) / 100;
+    const avgSessionDuration = Math.round(Number(coreRow[4]?.value || 0));
 
-    // ─── Query 2: VDP views (pages with /vdp/ or /vehicle/ in path) ───
+    // ─── Query 2: Organic sessions by channel ───
+    const [channelReport] = await analyticsClient.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: "sessionDefaultChannelGroup" }],
+      metrics: [{ name: "sessions" }],
+      orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    });
+
+    const channelBreakdown = (channelReport.rows || []).map(row => ({
+      channel: row.dimensionValues[0]?.value,
+      sessions: Math.round(Number(row.metricValues[0]?.value || 0)),
+    }));
+
+    const organicRow = channelBreakdown.find(c =>
+      c.channel?.toLowerCase().includes("organic")
+    );
+    const organicSessions = organicRow?.sessions || 0;
+
+    // ─── Query 3: VDP views ───
     const [vdpReport] = await analyticsClient.runReport({
       property: `properties/${propertyId}`,
       dateRanges: [{ startDate, endDate }],
@@ -88,28 +100,12 @@ export async function GET(request) {
       dimensionFilter: {
         orGroup: {
           expressions: [
-            {
-              filter: {
-                fieldName: "pagePath",
-                stringFilter: { matchType: "CONTAINS", value: "/vdp/" },
-              },
-            },
-            {
-              filter: {
-                fieldName: "pagePath",
-                stringFilter: { matchType: "CONTAINS", value: "/vehicle/" },
-              },
-            },
-            {
-              filter: {
-                fieldName: "pagePath",
-                stringFilter: { matchType: "CONTAINS", value: "/inventory/" },
-              },
-            },
+            { filter: { fieldName: "pagePath", stringFilter: { matchType: "CONTAINS", value: "/vdp/" } } },
+            { filter: { fieldName: "pagePath", stringFilter: { matchType: "CONTAINS", value: "/vehicle/" } } },
+            { filter: { fieldName: "pagePath", stringFilter: { matchType: "CONTAINS", value: "/inventory/" } } },
           ],
         },
       },
-      orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
       limit: 100,
     });
 
@@ -117,7 +113,7 @@ export async function GET(request) {
       (sum, row) => sum + Math.round(Number(row.metricValues[0]?.value || 0)), 0
     );
 
-    // ─── Query 3: Form submissions / contact conversions ───
+    // ─── Query 4: Form/lead events ───
     const [formReport] = await analyticsClient.runReport({
       property: `properties/${propertyId}`,
       dateRanges: [{ startDate, endDate }],
@@ -139,7 +135,7 @@ export async function GET(request) {
       (sum, row) => sum + Math.round(Number(row.metricValues[0]?.value || 0)), 0
     );
 
-    // ─── Query 4: Top pages by sessions ───
+    // ─── Query 5: Top pages ───
     const [pagesReport] = await analyticsClient.runReport({
       property: `properties/${propertyId}`,
       dateRanges: [{ startDate, endDate }],
@@ -156,41 +152,18 @@ export async function GET(request) {
       pageViews: Math.round(Number(row.metricValues[1]?.value || 0)),
     }));
 
-    // ─── Query 5: Traffic by channel ───
-    const [channelReport] = await analyticsClient.runReport({
-      property: `properties/${propertyId}`,
-      dateRanges: [{ startDate, endDate }],
-      dimensions: [{ name: "sessionDefaultChannelGroup" }],
-      metrics: [{ name: "sessions" }],
-      orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
-      limit: 10,
-    });
-
-    const channelBreakdown = (channelReport.rows || []).map(row => ({
-      channel: row.dimensionValues[0]?.value,
-      sessions: Math.round(Number(row.metricValues[0]?.value || 0)),
-    }));
-
     // ─── Build GA4 data object ───
     const ga4Data = {
-      // Core metrics
       total_sessions: totalSessions,
       organic_sessions: organicSessions,
-      total_conversions: totalConversions,
-      page_views: pageViews,
       new_users: newUsers,
+      page_views: pageViews,
       bounce_rate: bounceRate,
       avg_session_duration: avgSessionDuration,
-
-      // VDP & forms
       vdp_views: vdpViews,
       form_submissions: formSubmissions,
-
-      // Breakdowns
       top_pages: topPages,
       channel_breakdown: channelBreakdown,
-
-      // Meta
       _source: "ga4",
       _pulled_at: new Date().toISOString(),
       _date_range: { startDate, endDate },
@@ -201,7 +174,7 @@ export async function GET(request) {
     if (autoSave) {
       const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
 
-      // Merge into SEO department row (organic sessions, VDP views, form submissions)
+      // Merge organic sessions, VDP views, form submissions into SEO row
       const { data: existingSeo } = await supabase
         .from("report_data")
         .select("data")
@@ -219,11 +192,17 @@ export async function GET(request) {
       };
 
       await supabase.from("report_data").upsert(
-        { client_id: parseInt(clientId), month: monthStr, department: "seo", data: mergedSeo, last_updated_at: new Date().toISOString() },
+        {
+          client_id: parseInt(clientId),
+          month: monthStr,
+          department: "seo",
+          data: mergedSeo,
+          last_updated_at: new Date().toISOString(),
+        },
         { onConflict: "client_id,month,department" }
       );
 
-      // Save full GA4 data to its own department row for dashboard use
+      // Save full GA4 data to ga4 department row
       const { data: existingGa4 } = await supabase
         .from("report_data")
         .select("data")
@@ -235,7 +214,13 @@ export async function GET(request) {
       const mergedGa4 = { ...(existingGa4?.data || {}), ...ga4Data };
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
-        { client_id: parseInt(clientId), month: monthStr, department: "ga4", data: mergedGa4, last_updated_at: new Date().toISOString() },
+        {
+          client_id: parseInt(clientId),
+          month: monthStr,
+          department: "ga4",
+          data: mergedGa4,
+          last_updated_at: new Date().toISOString(),
+        },
         { onConflict: "client_id,month,department" }
       );
 
