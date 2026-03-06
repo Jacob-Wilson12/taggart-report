@@ -13,7 +13,10 @@ export async function GET() {
     scope: [
       "https://www.googleapis.com/auth/business.manage",
       "https://www.googleapis.com/auth/adwords",
+      "https://www.googleapis.com/auth/yt-analytics.readonly",
+      "https://www.googleapis.com/auth/youtube.readonly",
     ],
   });
+
   return Response.redirect(authUrl);
 }
