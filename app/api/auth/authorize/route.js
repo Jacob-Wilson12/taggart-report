@@ -12,8 +12,8 @@ export async function GET() {
     prompt: "consent",
     scope: [
       "https://www.googleapis.com/auth/business.manage",
+      "https://www.googleapis.com/auth/adwords",
     ],
   });
-
   return Response.redirect(authUrl);
 }
