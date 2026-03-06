@@ -62,42 +62,33 @@ function DetailPage({icon,title,msg}){
   return<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:44,marginBottom:14}}>{icon}</div><h2 style={{fontSize:22,fontWeight:700,color:C.t,margin:"0 0 6px",fontFamily:F}}>{title}</h2><p style={{fontSize:13,color:C.tl,fontFamily:F}}>{msg||"Full detail page — data loads from Supabase when connected."}</p></div>;
 }
 
-function LoginPage({onSent}){
-  const[email,setEmail]=useState("");
+function LoginPage({onLogin}){
+  const[password,setPassword]=useState("");
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState("");
   const handleLogin=async()=>{
-    if(!email){setError("Please enter your email.");return;}
+    if(!email||!password){setError("Please enter email and password.");return;}
     setLoading(true);setError("");
-    const{error:err}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin}});
+    const{error:err}=await supabase.auth.signInWithPassword({email,password});
     if(err){setError(err.message);setLoading(false);}
-    else{onSent(email);}
+    else{setLoading(false);}
   };
   return(
     <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}>
       <div style={{background:C.white,borderRadius:16,padding:"48px 40px",width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,0.3)",textAlign:"center"}}>
         <img src="/Taggart_Advertising_Logo.png" alt="Taggart Advertising" style={{height:56,width:"auto",marginBottom:24}}/>
         <h1 style={{fontSize:22,fontWeight:700,color:C.navy,margin:"0 0 6px",fontFamily:F}}>Client Portal</h1>
-        <p style={{fontSize:13,color:C.tl,margin:"0 0 28px",fontFamily:F}}>Enter your email to receive a magic sign-in link.</p>
-        <input type="email" placeholder="your@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{width:"100%",padding:"12px 16px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,fontFamily:F,outline:"none",boxSizing:"border-box",marginBottom:12}}/>
+        <p style={{fontSize:13,color:C.tl,margin:"0 0 28px",fontFamily:F}}>Sign in to view your reports.</p>
+        <input type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} style={{width:"100%",padding:"12px 16px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,fontFamily:F,outline:"none",boxSizing:"border-box",marginBottom:12}}/>
+        <input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{width:"100%",padding:"12px 16px",borderRadius:8,border:`1px solid ${C.bd}`,fontSize:14,fontFamily:F,outline:"none",boxSizing:"border-box",marginBottom:12}}/>
         {error&&<p style={{fontSize:12,color:C.r,margin:"0 0 10px",fontFamily:F}}>{error}</p>}
-        <button onClick={handleLogin} disabled={loading} style={{width:"100%",padding:"12px",background:C.navy,color:"#fff",border:"none",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>{loading?"Sending...":"Send Magic Link"}</button>
+        <button onClick={handleLogin} disabled={loading} style={{width:"100%",padding:"12px",background:C.navy,color:"#fff",border:"none",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:F}}>{loading?"Signing in...":"Sign In"}</button>
       </div>
     </div>
   );
 }
 
-function CheckEmailPage({email}){
-  return(
-    <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}>
-      <div style={{background:C.white,borderRadius:16,padding:"48px 40px",width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,0.3)",textAlign:"center"}}>
-        <div style={{fontSize:48,marginBottom:16}}>📧</div>
-        <h1 style={{fontSize:22,fontWeight:700,color:C.navy,margin:"0 0 10px",fontFamily:F}}>Check your email</h1>
-        <p style={{fontSize:13,color:C.tl,fontFamily:F}}>We sent a magic link to <strong style={{color:C.navy}}>{email}</strong>. Click the link to sign in.</p>
-      </div>
-    </div>
-  );
-}
+
 
 export default function App(){
   const[session,setSession]=useState(null);
@@ -174,11 +165,10 @@ useEffect(()=>{
 
   useEffect(()=>{sCi(0);},[dt]);
 
-  const handleLogout=async()=>{await supabase.auth.signOut();setSession(null);setEmailSent("");setClients([]);sCl(null);};
+  const handleLogout=async()=>{await supabase.auth.signOut();setSession(null);setClients([]);sCl(null);};
 
   if(authLoading)return<div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"#fff",fontFamily:F,fontSize:16}}>Loading...</div></div>;
-  if(!session&&!emailSent)return<LoginPage onSent={setEmailSent}/>;
-  if(!session&&emailSent)return<CheckEmailPage email={emailSent}/>;
+  if(!session)return<LoginPage/>;
   if(clientsLoading)return<div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"#fff",fontFamily:F,fontSize:16}}>Loading clients...</div></div>;
   if(clients.length===0)return(
     <div style={{minHeight:"100vh",background:C.navy,display:"flex",alignItems:"center",justifyContent:"center"}}>
