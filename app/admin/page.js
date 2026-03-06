@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../supabase";
 
-/* ─── CONSTANTS ─── */
 const C = {
   white: "#fff", navy: "#0c1a2e", cyan: "#00c9e8", cyanD: "#00a5bf",
   cyanL: "#e6f9fc", t: "#1a1a2e", tl: "#6b7280", bd: "#d0d5dd",
@@ -13,221 +12,195 @@ const C = {
 const F = "Inter,system-ui,sans-serif";
 
 const DEPARTMENTS = [
-  { id: "leads",      label: "Leads & CRM",     icon: "🎯", roles: ["admin","account_manager","editor"] },
-  { id: "callrail",   label: "CallRail",         icon: "📞", roles: ["admin","account_manager","editor"] },
-  { id: "seo",        label: "SEO",              icon: "🔍", roles: ["admin","account_manager","editor"] },
-  { id: "gbp",        label: "Google Business",  icon: "📍", roles: ["admin","account_manager","editor"] },
-  { id: "google_ads", label: "Google Ads",       icon: "📢", roles: ["admin","account_manager","editor"] },
-  { id: "meta_ads",   label: "Meta Ads",         icon: "📱", roles: ["admin","account_manager","editor"] },
-  { id: "social",     label: "Organic Social",   icon: "🎬", roles: ["admin","account_manager","editor"] },
-  { id: "email",      label: "Email",            icon: "✉️", roles: ["admin","account_manager","editor"] },
-  { id: "creative",   label: "Creative",         icon: "🎨", roles: ["admin","account_manager","editor"] },
+  { id: "leads",      label: "Leads & CRM",    icon: "🎯" },
+  { id: "callrail",   label: "CallRail",        icon: "📞" },
+  { id: "seo",        label: "SEO",             icon: "🔍", apiKey: "search_console" },
+  { id: "gbp",        label: "Google Business", icon: "📍" },
+  { id: "google_ads", label: "Google Ads",      icon: "📢" },
+  { id: "meta_ads",   label: "Meta Ads",        icon: "📱" },
+  { id: "social",     label: "Organic Social",  icon: "🎬" },
+  { id: "email",      label: "Email",           icon: "✉️" },
+  { id: "creative",   label: "Creative",        icon: "🎨" },
 ];
+
+// Live APIs — add more here as they're built
+const LIVE_APIS = {
+  seo: { label: "Search Console", endpoint: "/api/search-console" },
+};
 
 const DEPT_FIELDS = {
   leads: [
-    { key: "total_leads",    label: "Total Leads",       type: "number" },
-    { key: "website_leads",  label: "Website Leads",     type: "number" },
-    { key: "third_party",    label: "Third Party Leads", type: "number" },
-    { key: "facebook_leads", label: "Facebook Leads",    type: "number" },
-    { key: "total_sold",     label: "Total Sold",        type: "number" },
-    { key: "website_sold",   label: "Website Sold",      type: "number" },
-    { key: "third_party_sold",label: "Third Party Sold", type: "number" },
-    { key: "facebook_sold",  label: "Facebook Sold",     type: "number" },
-    { key: "phone_sold",     label: "Phone Sold",        type: "number" },
-    { key: "notes",          label: "Notes",             type: "textarea" },
+    { key: "total_leads",      label: "Total Leads",         type: "number" },
+    { key: "website_leads",    label: "Website Leads",       type: "number" },
+    { key: "third_party",      label: "Third Party Leads",   type: "number" },
+    { key: "facebook_leads",   label: "Facebook Leads",      type: "number" },
+    { key: "total_sold",       label: "Total Sold",          type: "number" },
+    { key: "website_sold",     label: "Website Sold",        type: "number" },
+    { key: "third_party_sold", label: "Third Party Sold",    type: "number" },
+    { key: "facebook_sold",    label: "Facebook Sold",       type: "number" },
+    { key: "phone_sold",       label: "Phone Sold",          type: "number" },
+    { key: "notes",            label: "Notes",               type: "textarea" },
   ],
   callrail: [
-    { key: "total_calls",    label: "Total Calls",           type: "number" },
-    { key: "website_calls",  label: "Calls from Website",    type: "number" },
-    { key: "ads_calls",      label: "Calls from Ads",        type: "number" },
-    { key: "gbp_calls",      label: "Calls from GBP",        type: "number" },
-    { key: "notes",          label: "Notes",                 type: "textarea" },
+    { key: "total_calls",   label: "Total Calls",        type: "number" },
+    { key: "website_calls", label: "Calls from Website", type: "number" },
+    { key: "ads_calls",     label: "Calls from Ads",     type: "number" },
+    { key: "gbp_calls",     label: "Calls from GBP",     type: "number" },
+    { key: "notes",         label: "Notes",              type: "textarea" },
   ],
   seo: [
-    { key: "phone_calls",       label: "Phone Calls (SEO)",      type: "number" },
-    { key: "form_submissions",  label: "Form Submissions",       type: "number" },
-    { key: "ctr",               label: "CTR (%)",                type: "decimal" },
-    { key: "organic_sessions",  label: "Organic Sessions",       type: "number" },
-    { key: "page1_keywords",    label: "Page 1 Keywords",        type: "number" },
-    { key: "impressions",       label: "Impressions",            type: "number" },
-    { key: "vdp_views",         label: "VDP Views",              type: "number" },
-    { key: "direction_requests",label: "Direction Requests",     type: "number" },
-    { key: "chat_conversations",label: "Chat Conversations",     type: "number" },
-    { key: "top_query",         label: "Top Performing Query",   type: "text" },
-    { key: "work_completed",    label: "Work Completed",         type: "textarea" },
-    { key: "wins",              label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",            label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
-    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "phone_calls",        label: "Phone Calls (SEO)",        type: "number",   manual: true },
+    { key: "form_submissions",   label: "Form Submissions",         type: "number",   manual: true },
+    { key: "organic_sessions",   label: "Organic Sessions",         type: "number",   manual: true },
+    { key: "vdp_views",          label: "VDP Views",                type: "number",   manual: true },
+    { key: "direction_requests", label: "Direction Requests",       type: "number",   manual: true },
+    { key: "chat_conversations", label: "Chat Conversations",       type: "number",   manual: true },
+    { key: "ctr",                label: "CTR (%)",                  type: "decimal",  api: true },
+    { key: "impressions",        label: "Impressions",              type: "number",   api: true },
+    { key: "page1_keywords",     label: "Page 1 Keywords",          type: "number",   api: true },
+    { key: "avg_position",       label: "Avg Position",             type: "decimal",  api: true },
+    { key: "top_query",          label: "Top Performing Query",     type: "text",     api: true },
+    { key: "work_completed",     label: "Work Completed",           type: "textarea", manual: true },
+    { key: "wins",               label: "Wins",                     type: "textarea", manual: true, hint: "One per line" },
+    { key: "losses",             label: "Losses / Watch Items",     type: "textarea", manual: true, hint: "One per line" },
+    { key: "next_month",         label: "What's Coming Next Month", type: "textarea", manual: true, hint: "One per line" },
   ],
   gbp: [
-    { key: "profile_views",     label: "Profile Views",          type: "number" },
-    { key: "search_appearances",label: "Search Appearances",     type: "number" },
-    { key: "map_views",         label: "Map Views",              type: "number" },
-    { key: "website_clicks",    label: "Website Clicks",         type: "number" },
-    { key: "phone_calls",       label: "Phone Calls",            type: "number" },
-    { key: "direction_requests",label: "Direction Requests",     type: "number" },
-    { key: "review_count",      label: "Total Reviews",          type: "number" },
-    { key: "avg_rating",        label: "Average Rating",         type: "decimal" },
-    { key: "new_reviews",       label: "New Reviews This Month", type: "number" },
-    { key: "photo_count",       label: "Photos on Profile",      type: "number" },
-    { key: "posts_published",   label: "Posts Published",        type: "number" },
-    { key: "work_completed",    label: "Work Completed",         type: "textarea" },
-    { key: "wins",              label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",            label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
-    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "profile_views",      label: "Profile Views",          type: "number" },
+    { key: "search_appearances", label: "Search Appearances",     type: "number" },
+    { key: "map_views",          label: "Map Views",              type: "number" },
+    { key: "website_clicks",     label: "Website Clicks",         type: "number" },
+    { key: "phone_calls",        label: "Phone Calls",            type: "number" },
+    { key: "direction_requests", label: "Direction Requests",     type: "number" },
+    { key: "review_count",       label: "Total Reviews",          type: "number" },
+    { key: "avg_rating",         label: "Average Rating",         type: "decimal" },
+    { key: "new_reviews",        label: "New Reviews This Month", type: "number" },
+    { key: "photo_count",        label: "Photos on Profile",      type: "number" },
+    { key: "posts_published",    label: "Posts Published",        type: "number" },
+    { key: "work_completed",     label: "Work Completed",         type: "textarea" },
+    { key: "wins",               label: "Wins",                   type: "textarea", hint: "One per line" },
+    { key: "losses",             label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
+    { key: "next_month",         label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   google_ads: [
-    { key: "conversions",       label: "Total Conversions",      type: "number" },
-    { key: "cost_per_lead",     label: "Cost Per Lead ($)",      type: "decimal" },
-    { key: "total_spend",       label: "Total Spend ($)",        type: "decimal" },
-    { key: "budget",            label: "Monthly Budget ($)",     type: "decimal" },
-    { key: "ctr",               label: "CTR (%)",                type: "decimal" },
-    { key: "cpc",               label: "Avg CPC ($)",            type: "decimal" },
-    { key: "impression_share",  label: "Impression Share (%)",   type: "decimal" },
-    { key: "top_campaign",      label: "Top Performing Campaign",type: "text" },
-    { key: "work_completed",    label: "Work Completed",         type: "textarea" },
-    { key: "wins",              label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",            label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
-    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "conversions",      label: "Total Conversions",       type: "number" },
+    { key: "cost_per_lead",    label: "Cost Per Lead ($)",       type: "decimal" },
+    { key: "total_spend",      label: "Total Spend ($)",         type: "decimal" },
+    { key: "budget",           label: "Monthly Budget ($)",      type: "decimal" },
+    { key: "ctr",              label: "CTR (%)",                 type: "decimal" },
+    { key: "cpc",              label: "Avg CPC ($)",             type: "decimal" },
+    { key: "impression_share", label: "Impression Share (%)",    type: "decimal" },
+    { key: "top_campaign",     label: "Top Performing Campaign", type: "text" },
+    { key: "work_completed",   label: "Work Completed",          type: "textarea" },
+    { key: "wins",             label: "Wins",                    type: "textarea", hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",    type: "textarea", hint: "One per line" },
+    { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   meta_ads: [
-    { key: "conversions",       label: "Total Conversions",      type: "number" },
-    { key: "cost_per_lead",     label: "Cost Per Lead ($)",      type: "decimal" },
-    { key: "reach",             label: "Reach",                  type: "number" },
-    { key: "cpc",               label: "Avg CPC ($)",            type: "decimal" },
-    { key: "frequency",         label: "Frequency",              type: "decimal" },
-    { key: "engagement_rate",   label: "Engagement Rate (%)",    type: "decimal" },
+    { key: "conversions",          label: "Total Conversions",        type: "number" },
+    { key: "cost_per_lead",        label: "Cost Per Lead ($)",        type: "decimal" },
+    { key: "reach",                label: "Reach",                    type: "number" },
+    { key: "cpc",                  label: "Avg CPC ($)",              type: "decimal" },
+    { key: "frequency",            label: "Frequency",                type: "decimal" },
+    { key: "engagement_rate",      label: "Engagement Rate (%)",      type: "decimal" },
     { key: "lead_form_completion", label: "Lead Form Completion (%)", type: "decimal" },
-    { key: "top_ad",            label: "Top Performing Ad",      type: "text" },
-    { key: "work_completed",    label: "Work Completed",         type: "textarea" },
-    { key: "wins",              label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",            label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
-    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "top_ad",               label: "Top Performing Ad",        type: "text" },
+    { key: "work_completed",       label: "Work Completed",           type: "textarea" },
+    { key: "wins",                 label: "Wins",                     type: "textarea", hint: "One per line" },
+    { key: "losses",               label: "Losses / Watch Items",     type: "textarea", hint: "One per line" },
+    { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   social: [
-    { key: "total_reach",       label: "Total Reach",            type: "number" },
-    { key: "total_engagement",  label: "Total Engagement",       type: "number" },
-    { key: "new_followers",     label: "New Followers",          type: "number" },
-    { key: "posts_published",   label: "Posts Published",        type: "number" },
-    { key: "videos_published",  label: "Videos Published",       type: "number" },
-    { key: "website_clicks",    label: "Website Clicks",         type: "number" },
-    { key: "ig_followers",      label: "Instagram Followers",    type: "number" },
-    { key: "fb_followers",      label: "Facebook Followers",     type: "number" },
-    { key: "tiktok_followers",  label: "TikTok Followers",       type: "number" },
-    { key: "yt_followers",      label: "YouTube Subscribers",    type: "number" },
-    { key: "top_video",         label: "Top Performing Video",   type: "text" },
-    { key: "top_video_views",   label: "Top Video Views",        type: "number" },
-    { key: "work_completed",    label: "Work Completed",         type: "textarea" },
-    { key: "wins",              label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",            label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
-    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "total_reach",      label: "Total Reach",            type: "number" },
+    { key: "total_engagement", label: "Total Engagement",       type: "number" },
+    { key: "new_followers",    label: "New Followers",          type: "number" },
+    { key: "posts_published",  label: "Posts Published",        type: "number" },
+    { key: "videos_published", label: "Videos Published",       type: "number" },
+    { key: "website_clicks",   label: "Website Clicks",         type: "number" },
+    { key: "ig_followers",     label: "Instagram Followers",    type: "number" },
+    { key: "fb_followers",     label: "Facebook Followers",     type: "number" },
+    { key: "tiktok_followers", label: "TikTok Followers",       type: "number" },
+    { key: "yt_followers",     label: "YouTube Subscribers",    type: "number" },
+    { key: "top_video",        label: "Top Performing Video",   type: "text" },
+    { key: "top_video_views",  label: "Top Video Views",        type: "number" },
+    { key: "work_completed",   label: "Work Completed",         type: "textarea" },
+    { key: "wins",             label: "Wins",                   type: "textarea", hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
+    { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   email: [
-    { key: "campaigns_sent",    label: "Campaigns Sent",         type: "number" },
-    { key: "total_recipients",  label: "Total Recipients",       type: "number" },
-    { key: "site_visits",       label: "Site Visits from Email", type: "number" },
-    { key: "conversions",       label: "Conversions from Email", type: "number" },
-    { key: "work_completed",    label: "Work Completed",         type: "textarea" },
-    { key: "wins",              label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",            label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
-    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "campaigns_sent",   label: "Campaigns Sent",         type: "number" },
+    { key: "total_recipients", label: "Total Recipients",       type: "number" },
+    { key: "site_visits",      label: "Site Visits from Email", type: "number" },
+    { key: "conversions",      label: "Conversions from Email", type: "number" },
+    { key: "work_completed",   label: "Work Completed",         type: "textarea" },
+    { key: "wins",             label: "Wins",                   type: "textarea", hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
+    { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   creative: [
-    { key: "total_assets",      label: "Total Assets Delivered", type: "number" },
-    { key: "videos",            label: "Videos",                 type: "number" },
-    { key: "graphics",          label: "Graphics / Statics",     type: "number" },
-    { key: "banners",           label: "Banners",                type: "number" },
-    { key: "print",             label: "Print Pieces",           type: "number" },
-    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "total_assets", label: "Total Assets Delivered",   type: "number" },
+    { key: "videos",       label: "Videos",                   type: "number" },
+    { key: "graphics",     label: "Graphics / Statics",       type: "number" },
+    { key: "banners",      label: "Banners",                  type: "number" },
+    { key: "print",        label: "Print Pieces",             type: "number" },
+    { key: "next_month",   label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
 };
 
-// ─── SPECIAL CLIENT CONFIGS ───
 const GOODE_MOTOR_GROUP = "Goode Motor Group";
-
-// Juneau OEM stores: same as standard leads but "Third Party" → OEM brand name
 const JUNEAU_OEM_LABEL = {
-  "Juneau Auto Mall":  "OEM",
-  "Juneau Subaru":     "Subaru",
-  "Juneau CDJR":       "CDJR",
-  "Juneau Toyota":     "Toyota",
-  "Juneau Chevrolet":  "Chevrolet",
-  "Juneau Honda":      "Honda",
+  "Juneau Auto Mall": "OEM", "Juneau Subaru": "Subaru",
+  "Juneau CDJR": "CDJR", "Juneau Toyota": "Toyota",
+  "Juneau Chevrolet": "Chevrolet", "Juneau Honda": "Honda",
 };
 const JUNEAU_LEAD_SOURCE = "Juneau Auto Mall";
+const SHARED_KEYS = ["total_leads","total_sold","website_leads","website_sold","facebook_leads","facebook_sold","phone_sold","notes"];
 
-// Build leads fields for a Juneau store — identical to standard except Third Party → OEM brand
 const leadsFieldsJuneau = (oemLabel) => [
-  { key: "total_leads",      label: "Total Leads",              type: "number" },
-  { key: "website_leads",    label: "Website Leads",            type: "number" },
-  { key: "oem_leads",        label: `${oemLabel} Leads`,        type: "number" },
-  { key: "facebook_leads",   label: "Facebook Leads",           type: "number" },
-  { key: "total_sold",       label: "Total Sold",               type: "number" },
-  { key: "website_sold",     label: "Website Sold",             type: "number" },
-  { key: "oem_sold",         label: `${oemLabel} Sold`,         type: "number" },
-  { key: "facebook_sold",    label: "Facebook Sold",            type: "number" },
-  { key: "phone_sold",       label: "Phone Sold",               type: "number" },
-  { key: "notes",            label: "Notes",                    type: "textarea" },
+  { key: "total_leads",    label: "Total Leads",       type: "number" },
+  { key: "website_leads",  label: "Website Leads",     type: "number" },
+  { key: "oem_leads",      label: `${oemLabel} Leads`, type: "number" },
+  { key: "facebook_leads", label: "Facebook Leads",    type: "number" },
+  { key: "total_sold",     label: "Total Sold",        type: "number" },
+  { key: "website_sold",   label: "Website Sold",      type: "number" },
+  { key: "oem_sold",       label: `${oemLabel} Sold`,  type: "number" },
+  { key: "facebook_sold",  label: "Facebook Sold",     type: "number" },
+  { key: "phone_sold",     label: "Phone Sold",        type: "number" },
+  { key: "notes",          label: "Notes",             type: "textarea" },
 ];
 
-// Custom leads fields for Goode Motor Group
 const LEADS_FIELDS_GOODE = [
-  { key: "total_leads",    label: "Total Leads (All Brands)", type: "number" },
-  { key: "ford_leads",     label: "Ford Leads",               type: "number" },
-  { key: "ford_sold",      label: "Ford Sold",                type: "number" },
-  { key: "mazda_leads",    label: "Mazda Leads",              type: "number" },
-  { key: "mazda_sold",     label: "Mazda Sold",               type: "number" },
-  { key: "vw_leads",       label: "Volkswagen Leads",         type: "number" },
-  { key: "vw_sold",        label: "Volkswagen Sold",          type: "number" },
-  { key: "total_sold",     label: "Total Sold",               type: "number" },
-  { key: "notes",          label: "Notes",                    type: "textarea" },
+  { key: "total_leads",  label: "Total Leads (All Brands)", type: "number" },
+  { key: "ford_leads",   label: "Ford Leads",               type: "number" },
+  { key: "ford_sold",    label: "Ford Sold",                type: "number" },
+  { key: "mazda_leads",  label: "Mazda Leads",              type: "number" },
+  { key: "mazda_sold",   label: "Mazda Sold",               type: "number" },
+  { key: "vw_leads",     label: "Volkswagen Leads",         type: "number" },
+  { key: "vw_sold",      label: "Volkswagen Sold",          type: "number" },
+  { key: "total_sold",   label: "Total Sold",               type: "number" },
+  { key: "notes",        label: "Notes",                    type: "textarea" },
 ];
 
-const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
-];
+const MONTHS = ["January","February","March","April","May","June",
+  "July","August","September","October","November","December"];
 
 const canEdit = (role, department, deptId) => {
-  if (role === "admin") return true;
-  if (role === "account_manager") return true;
+  if (role === "admin" || role === "account_manager") return true;
   if (role === "editor" && department === deptId) return true;
   return false;
 };
-
 const canPublish = (role) => role === "admin" || role === "account_manager";
 
-/* ─── HELPER: ensure monthly_reports row exists ─── */
-// This is the key fix — always use insert + on conflict do update
-// so we never silently fail on a missing row.
-const upsertMonthlyReport = async (clientId, month, fields) => {
-  const { error } = await supabase.from("monthly_reports").upsert(
-    { client_id: clientId, month, ...fields },
-    { onConflict: "client_id,month", ignoreDuplicates: false }
-  );
-  if (error) {
-    console.error("monthly_reports upsert error:", error);
-  }
-  return error;
-};
-
-/* ─── SMALL UI HELPERS ─── */
+/* ─── UI HELPERS ─── */
 const Badge = ({ label, color = C.cyan }) => (
   <span style={{ background: color + "22", color, borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, fontFamily: F }}>{label}</span>
 );
-
 const StatusBadge = ({ status }) => {
-  const map = {
-    draft:       { label: "Draft",            color: C.tl },
-    in_progress: { label: "In Progress",      color: C.o },
-    review:      { label: "Ready for Review", color: C.p },
-    published:   { label: "Published",        color: C.g },
-  };
+  const map = { draft: { label: "Draft", color: C.tl }, in_progress: { label: "In Progress", color: C.o }, review: { label: "Ready for Review", color: C.p }, published: { label: "Published", color: C.g } };
   const s = map[status] || map.draft;
   return <Badge label={s.label} color={s.color} />;
 };
-
 const CompletionBar = ({ filled, total }) => {
   const pct = total === 0 ? 0 : Math.round((filled / total) * 100);
   const color = pct === 100 ? C.g : pct >= 50 ? C.o : C.r;
@@ -241,41 +214,74 @@ const CompletionBar = ({ filled, total }) => {
   );
 };
 
+/* ─── API PULL BUTTON ─── */
+const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
+  const api = LIVE_APIS[deptId];
+  const [pulling, setPulling] = useState(false);
+  const [result, setResult] = useState(null);
+  const [msg, setMsg] = useState("");
+  if (!api) return null;
+
+  const handlePull = async () => {
+    setPulling(true); setResult(null); setMsg("");
+    try {
+      const res = await fetch(`${api.endpoint}?client_id=${clientId}&year=${year}&month=${monthIdx + 1}&save=true`);
+      const json = await res.json();
+      if (json.success && json.saved) {
+        setResult("success");
+        setMsg(json.data._pulled_at ? `Pulled at ${new Date(json.data._pulled_at).toLocaleTimeString()}` : "");
+        if (onPulled) onPulled(deptId);
+      } else {
+        setResult("error");
+        setMsg(json.error || json.save_error || "Unknown error");
+      }
+    } catch (e) {
+      setResult("error"); setMsg(e.message);
+    }
+    setPulling(false);
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <button onClick={handlePull} disabled={pulling} style={{
+        background: result === "success" ? C.gL : result === "error" ? C.rL : C.cyanL,
+        color: result === "success" ? "#166534" : result === "error" ? C.r : C.cyanD,
+        border: `1px solid ${result === "success" ? "#bbf7d0" : result === "error" ? "#fecaca" : C.cyan + "44"}`,
+        borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 700,
+        cursor: pulling ? "not-allowed" : "pointer", fontFamily: F,
+        display: "flex", alignItems: "center", gap: 6, opacity: pulling ? 0.7 : 1,
+      }}>
+        {pulling ? "↻ Pulling..." : result === "success" ? `✓ Pulled from ${api.label}` : result === "error" ? `⚠ Retry ${api.label}` : `⬇ Pull from ${api.label}`}
+      </button>
+      {msg && <span style={{ fontSize: 11, color: result === "error" ? C.r : C.tl, fontFamily: F }}>{msg}</span>}
+    </div>
+  );
+};
+
 /* ─── FIELD INPUT ─── */
 const FieldInput = ({ field, value, onChange, disabled }) => {
   const base = {
     width: "100%", padding: "10px 12px", borderRadius: 7,
-    border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F,
-    outline: "none", boxSizing: "border-box",
-    background: disabled ? "#f8fafc" : C.white,
-    color: disabled ? C.tl : C.t,
+    border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`,
+    fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box",
+    background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t,
     cursor: disabled ? "not-allowed" : "text",
   };
   if (field.type === "textarea") return (
-    <textarea
-      value={value || ""}
-      onChange={e => onChange(field.key, e.target.value)}
-      disabled={disabled}
-      rows={3}
-      placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`}
-      style={{ ...base, resize: "vertical", lineHeight: 1.5 }}
-    />
+    <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)}
+      disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`}
+      style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
   );
   return (
-    <input
-      type={field.type === "number" || field.type === "decimal" ? "number" : "text"}
+    <input type={field.type === "number" || field.type === "decimal" ? "number" : "text"}
       step={field.type === "decimal" ? "0.01" : "1"}
-      value={value || ""}
-      onChange={e => onChange(field.key, e.target.value)}
-      disabled={disabled}
-      placeholder={field.hint || "0"}
-      style={base}
-    />
+      value={value || ""} onChange={e => onChange(field.key, e.target.value)}
+      disabled={disabled} placeholder={field.hint || "0"} style={base} />
   );
 };
 
-/* ─── DEPARTMENT FORM ─── */
-function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSaved, allClients }) {
+/* ─── DEPT FORM ─── */
+function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole, userDept, onSaved, allClients, onApiPulled }) {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -287,97 +293,72 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
   const isJuneauSource = isJuneau && clientName === JUNEAU_LEAD_SOURCE;
   const isJuneauChild  = isJuneau && !isJuneauSource;
 
-  // Shared keys that get synced from Auto Mall to all sibling stores
-  const SHARED_KEYS = ["total_leads","total_sold","website_leads","website_sold","facebook_leads","facebook_sold","phone_sold","notes"];
-
-  const fields = isGoode
-    ? LEADS_FIELDS_GOODE
-    : isJuneau
-      ? leadsFieldsJuneau(oemLabel)
-      : (DEPT_FIELDS[dept.id] || []);
-
+  const fields = isGoode ? LEADS_FIELDS_GOODE : isJuneau ? leadsFieldsJuneau(oemLabel) : (DEPT_FIELDS[dept.id] || []);
   const editable = canEdit(userRole, userDept, dept.id);
+  const apiFields = fields.filter(f => f.api);
+  const manualFields = fields.filter(f => !f.api);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data: row } = await supabase
-        .from("report_data").select("data")
-        .eq("client_id", clientId).eq("month", month).eq("department", dept.id).single();
-      setData(row?.data || {});
-      setLoading(false);
-    };
-    load();
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data: row } = await supabase.from("report_data").select("data")
+      .eq("client_id", clientId).eq("month", month).eq("department", dept.id).single();
+    setData(row?.data || {});
+    setLoading(false);
   }, [clientId, month, dept.id]);
 
-  const handleChange = (key, val) => {
-    setData(prev => ({ ...prev, [key]: val }));
-    setSaved(false);
-  };
+  useEffect(() => { load(); }, [load]);
+
+  const handleApiPulled = useCallback(async (deptId) => {
+    if (deptId === dept.id) { await load(); setSaved(false); }
+    if (onApiPulled) onApiPulled(deptId);
+  }, [dept.id, load, onApiPulled]);
+
+  const handleChange = (key, val) => { setData(prev => ({ ...prev, [key]: val })); setSaved(false); };
 
   const handleSave = async () => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     const ts = { last_updated_by: user.id, last_updated_at: new Date().toISOString() };
-
-    // Save this store's own data
-    await supabase.from("report_data").upsert({
-      client_id: clientId, month, department: dept.id, data, ...ts,
-    }, { onConflict: "client_id,month,department" });
-
-    // If this is Juneau Auto Mall, sync shared keys to all sibling stores
-    // Each sibling keeps its own oem_leads/oem_sold — we only overwrite shared fields
+    await supabase.from("report_data").upsert(
+      { client_id: clientId, month, department: dept.id, data, ...ts },
+      { onConflict: "client_id,month,department" }
+    );
     if (isJuneauSource && allClients) {
-      const sharedPayload = Object.fromEntries(
-        SHARED_KEYS.map(k => [k, data[k] ?? null])
-      );
-      const siblings = allClients.filter(c =>
-        JUNEAU_OEM_LABEL[c.name] && c.name !== JUNEAU_LEAD_SOURCE
-      );
+      const sharedPayload = Object.fromEntries(SHARED_KEYS.map(k => [k, data[k] ?? null]));
+      const siblings = allClients.filter(c => JUNEAU_OEM_LABEL[c.name] && c.name !== JUNEAU_LEAD_SOURCE);
       await Promise.all(siblings.map(async (sibling) => {
-        // Load the sibling's existing data so we don't wipe their OEM fields
-        const { data: existing } = await supabase
-          .from("report_data").select("data")
+        const { data: existing } = await supabase.from("report_data").select("data")
           .eq("client_id", sibling.id).eq("month", month).eq("department", "leads").single();
         const merged = { ...(existing?.data || {}), ...sharedPayload };
-        await supabase.from("report_data").upsert({
-          client_id: sibling.id, month, department: "leads", data: merged, ...ts,
-        }, { onConflict: "client_id,month,department" });
+        await supabase.from("report_data").upsert(
+          { client_id: sibling.id, month, department: "leads", data: merged, ...ts },
+          { onConflict: "client_id,month,department" }
+        );
       }));
     }
-
-    setSaving(false);
-    setSaved(true);
+    setSaving(false); setSaved(true);
     if (onSaved) onSaved(dept.id);
   };
 
   const filledCount = fields.filter(f => data[f.key] && String(data[f.key]).trim() !== "").length;
-
-  const goodeStats = isGoode ? [
-    { brand: "Ford",       leads: data.ford_leads,  sold: data.ford_sold },
-    { brand: "Mazda",      leads: data.mazda_leads, sold: data.mazda_sold },
-    { brand: "Volkswagen", leads: data.vw_leads,    sold: data.vw_sold },
-  ] : null;
+  const pulledAt = data._pulled_at ? new Date(data._pulled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
 
   if (loading) return <div style={{ padding: 24, textAlign: "center", color: C.tl, fontFamily: F, fontSize: 13 }}>Loading...</div>;
 
   return (
     <div>
-      {isGoode && (
-        <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
-          ℹ️ Goode Motor Group uses brand-level lead tracking. Sold % is calculated automatically.
+      {/* API status banner */}
+      {LIVE_APIS[dept.id] && (
+        <div style={{ background: pulledAt ? C.gL : C.cyanL, border: `1px solid ${pulledAt ? "#bbf7d0" : C.cyan + "44"}`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 12, color: pulledAt ? "#166534" : C.cyanD, fontFamily: F }}>
+            {pulledAt ? `✓ Last pulled: ${pulledAt}` : "⬇ No API data yet — click Pull to fetch automatically"}
+          </div>
+          <ApiPullButton deptId={dept.id} clientId={clientId} year={year} monthIdx={monthIdx} onPulled={handleApiPulled} />
         </div>
       )}
-      {isJuneauSource && (
-        <div style={{ background: C.gL, border: `1px solid ${C.g}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>
-          📡 Saving here will automatically sync <strong>Total, Website, Facebook, and Phone</strong> leads to all other Juneau stores. Each store's OEM leads are not affected.
-        </div>
-      )}
-      {isJuneauChild && (
-        <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
-          🔗 <strong>Total, Website, Facebook & Phone</strong> fields are synced from Juneau Auto Mall. Enter this store's <strong>{oemLabel}</strong> leads directly here.
-        </div>
-      )}
+
+      {isJuneauSource && <div style={{ background: C.gL, border: `1px solid ${C.g}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>📡 Saving here syncs Total, Website, Facebook & Phone leads to all Juneau stores.</div>}
+      {isJuneauChild && <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>🔗 Total, Website, Facebook & Phone synced from Juneau Auto Mall. Enter {oemLabel} leads here.</div>}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
@@ -385,24 +366,34 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
           <CompletionBar filled={filledCount} total={fields.length} />
         </div>
         {editable && (
-          <button onClick={handleSave} disabled={saving} style={{
-            background: saved ? C.g : C.navy, color: "#fff", border: "none",
-            borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700,
-            cursor: "pointer", fontFamily: F, minWidth: 100,
-          }}>
-            {saving ? "Saving..." : saved ? "✓ Saved" : isJuneauSource ? "Save & Sync Juneau" : "Save"}
+          <button onClick={handleSave} disabled={saving} style={{ background: saved ? C.g : C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, minWidth: 100 }}>
+            {saving ? "Saving..." : saved ? "✓ Saved" : isJuneauSource ? "Save & Sync" : "Save"}
           </button>
         )}
       </div>
 
-      {!editable && (
-        <div style={{ background: C.oL, border: `1px solid ${C.o}22`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.o, fontFamily: F }}>
-          👁 View only — you can edit <strong>{userDept}</strong> data only.
+      {!editable && <div style={{ background: C.oL, border: `1px solid ${C.o}22`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.o, fontFamily: F }}>👁 View only — you can edit <strong>{userDept}</strong> data only.</div>}
+
+      {/* API fields section */}
+      {apiFields.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.cyanD, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>
+            ⬇ Auto-filled by API {pulledAt && <span style={{ fontWeight: 400, color: C.tl, textTransform: "none", letterSpacing: 0 }}>— editable if needed</span>}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14, background: C.cyanL, borderRadius: 10, padding: 16, border: `1px solid ${C.cyan}22` }}>
+            {apiFields.map(field => (
+              <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: C.cyanD, fontFamily: F }}>{field.label}</label>
+                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
+      {/* Manual fields */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-        {fields.map(field => {
+        {(apiFields.length > 0 ? manualFields : fields).map(field => {
           const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
           return (
             <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -411,23 +402,18 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
                 {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>↔ synced</span>}
                 {field.hint && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
               </label>
-              <FieldInput
-                field={field}
-                value={data[field.key]}
-                onChange={handleChange}
-                disabled={!editable || isSharedField}
-              />
+              <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField} />
             </div>
           );
         })}
       </div>
 
-      {/* Goode auto-calculated sold % */}
-      {isGoode && goodeStats?.some(s => s.leads) && (
+      {/* Goode sold % */}
+      {isGoode && [data.ford_leads, data.mazda_leads, data.vw_leads].some(v => v) && (
         <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>Sold % by Brand (auto-calculated)</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {goodeStats.map(s => {
+            {[{ brand: "Ford", leads: data.ford_leads, sold: data.ford_sold }, { brand: "Mazda", leads: data.mazda_leads, sold: data.mazda_sold }, { brand: "Volkswagen", leads: data.vw_leads, sold: data.vw_sold }].map(s => {
               const pct = s.leads > 0 && s.sold >= 0 ? Math.round((Number(s.sold) / Number(s.leads)) * 1000) / 10 : null;
               return (
                 <div key={s.brand} style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 20px", flex: 1, minWidth: 120, textAlign: "center", boxShadow: C.sh }}>
@@ -444,7 +430,7 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
   );
 }
 
-/* ─── CLIENT REPORT VIEW ─── */
+/* ─── CLIENT REPORT ─── */
 function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -454,144 +440,116 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
   const [deptCompletion, setDeptCompletion] = useState({});
+  const [pullingAll, setPullingAll] = useState(false);
+  const [pullAllResult, setPullAllResult] = useState("");
 
   const month = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
 
   useEffect(() => {
+    setDeptCompletion({});
+    setPullAllResult("");
     const loadStatus = async () => {
-      const { data } = await supabase
-        .from("monthly_reports")
-        .select("status")
-        .eq("client_id", client.id)
-        .eq("month", month)
-        .single();
+      const { data } = await supabase.from("monthly_reports").select("status")
+        .eq("client_id", client.id).eq("month", month).single();
       setReportStatus(data?.status || "draft");
     };
     loadStatus();
   }, [client.id, month]);
 
-  const handleSaved = useCallback(async (deptId) => {
-    // Update completion tracking
+  const refreshCompletion = useCallback(async (deptId) => {
     const fields = DEPT_FIELDS[deptId] || [];
-    const { data: row } = await supabase
-      .from("report_data")
-      .select("data")
-      .eq("client_id", client.id)
-      .eq("month", month)
-      .eq("department", deptId)
-      .single();
+    const { data: row } = await supabase.from("report_data").select("data")
+      .eq("client_id", client.id).eq("month", month).eq("department", deptId).single();
     const filled = fields.filter(f => row?.data?.[f.key] && String(row.data[f.key]).trim() !== "").length;
     setDeptCompletion(prev => ({ ...prev, [deptId]: { filled, total: fields.length } }));
-
-    // Ensure the monthly_reports row exists and is at least in_progress
-    // This is a safe upsert — if the row exists and is published, we don't downgrade it
-    const { data: existing } = await supabase
-      .from("monthly_reports")
-      .select("status")
-      .eq("client_id", client.id)
-      .eq("month", month)
-      .single();
-
-    if (!existing) {
-      // Row doesn't exist yet — create it as in_progress
-      await upsertMonthlyReport(client.id, month, { status: "in_progress" });
-      setReportStatus("in_progress");
-    } else if (existing.status === "draft") {
-      // Upgrade draft → in_progress
-      await upsertMonthlyReport(client.id, month, { status: "in_progress" });
-      setReportStatus("in_progress");
-    }
-    // If already in_progress, review, or published — leave it alone
   }, [client.id, month]);
 
-  // ─── KEY FIX: robust publish handler ───
+  const handleSaved = useCallback(async (deptId) => {
+    await refreshCompletion(deptId);
+    const { data: existing } = await supabase.from("monthly_reports").select("status")
+      .eq("client_id", client.id).eq("month", month).single();
+    if (!existing) {
+      await supabase.from("monthly_reports").insert({ client_id: client.id, month, status: "in_progress" });
+      setReportStatus("in_progress");
+    } else if (existing.status === "draft") {
+      await supabase.from("monthly_reports").update({ status: "in_progress" }).eq("client_id", client.id).eq("month", month);
+      setReportStatus("in_progress");
+    }
+  }, [client.id, month, refreshCompletion]);
+
+  const handlePullAll = async () => {
+    setPullingAll(true); setPullAllResult("");
+    const apiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id]);
+    const results = [];
+    for (const dept of apiDepts) {
+      const api = LIVE_APIS[dept.id];
+      try {
+        const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${year}&month=${monthIdx + 1}&save=true`);
+        const json = await res.json();
+        if (json.success && json.saved) {
+          results.push(`✓ ${dept.label}`);
+          await refreshCompletion(dept.id);
+        } else {
+          results.push(`⚠ ${dept.label}: ${json.error || "failed"}`);
+        }
+      } catch (e) {
+        results.push(`✗ ${dept.label}: ${e.message}`);
+      }
+    }
+    setPullAllResult(results.join(" · "));
+    setPullingAll(false);
+  };
+
   const handlePublish = async () => {
     if (!canPublish(userRole)) return;
-    setPublishing(true);
-    setPublishError("");
-
+    setPublishing(true); setPublishError("");
     const { data: { user } } = await supabase.auth.getUser();
     const newStatus = reportStatus === "published" ? "in_progress" : "published";
-    const now = new Date().toISOString();
-
-    // Check if the row exists first
-    const { data: existing } = await supabase
-      .from("monthly_reports")
-      .select("id")
-      .eq("client_id", client.id)
-      .eq("month", month)
-      .single();
-
+    const ts = new Date().toISOString();
+    const { data: existing } = await supabase.from("monthly_reports").select("id")
+      .eq("client_id", client.id).eq("month", month).single();
     let error;
     if (existing) {
-      // Row exists — update it
-      ({ error } = await supabase
-        .from("monthly_reports")
-        .update({
-          status: newStatus,
-          published_at: newStatus === "published" ? now : null,
-          published_by: newStatus === "published" ? user.id : null,
-        })
-        .eq("client_id", client.id)
-        .eq("month", month));
+      ({ error } = await supabase.from("monthly_reports").update({
+        status: newStatus,
+        published_at: newStatus === "published" ? ts : null,
+        published_by: newStatus === "published" ? user.id : null,
+      }).eq("client_id", client.id).eq("month", month));
     } else {
-      // Row doesn't exist — insert it
-      ({ error } = await supabase
-        .from("monthly_reports")
-        .insert({
-          client_id: client.id,
-          month,
-          status: newStatus,
-          published_at: newStatus === "published" ? now : null,
-          published_by: newStatus === "published" ? user.id : null,
-        }));
+      ({ error } = await supabase.from("monthly_reports").insert({
+        client_id: client.id, month, status: newStatus,
+        published_at: newStatus === "published" ? ts : null,
+        published_by: newStatus === "published" ? user.id : null,
+      }));
     }
-
-    if (error) {
-      console.error("Publish error:", error);
-      setPublishError(`Error: ${error.message}`);
-    } else {
-      setReportStatus(newStatus);
-    }
-
+    if (error) setPublishError(`Error: ${error.message}`);
+    else setReportStatus(newStatus);
     setPublishing(false);
   };
 
   const handleMarkReview = async () => {
-    const { data: existing } = await supabase
-      .from("monthly_reports")
-      .select("id")
-      .eq("client_id", client.id)
-      .eq("month", month)
-      .single();
-
+    const { data: existing } = await supabase.from("monthly_reports").select("id")
+      .eq("client_id", client.id).eq("month", month).single();
     if (existing) {
-      await supabase.from("monthly_reports")
-        .update({ status: "review" })
-        .eq("client_id", client.id)
-        .eq("month", month);
+      await supabase.from("monthly_reports").update({ status: "review" }).eq("client_id", client.id).eq("month", month);
     } else {
-      await supabase.from("monthly_reports")
-        .insert({ client_id: client.id, month, status: "review" });
+      await supabase.from("monthly_reports").insert({ client_id: client.id, month, status: "review" });
     }
     setReportStatus("review");
   };
 
   const activeDeptObj = DEPARTMENTS.find(d => d.id === activeDept);
+  const apiDeptCount = DEPARTMENTS.filter(d => LIVE_APIS[d.id]).length;
 
   return (
     <div>
-      {/* Breadcrumb */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: C.cyan, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: F, padding: 0 }}>
-          ← All Clients
-        </button>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: C.cyan, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: F, padding: 0 }}>← All Clients</button>
         <span style={{ color: C.tl }}>/</span>
         <span style={{ fontSize: 13, fontWeight: 600, color: C.t, fontFamily: F }}>{client.name}</span>
       </div>
 
-      {/* Header row */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>{client.name}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -600,66 +558,50 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
           </div>
         </div>
 
-        {/* Month/Year selector + action buttons */}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <select
-            value={monthIdx}
-            onChange={e => setMonthIdx(Number(e.target.value))}
-            style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}
-          >
+          {/* Month selector */}
+          <select value={monthIdx} onChange={e => setMonthIdx(Number(e.target.value))}
+            style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}>
             {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
           </select>
-          <select
-            value={year}
-            onChange={e => setYear(Number(e.target.value))}
-            style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}
-          >
+          {/* Year selector */}
+          <select value={year} onChange={e => setYear(Number(e.target.value))}
+            style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}>
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
 
+          {/* Pull All */}
+          <button onClick={handlePullAll} disabled={pullingAll} style={{
+            background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}44`,
+            borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700,
+            cursor: pullingAll ? "not-allowed" : "pointer", fontFamily: F, opacity: pullingAll ? 0.7 : 1,
+          }}>
+            {pullingAll ? "⬇ Pulling..." : `⬇ Pull All APIs (${apiDeptCount})`}
+          </button>
+
           {userRole !== "viewer" && reportStatus !== "published" && (
-            <button
-              onClick={handleMarkReview}
-              style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F }}
-            >
+            <button onClick={handleMarkReview} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F }}>
               Mark Ready for Review
             </button>
           )}
-
           {canPublish(userRole) && (
-            <button
-              onClick={handlePublish}
-              disabled={publishing}
-              style={{
-                background: reportStatus === "published" ? C.oL : C.g,
-                color: reportStatus === "published" ? C.o : "#fff",
-                border: reportStatus === "published" ? `1px solid ${C.o}44` : "none",
-                borderRadius: 8, padding: "8px 18px",
-                fontSize: 13, fontWeight: 700, cursor: publishing ? "not-allowed" : "pointer", fontFamily: F,
-                opacity: publishing ? 0.7 : 1,
-              }}
-            >
+            <button onClick={handlePublish} disabled={publishing} style={{
+              background: reportStatus === "published" ? C.oL : C.g,
+              color: reportStatus === "published" ? C.o : "#fff",
+              border: reportStatus === "published" ? `1px solid ${C.o}44` : "none",
+              borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700,
+              cursor: publishing ? "not-allowed" : "pointer", fontFamily: F, opacity: publishing ? 0.7 : 1,
+            }}>
               {publishing ? "..." : reportStatus === "published" ? "Unpublish" : "Publish Report"}
             </button>
           )}
         </div>
       </div>
 
-      {/* Publish error message */}
-      {publishError && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.r, fontFamily: F }}>
-          ⚠️ {publishError} — check your Supabase RLS policies for the monthly_reports table.
-        </div>
-      )}
+      {pullAllResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>{pullAllResult}</div>}
+      {publishError && <div style={{ background: C.rL, border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.r, fontFamily: F }}>⚠️ {publishError}</div>}
+      {reportStatus === "published" && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166534", fontFamily: F }}>✓ This report is live. Clients can see it now.</div>}
 
-      {/* Published confirmation */}
-      {reportStatus === "published" && (
-        <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166534", fontFamily: F }}>
-          ✓ This report is live. Clients can see it now. Click "Unpublish" to hide it.
-        </div>
-      )}
-
-      {/* Department tabs + form */}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
         {/* Sidebar */}
         <div style={{ width: 200, flexShrink: 0, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -667,51 +609,36 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
             const comp = deptCompletion[dept.id];
             const isActive = activeDept === dept.id;
             const pct = comp ? Math.round((comp.filled / comp.total) * 100) : null;
+            const hasApi = !!LIVE_APIS[dept.id];
             return (
-              <button
-                key={dept.id}
-                onClick={() => setActiveDept(dept.id)}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer",
-                  background: isActive ? C.navy : C.white,
-                  color: isActive ? "#fff" : C.t,
-                  fontFamily: F, fontSize: 13, fontWeight: isActive ? 700 : 500,
-                  boxShadow: isActive ? "none" : C.sh,
-                  textAlign: "left",
-                }}
-              >
+              <button key={dept.id} onClick={() => setActiveDept(dept.id)} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer",
+                background: isActive ? C.navy : C.white, color: isActive ? "#fff" : C.t,
+                fontFamily: F, fontSize: 13, fontWeight: isActive ? 700 : 500,
+                boxShadow: isActive ? "none" : C.sh, textAlign: "left",
+              }}>
                 <span>{dept.icon} {dept.label}</span>
-                {pct !== null && (
-                  <span style={{
-                    fontSize: 10, fontWeight: 700,
-                    color: pct === 100 ? (isActive ? "#6ee7b7" : C.g) : (isActive ? "#fca5a5" : C.tl)
-                  }}>{pct}%</span>
-                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  {hasApi && <span style={{ fontSize: 9, color: C.cyan, fontWeight: 700, background: isActive ? "rgba(0,201,232,0.2)" : "transparent", padding: "1px 4px", borderRadius: 3 }}>API</span>}
+                  {pct !== null && <span style={{ fontSize: 10, fontWeight: 700, color: pct === 100 ? (isActive ? "#6ee7b7" : C.g) : (isActive ? "#fca5a5" : C.tl) }}>{pct}%</span>}
+                </div>
               </button>
             );
           })}
         </div>
 
-        {/* Form panel */}
+        {/* Form */}
         <div style={{ flex: 1, background: C.white, borderRadius: 12, padding: 24, border: `1px solid ${C.bd}`, boxShadow: C.sh }}>
           <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>
-              {activeDeptObj?.icon} {activeDeptObj?.label}
-            </h3>
-            <p style={{ fontSize: 12, color: C.tl, margin: 0, fontFamily: F }}>
-              {MONTHS[monthIdx]} {year} — {client.name}
-            </p>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>{activeDeptObj?.icon} {activeDeptObj?.label}</h3>
+            <p style={{ fontSize: 12, color: C.tl, margin: 0, fontFamily: F }}>{MONTHS[monthIdx]} {year} — {client.name}</p>
           </div>
           <DeptForm
-            dept={activeDeptObj}
-            clientId={client.id}
-            clientName={client.name}
-            month={month}
-            userRole={userRole}
-            userDept={userDept}
-            onSaved={handleSaved}
-            allClients={allClients}
+            dept={activeDeptObj} clientId={client.id} clientName={client.name}
+            month={month} monthIdx={monthIdx} year={year}
+            userRole={userRole} userDept={userDept}
+            onSaved={handleSaved} allClients={allClients} onApiPulled={refreshCompletion}
           />
         </div>
       </div>
@@ -719,22 +646,16 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   );
 }
 
-/* ─── OVERVIEW / CLIENT LIST ─── */
+/* ─── OVERVIEW ─── */
 function Overview({ clients, userRole, onSelectClient }) {
   const now = new Date();
-  const lastMonth = now.getMonth() === 0
-    ? `${now.getFullYear() - 1}-12-01`
-    : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}-01`;
-
+  const lastMonth = now.getMonth() === 0 ? `${now.getFullYear() - 1}-12-01` : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}-01`;
   const [statuses, setStatuses] = useState({});
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from("monthly_reports")
-        .select("client_id, status, month")
-        .in("client_id", clients.map(c => c.id));
+      const { data } = await supabase.from("monthly_reports").select("client_id, status, month").in("client_id", clients.map(c => c.id));
       const map = {};
       (data || []).forEach(r => { map[`${r.client_id}_${r.month}`] = r.status; });
       setStatuses(map);
@@ -744,41 +665,21 @@ function Overview({ clients, userRole, onSelectClient }) {
 
   const groups = [...new Set(clients.map(c => c.group_name))];
   const filtered = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
-
   const statusCounts = { draft: 0, in_progress: 0, review: 0, published: 0 };
-  clients.forEach(c => {
-    const s = statuses[`${c.id}_${lastMonth}`] || "draft";
-    statusCounts[s] = (statusCounts[s] || 0) + 1;
-  });
+  clients.forEach(c => { const s = statuses[`${c.id}_${lastMonth}`] || "draft"; statusCounts[s]++; });
 
   return (
     <div>
-      {/* Summary cards */}
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-        {[
-          { label: "Total Clients", value: clients.length, color: C.navy },
-          { label: "Published",     value: statusCounts.published,   color: C.g },
-          { label: "In Review",     value: statusCounts.review,      color: C.p },
-          { label: "In Progress",   value: statusCounts.in_progress, color: C.o },
-          { label: "Not Started",   value: statusCounts.draft,       color: C.tl },
-        ].map((s, i) => (
+        {[{ label: "Total Clients", value: clients.length, color: C.navy }, { label: "Published", value: statusCounts.published, color: C.g }, { label: "In Review", value: statusCounts.review, color: C.p }, { label: "In Progress", value: statusCounts.in_progress, color: C.o }, { label: "Not Started", value: statusCounts.draft, color: C.tl }].map((s, i) => (
           <div key={i} style={{ background: C.white, borderRadius: 10, padding: "16px 20px", flex: 1, minWidth: 120, boxShadow: C.sh, border: `1px solid ${C.bd}`, textAlign: "center" }}>
             <div style={{ fontSize: 11, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, fontFamily: F }}>{s.label}</div>
             <div style={{ fontSize: 32, fontWeight: 700, color: s.color, fontFamily: F }}>{s.value}</div>
           </div>
         ))}
       </div>
-
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search clients..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        style={{ width: "100%", maxWidth: 320, padding: "10px 14px", borderRadius: 8, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", marginBottom: 20, boxSizing: "border-box" }}
-      />
-
-      {/* Client list by group */}
+      <input type="text" placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)}
+        style={{ width: "100%", maxWidth: 320, padding: "10px 14px", borderRadius: 8, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", marginBottom: 20, boxSizing: "border-box" }} />
       {groups.map(group => {
         const groupClients = filtered.filter(c => c.group_name === group);
         if (!groupClients.length) return null;
@@ -789,18 +690,9 @@ function Overview({ clients, userRole, onSelectClient }) {
               {groupClients.map(client => {
                 const status = statuses[`${client.id}_${lastMonth}`] || "draft";
                 return (
-                  <button
-                    key={client.id}
-                    onClick={() => onSelectClient(client)}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10,
-                      padding: "14px 20px", cursor: "pointer", textAlign: "left",
-                      boxShadow: C.sh, fontFamily: F,
-                    }}
+                  <button key={client.id} onClick={() => onSelectClient(client)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 20px", cursor: "pointer", textAlign: "left", boxShadow: C.sh, fontFamily: F }}
                     onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)"}
-                    onMouseLeave={e => e.currentTarget.style.boxShadow = C.sh}
-                  >
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = C.sh}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: C.t, marginBottom: 2 }}>{client.name}</div>
                       <div style={{ fontSize: 11, color: C.tl }}>Tier {client.tier} · Click to enter data</div>
@@ -820,146 +712,93 @@ function Overview({ clients, userRole, onSelectClient }) {
   );
 }
 
-/* ─── TEAM MANAGEMENT ─── */
+/* ─── TEAM ─── */
 function TeamPage({ currentUserId }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("editor");
   const [inviteDept, setInviteDept] = useState("seo");
-  const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState("");
 
-  const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("user_profiles").select("*").order("created_at");
-    setMembers(data || []);
-    setLoading(false);
-  };
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const { data } = await supabase.from("user_profiles").select("*").order("created_at");
+      setMembers(data || []); setLoading(false);
+    };
+    load();
+  }, []);
 
-  useEffect(() => { load(); }, []);
-
-  const handleRoleChange = async (id, role) => {
-    await supabase.from("user_profiles").update({ role }).eq("id", id);
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, role } : m));
-  };
-
-  const handleDeptChange = async (id, department) => {
-    await supabase.from("user_profiles").update({ department }).eq("id", id);
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, department } : m));
-  };
-
-  const handleInvite = async () => {
+  const handleRoleChange = async (id, role) => { await supabase.from("user_profiles").update({ role }).eq("id", id); setMembers(prev => prev.map(m => m.id === id ? { ...m, role } : m)); };
+  const handleDeptChange = async (id, department) => { await supabase.from("user_profiles").update({ department }).eq("id", id); setMembers(prev => prev.map(m => m.id === id ? { ...m, department } : m)); };
+  const handleInvite = () => {
     if (!inviteEmail) return;
-    setInviting(true);
-    setInviteMsg(`To add ${inviteEmail}:\n1. Go to Supabase → Authentication → Users → Invite User\n2. Enter their email\n3. Then run this SQL in the Supabase SQL editor:\n\nINSERT INTO user_profiles (id, email, role, department, full_name)\nSELECT id, email, '${inviteRole}', '${inviteDept}', email\nFROM auth.users WHERE email = '${inviteEmail}';`);
-    setInviting(false);
+    setInviteMsg(`To add ${inviteEmail}:\n1. Go to Supabase → Authentication → Users → Invite User\n2. Enter their email\n3. Run this SQL:\n\nINSERT INTO user_profiles (id, email, role, department, full_name)\nSELECT id, email, '${inviteRole}', '${inviteDept}', email\nFROM auth.users WHERE email = '${inviteEmail}';`);
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: C.tl, fontFamily: F }}>Loading team...</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: C.tl, fontFamily: F }}>Loading...</div>;
 
   return (
     <div>
       <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 20px", fontFamily: F }}>Team Members</h3>
-
       <div style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 12, overflow: "hidden", boxShadow: C.sh, marginBottom: 24 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F, fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: "#f8fafc" }}>
-              {["Name / Email", "Role", "Department", ""].map(h => (
-                <th key={h} style={{ padding: "10px 16px", textAlign: "left", color: C.tl, fontWeight: 600, fontSize: 12 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
+          <thead><tr style={{ background: "#f8fafc" }}>{["Name / Email","Role","Department","Added"].map(h => <th key={h} style={{ padding: "10px 16px", textAlign: "left", color: C.tl, fontWeight: 600, fontSize: 12 }}>{h}</th>)}</tr></thead>
           <tbody>
             {members.map(m => (
               <tr key={m.id} style={{ borderTop: `1px solid ${C.bd}` }}>
+                <td style={{ padding: "12px 16px" }}><div style={{ fontWeight: 600, color: C.t }}>{m.full_name || "—"}</div><div style={{ fontSize: 11, color: C.tl }}>{m.email}</div></td>
                 <td style={{ padding: "12px 16px" }}>
-                  <div style={{ fontWeight: 600, color: C.t }}>{m.full_name || "—"}</div>
-                  <div style={{ fontSize: 11, color: C.tl }}>{m.email}</div>
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  {m.id === currentUserId ? (
-                    <Badge label={m.role} color={C.cyan} />
-                  ) : (
-                    <select
-                      value={m.role || "editor"}
-                      onChange={e => handleRoleChange(m.id, e.target.value)}
-                      style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, cursor: "pointer" }}
-                    >
-                      {["admin", "account_manager", "editor", "viewer"].map(r => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
+                  {m.id === currentUserId ? <Badge label={m.role} color={C.cyan} /> : (
+                    <select value={m.role || "editor"} onChange={e => handleRoleChange(m.id, e.target.value)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, cursor: "pointer" }}>
+                      {["admin","account_manager","editor","viewer"].map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                   )}
                 </td>
                 <td style={{ padding: "12px 16px" }}>
                   {m.role === "editor" ? (
-                    <select
-                      value={m.department || "seo"}
-                      onChange={e => handleDeptChange(m.id, e.target.value)}
-                      style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, cursor: "pointer" }}
-                    >
-                      {["seo", "ads", "social", "creative", "account", "admin"].map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
+                    <select value={m.department || "seo"} onChange={e => handleDeptChange(m.id, e.target.value)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, cursor: "pointer" }}>
+                      {["seo","ads","social","creative","account","admin"].map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
-                  ) : (
-                    <span style={{ fontSize: 12, color: C.tl }}>All departments</span>
-                  )}
+                  ) : <span style={{ fontSize: 12, color: C.tl }}>All departments</span>}
                 </td>
-                <td style={{ padding: "12px 16px" }}>
-                  {m.id !== currentUserId && (
-                    <span style={{ fontSize: 11, color: C.tl }}>{new Date(m.created_at).toLocaleDateString()}</span>
-                  )}
-                </td>
+                <td style={{ padding: "12px 16px" }}><span style={{ fontSize: 11, color: C.tl }}>{new Date(m.created_at).toLocaleDateString()}</span></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {/* Add team member */}
       <div style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 12, padding: 20, boxShadow: C.sh }}>
         <h4 style={{ fontSize: 14, fontWeight: 700, color: C.t, margin: "0 0 16px", fontFamily: F }}>Add Team Member</h4>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div style={{ flex: 2, minWidth: 200 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: C.tl, display: "block", marginBottom: 4, fontFamily: F }}>Email</label>
-            <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="name@email.com"
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box" }} />
+            <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="name@email.com" style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box" }} />
           </div>
           <div style={{ flex: 1, minWidth: 140 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: C.tl, display: "block", marginBottom: 4, fontFamily: F }}>Role</label>
-            <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, cursor: "pointer" }}>
-              {["admin", "account_manager", "editor", "viewer"].map(r => <option key={r} value={r}>{r}</option>)}
+            <select value={inviteRole} onChange={e => setInviteRole(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, cursor: "pointer" }}>
+              {["admin","account_manager","editor","viewer"].map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           {inviteRole === "editor" && (
             <div style={{ flex: 1, minWidth: 140 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: C.tl, display: "block", marginBottom: 4, fontFamily: F }}>Department</label>
-              <select value={inviteDept} onChange={e => setInviteDept(e.target.value)}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, cursor: "pointer" }}>
-                {["seo", "ads", "social", "creative", "account"].map(d => <option key={d} value={d}>{d}</option>)}
+              <select value={inviteDept} onChange={e => setInviteDept(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, cursor: "pointer" }}>
+                {["seo","ads","social","creative","account"].map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
           )}
-          <button onClick={handleInvite} disabled={inviting}
-            style={{ background: C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
-            {inviting ? "..." : "Get Instructions"}
-          </button>
+          <button onClick={handleInvite} style={{ background: C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Get Instructions</button>
         </div>
-        {inviteMsg && (
-          <div style={{ marginTop: 16, background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "12px 16px", fontSize: 12, fontFamily: "monospace", color: C.t, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-            {inviteMsg}
-          </div>
-        )}
+        {inviteMsg && <div style={{ marginTop: 16, background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "12px 16px", fontSize: 12, fontFamily: "monospace", color: C.t, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{inviteMsg}</div>}
       </div>
     </div>
   );
 }
 
-/* ─── ROOT ADMIN APP ─── */
+/* ─── ROOT ─── */
 export default function AdminApp() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -969,12 +808,8 @@ export default function AdminApp() {
   const [activePage, setActivePage] = useState("overview");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session); setAuthLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setSession(session); setAuthLoading(false);
-    });
+    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setAuthLoading(false); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => { setSession(session); setAuthLoading(false); });
     return () => subscription.unsubscribe();
   }, []);
 
@@ -984,7 +819,6 @@ export default function AdminApp() {
       const { data: prof } = await supabase.from("user_profiles").select("*").eq("id", session.user.id).single();
       setProfile(prof);
       if (prof?.role === "viewer") return;
-
       let data;
       if (prof?.role === "admin") {
         ({ data } = await supabase.from("clients").select("id,name,group_name,tier").eq("active", true));
@@ -993,26 +827,15 @@ export default function AdminApp() {
         const ids = access?.map(r => r.client_id) || [];
         ({ data } = await supabase.from("clients").select("id,name,group_name,tier").eq("active", true).in("id", ids));
       }
-
-      const CLIENT_ORDER = ["Goode Motor Group","Goode Motor Ford","Goode Motor Mazda","Twin Falls Volkswagen","Juneau Auto Mall","Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet","Juneau Honda","Juneau Powersports","Cassia Car Rental","Explore Juneau"];
-      const sorted = (data || []).sort((a, b) => {
-        const ai = CLIENT_ORDER.indexOf(a.name), bi = CLIENT_ORDER.indexOf(b.name);
-        if (ai !== -1 && bi !== -1) return ai - bi;
-        if (ai !== -1) return -1; if (bi !== -1) return 1;
-        return a.name.localeCompare(b.name);
-      });
-      setClients(sorted);
+      const ORDER = ["Goode Motor Group","Goode Motor Ford","Goode Motor Mazda","Twin Falls Volkswagen","Juneau Auto Mall","Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet","Juneau Honda","Juneau Powersports","Cassia Car Rental","Explore Juneau"];
+      setClients((data || []).sort((a, b) => { const ai = ORDER.indexOf(a.name), bi = ORDER.indexOf(b.name); if (ai !== -1 && bi !== -1) return ai - bi; if (ai !== -1) return -1; if (bi !== -1) return 1; return a.name.localeCompare(b.name); }));
     };
     load();
   }, [session]);
 
   const handleLogout = async () => { await supabase.auth.signOut(); setSession(null); };
 
-  if (authLoading) return (
-    <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ color: "#fff", fontFamily: F }}>Loading...</div>
-    </div>
-  );
+  if (authLoading) return <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ color: "#fff", fontFamily: F }}>Loading...</div></div>;
 
   if (!session) return (
     <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F }}>
@@ -1035,21 +858,13 @@ export default function AdminApp() {
     </div>
   );
 
-  const navItems = [
-    { id: "overview", label: "📊 Overview" },
-    { id: "team",     label: "👥 Team", adminOnly: true },
-  ];
-
   return (
     <div style={{ minHeight: "100vh", fontFamily: F, background: C.bg }}>
-      {/* Header */}
       <div style={{ background: C.navy, padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <img src="/Taggart_Advertising_Logo.png" alt="Taggart" style={{ height: 36 }} />
           <span style={{ color: "#fff", fontWeight: 700, fontSize: 15, fontFamily: F }}>Admin Panel</span>
-          <span style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
-            {profile?.role}
-          </span>
+          <span style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{profile?.role}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>{session.user.email}</span>
@@ -1057,40 +872,15 @@ export default function AdminApp() {
           <button onClick={handleLogout} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", borderRadius: 6, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontFamily: F }}>Sign Out</button>
         </div>
       </div>
-
-      {/* Sub-nav */}
       <div style={{ background: C.white, borderBottom: `1px solid ${C.bd}`, padding: "0 24px", display: "flex", gap: 4 }}>
-        {navItems.filter(n => !n.adminOnly || profile?.role === "admin").map(n => (
-          <button
-            key={n.id}
-            onClick={() => { setActivePage(n.id); setSelectedClient(null); }}
-            style={{
-              padding: "11px 16px", border: "none", cursor: "pointer", background: "transparent",
-              fontSize: 13, fontWeight: 600, fontFamily: F,
-              color: activePage === n.id ? C.cyanD : C.tl,
-              borderBottom: activePage === n.id ? `2px solid ${C.cyan}` : "2px solid transparent",
-            }}
-          >{n.label}</button>
+        {[{ id: "overview", label: "📊 Overview" }, { id: "team", label: "👥 Team", adminOnly: true }].filter(n => !n.adminOnly || profile?.role === "admin").map(n => (
+          <button key={n.id} onClick={() => { setActivePage(n.id); setSelectedClient(null); }} style={{ padding: "11px 16px", border: "none", cursor: "pointer", background: "transparent", fontSize: 13, fontWeight: 600, fontFamily: F, color: activePage === n.id ? C.cyanD : C.tl, borderBottom: activePage === n.id ? `2px solid ${C.cyan}` : "2px solid transparent" }}>{n.label}</button>
         ))}
       </div>
-
-      {/* Content */}
       <div style={{ padding: "28px 24px", maxWidth: 1200, margin: "0 auto" }}>
-        {activePage === "overview" && !selectedClient && (
-          <Overview clients={clients} userRole={profile?.role} onSelectClient={c => { setSelectedClient(c); setActivePage("overview"); }} />
-        )}
-        {activePage === "overview" && selectedClient && (
-          <ClientReport
-            client={selectedClient}
-            userRole={profile?.role}
-            userDept={profile?.department}
-            onBack={() => setSelectedClient(null)}
-            allClients={clients}
-          />
-        )}
-        {activePage === "team" && profile?.role === "admin" && (
-          <TeamPage currentUserId={session.user.id} />
-        )}
+        {activePage === "overview" && !selectedClient && <Overview clients={clients} userRole={profile?.role} onSelectClient={c => { setSelectedClient(c); setActivePage("overview"); }} />}
+        {activePage === "overview" && selectedClient && <ClientReport client={selectedClient} userRole={profile?.role} userDept={profile?.department} onBack={() => setSelectedClient(null)} allClients={clients} />}
+        {activePage === "team" && profile?.role === "admin" && <TeamPage currentUserId={session.user.id} />}
       </div>
     </div>
   );
