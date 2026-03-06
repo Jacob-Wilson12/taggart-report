@@ -112,9 +112,16 @@ export default function App(){
   const[dm,sDm]=useState(false);
   const[ci,sCi]=useState(0);
 
-  useEffect(()=>{
-    supabase.auth.getSession().then(({data:{session}})=>{setSession(session);setAuthLoading(false);});
-    const{data:{subscription}}=supabase.auth.onAuthStateChange((_,session)=>{setSession(session);setAuthLoading(false);});
+useEffect(()=>{
+    // Handle magic link token from URL hash
+    if(window.location.hash&&window.location.hash.includes("access_token")){
+      supabase.auth.getSession().then(({data:{session}})=>{
+        if(session){setSession(session);setAuthLoading(false);window.history.replaceState(null,"",window.location.pathname);}
+      });
+    } else {
+      supabase.auth.getSession().then(({data:{session}})=>{setSession(session);setAuthLoading(false);});
+    }
+    const{data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{setSession(session);setAuthLoading(false);});
     return()=>subscription.unsubscribe();
   },[]);
 
