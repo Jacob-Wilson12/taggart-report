@@ -1,0 +1,279 @@
+import { createClient } from "@supabase/supabase-js";
+import { google } from "googleapis";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+function getMonthRange(year, month) {
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
+  const fmt = (d) => d.toISOString().split("T")[0];
+  return { startDate: fmt(start), endDate: fmt(end) };
+}
+
+async function metaFetch(path) {
+  const accessToken = process.env.META_ADS_ACCESS_TOKEN;
+  const response = await fetch(
+    `https://graph.facebook.com/v19.0${path}&access_token=${accessToken}`
+  );
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || `HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+// ─── Facebook Page Insights ───────────────────────────────────────────────────
+async function getFacebookData(pageId, year, month) {
+  const { startDate, endDate } = getMonthRange(year, month);
+
+  // Page-level metrics
+  const metricsToFetch = [
+    "page_impressions",
+    "page_impressions_unique",
+    "page_engaged_users",
+    "page_post_engagements",
+    "page_fan_adds_unique",
+  ].join(",");
+
+  const insightsData = await metaFetch(
+    `/${pageId}/insights?metric=${metricsToFetch}&period=month&since=${startDate}&until=${endDate}`
+  );
+
+  const metrics = {};
+  for (const item of insightsData.data || []) {
+    const val = item.values?.[0]?.value || 0;
+    metrics[item.name] = typeof val === "object" ? Object.values(val).reduce((a, b) => a + b, 0) : val;
+  }
+
+  // Page fan count (total followers)
+  const pageData = await metaFetch(`/${pageId}?fields=fan_count,name`);
+
+  return {
+    name: pageData.name,
+    followers: pageData.fan_count || 0,
+    impressions: metrics["page_impressions"] || 0,
+    reach: metrics["page_impressions_unique"] || 0,
+    engaged_users: metrics["page_engaged_users"] || 0,
+    post_engagements: metrics["page_post_engagements"] || 0,
+    new_followers: metrics["page_fan_adds_unique"] || 0,
+  };
+}
+
+// ─── Instagram Insights ───────────────────────────────────────────────────────
+async function getInstagramData(instagramAccountId, year, month) {
+  const { startDate, endDate } = getMonthRange(year, month);
+
+  // Account-level insights
+  const metricsToFetch = [
+    "impressions",
+    "reach",
+    "profile_views",
+    "follower_count",
+  ].join(",");
+
+  const insightsData = await metaFetch(
+    `/${instagramAccountId}/insights?metric=${metricsToFetch}&period=month&since=${startDate}&until=${endDate}`
+  );
+
+  const metrics = {};
+  for (const item of insightsData.data || []) {
+    const val = item.values?.[0]?.value || 0;
+    metrics[item.name] = val;
+  }
+
+  // Account info
+  const accountData = await metaFetch(
+    `/${instagramAccountId}?fields=followers_count,username`
+  );
+
+  return {
+    username: accountData.username,
+    followers: accountData.followers_count || 0,
+    impressions: metrics["impressions"] || 0,
+    reach: metrics["reach"] || 0,
+    profile_views: metrics["profile_views"] || 0,
+    new_followers: metrics["follower_count"] || 0,
+  };
+}
+
+// ─── YouTube Analytics ────────────────────────────────────────────────────────
+async function getYouTubeData(channelId, year, month) {
+  const { startDate, endDate } = getMonthRange(year, month);
+
+  const serviceAccountKey = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+  const auth = new google.auth.GoogleAuth({
+    credentials: serviceAccountKey,
+    scopes: [
+      "https://www.googleapis.com/auth/youtube.readonly",
+      "https://www.googleapis.com/auth/yt-analytics.readonly",
+    ],
+  });
+
+  const youtubeAnalytics = google.youtubeAnalytics({ version: "v2", auth });
+  const youtube = google.youtube({ version: "v3", auth });
+
+  // Channel stats
+  const channelResponse = await youtube.channels.list({
+    part: ["statistics", "snippet"],
+    id: [channelId],
+  });
+
+  const channelStats = channelResponse.data.items?.[0]?.statistics || {};
+  const channelName = channelResponse.data.items?.[0]?.snippet?.title || "";
+
+  // Analytics for the month
+  const analyticsResponse = await youtubeAnalytics.reports.query({
+    ids: `channel==${channelId}`,
+    startDate,
+    endDate,
+    metrics: "views,estimatedMinutesWatched,averageViewDuration,likes,comments,shares,subscribersGained,subscribersLost",
+  });
+
+  const rows = analyticsResponse.data.rows?.[0] || [];
+  const [views, watchMinutes, avgViewDuration, likes, comments, shares, subsGained, subsLost] = rows;
+
+  return {
+    channel_name: channelName,
+    subscribers: parseInt(channelStats.subscriberCount || 0),
+    total_videos: parseInt(channelStats.videoCount || 0),
+    views: views || 0,
+    watch_minutes: watchMinutes || 0,
+    avg_view_duration: avgViewDuration || 0,
+    likes: likes || 0,
+    comments: comments || 0,
+    shares: shares || 0,
+    subscribers_gained: subsGained || 0,
+    subscribers_lost: subsLost || 0,
+  };
+}
+
+// ─── Main Route ───────────────────────────────────────────────────────────────
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const clientId = searchParams.get("client_id");
+    const year = parseInt(searchParams.get("year"));
+    const month = parseInt(searchParams.get("month"));
+
+    if (!clientId || !year || !month) {
+      return Response.json(
+        { error: "Missing required params: client_id, year, month" },
+        { status: 400 }
+      );
+    }
+
+    // ─── Look up social integration config ───
+    const { data: integration, error: intErr } = await supabase
+      .from("client_integrations")
+      .select("config")
+      .eq("client_id", clientId)
+      .eq("platform", "social")
+      .single();
+
+    if (intErr || !integration) {
+      return Response.json(
+        { error: "No social integration found for this client." },
+        { status: 404 }
+      );
+    }
+
+    const config = integration.config;
+    const results = {};
+    const errors = {};
+
+    // ─── Facebook ───
+    if (config.facebook_page_id) {
+      try {
+        results.facebook = await getFacebookData(config.facebook_page_id, year, month);
+      } catch (e) {
+        errors.facebook = e.message;
+      }
+    }
+
+    // ─── Instagram ───
+    if (config.instagram_account_id) {
+      try {
+        results.instagram = await getInstagramData(config.instagram_account_id, year, month);
+      } catch (e) {
+        errors.instagram = e.message;
+      }
+    }
+
+    // ─── YouTube ───
+    if (config.youtube_channel_id) {
+      try {
+        results.youtube = await getYouTubeData(config.youtube_channel_id, year, month);
+      } catch (e) {
+        errors.youtube = e.message;
+      }
+    }
+
+    const socialData = {
+      ...results,
+      _errors: Object.keys(errors).length > 0 ? errors : undefined,
+      _source: "social",
+      _pulled_at: new Date().toISOString(),
+    };
+
+    // ─── Auto-save if ?save=true ───
+    const autoSave = searchParams.get("save") === "true";
+    if (autoSave) {
+      const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
+
+      const { data: existing } = await supabase
+        .from("report_data")
+        .select("data")
+        .eq("client_id", clientId)
+        .eq("month", monthStr)
+        .eq("department", "social")
+        .single();
+
+      const merged = { ...(existing?.data || {}), ...socialData };
+
+      const { error: saveErr } = await supabase.from("report_data").upsert(
+        {
+          client_id: parseInt(clientId),
+          month: monthStr,
+          department: "social",
+          data: merged,
+          last_updated_at: new Date().toISOString(),
+        },
+        { onConflict: "client_id,month,department" }
+      );
+
+      if (saveErr) {
+        return Response.json({
+          success: true,
+          saved: false,
+          save_error: saveErr.message,
+          data: socialData,
+        });
+      }
+
+      return Response.json({
+        success: true,
+        saved: true,
+        client_id: clientId,
+        period: getMonthRange(year, month),
+        data: socialData,
+      });
+    }
+
+    return Response.json({
+      success: true,
+      saved: false,
+      client_id: clientId,
+      period: getMonthRange(year, month),
+      data: socialData,
+    });
+  } catch (err) {
+    console.error("Social API error:", err);
+    return Response.json(
+      { error: err.message, details: err.errors || null },
+      { status: 500 }
+    );
+  }
+}
