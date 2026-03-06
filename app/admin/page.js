@@ -157,6 +157,20 @@ const canEdit = (role, department, deptId) => {
 
 const canPublish = (role) => role === "admin" || role === "account_manager";
 
+/* ─── HELPER: ensure monthly_reports row exists ─── */
+// This is the key fix — always use insert + on conflict do update
+// so we never silently fail on a missing row.
+const upsertMonthlyReport = async (clientId, month, fields) => {
+  const { error } = await supabase.from("monthly_reports").upsert(
+    { client_id: clientId, month, ...fields },
+    { onConflict: "client_id,month", ignoreDuplicates: false }
+  );
+  if (error) {
+    console.error("monthly_reports upsert error:", error);
+  }
+  return error;
+};
+
 /* ─── SMALL UI HELPERS ─── */
 const Badge = ({ label, color = C.cyan }) => (
   <span style={{ background: color + "22", color, borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, fontFamily: F }}>{label}</span>
@@ -164,10 +178,10 @@ const Badge = ({ label, color = C.cyan }) => (
 
 const StatusBadge = ({ status }) => {
   const map = {
-    draft:       { label: "Draft",       color: C.tl },
-    in_progress: { label: "In Progress", color: C.o },
+    draft:       { label: "Draft",            color: C.tl },
+    in_progress: { label: "In Progress",      color: C.o },
     review:      { label: "Ready for Review", color: C.p },
-    published:   { label: "Published",   color: C.g },
+    published:   { label: "Published",        color: C.g },
   };
   const s = map[status] || map.draft;
   return <Badge label={s.label} color={s.color} />;
@@ -252,6 +266,8 @@ function DeptForm({ dept, clientId, month, userRole, userDept, onSaved }) {
   const handleSave = async () => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
+
+    // Save the department data
     await supabase.from("report_data").upsert({
       client_id: clientId,
       month,
@@ -260,6 +276,7 @@ function DeptForm({ dept, clientId, month, userRole, userDept, onSaved }) {
       last_updated_by: user.id,
       last_updated_at: new Date().toISOString(),
     }, { onConflict: "client_id,month,department" });
+
     setSaving(false);
     setSaved(true);
     if (onSaved) onSaved(dept.id);
@@ -329,6 +346,7 @@ function ClientReport({ client, userRole, userDept, onBack }) {
   const [activeDept, setActiveDept] = useState(DEPARTMENTS[0].id);
   const [reportStatus, setReportStatus] = useState("draft");
   const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState("");
   const [deptCompletion, setDeptCompletion] = useState({});
 
   const month = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
@@ -347,6 +365,7 @@ function ClientReport({ client, userRole, userDept, onBack }) {
   }, [client.id, month]);
 
   const handleSaved = useCallback(async (deptId) => {
+    // Update completion tracking
     const fields = DEPT_FIELDS[deptId] || [];
     const { data: row } = await supabase
       .from("report_data")
@@ -358,33 +377,97 @@ function ClientReport({ client, userRole, userDept, onBack }) {
     const filled = fields.filter(f => row?.data?.[f.key] && String(row.data[f.key]).trim() !== "").length;
     setDeptCompletion(prev => ({ ...prev, [deptId]: { filled, total: fields.length } }));
 
-    // Auto-update status to in_progress
-    if (reportStatus === "draft") {
-      await supabase.from("monthly_reports").upsert({
-        client_id: client.id, month, status: "in_progress"
-      }, { onConflict: "client_id,month" });
+    // Ensure the monthly_reports row exists and is at least in_progress
+    // This is a safe upsert — if the row exists and is published, we don't downgrade it
+    const { data: existing } = await supabase
+      .from("monthly_reports")
+      .select("status")
+      .eq("client_id", client.id)
+      .eq("month", month)
+      .single();
+
+    if (!existing) {
+      // Row doesn't exist yet — create it as in_progress
+      await upsertMonthlyReport(client.id, month, { status: "in_progress" });
+      setReportStatus("in_progress");
+    } else if (existing.status === "draft") {
+      // Upgrade draft → in_progress
+      await upsertMonthlyReport(client.id, month, { status: "in_progress" });
       setReportStatus("in_progress");
     }
-  }, [client.id, month, reportStatus]);
+    // If already in_progress, review, or published — leave it alone
+  }, [client.id, month]);
 
+  // ─── KEY FIX: robust publish handler ───
   const handlePublish = async () => {
     if (!canPublish(userRole)) return;
     setPublishing(true);
+    setPublishError("");
+
     const { data: { user } } = await supabase.auth.getUser();
-    const newStatus = reportStatus === "published" ? "review" : "published";
-    await supabase.from("monthly_reports").upsert({
-      client_id: client.id, month, status: newStatus,
-      published_at: newStatus === "published" ? new Date().toISOString() : null,
-      published_by: newStatus === "published" ? user.id : null,
-    }, { onConflict: "client_id,month" });
-    setReportStatus(newStatus);
+    const newStatus = reportStatus === "published" ? "in_progress" : "published";
+    const now = new Date().toISOString();
+
+    // Check if the row exists first
+    const { data: existing } = await supabase
+      .from("monthly_reports")
+      .select("id")
+      .eq("client_id", client.id)
+      .eq("month", month)
+      .single();
+
+    let error;
+    if (existing) {
+      // Row exists — update it
+      ({ error } = await supabase
+        .from("monthly_reports")
+        .update({
+          status: newStatus,
+          published_at: newStatus === "published" ? now : null,
+          published_by: newStatus === "published" ? user.id : null,
+        })
+        .eq("client_id", client.id)
+        .eq("month", month));
+    } else {
+      // Row doesn't exist — insert it
+      ({ error } = await supabase
+        .from("monthly_reports")
+        .insert({
+          client_id: client.id,
+          month,
+          status: newStatus,
+          published_at: newStatus === "published" ? now : null,
+          published_by: newStatus === "published" ? user.id : null,
+        }));
+    }
+
+    if (error) {
+      console.error("Publish error:", error);
+      setPublishError(`Error: ${error.message}`);
+    } else {
+      setReportStatus(newStatus);
+    }
+
     setPublishing(false);
   };
 
   const handleMarkReview = async () => {
-    await supabase.from("monthly_reports").upsert({
-      client_id: client.id, month, status: "review"
-    }, { onConflict: "client_id,month" });
+    const { data: existing } = await supabase
+      .from("monthly_reports")
+      .select("id")
+      .eq("client_id", client.id)
+      .eq("month", month)
+      .single();
+
+    if (existing) {
+      await supabase.from("monthly_reports")
+        .update({ status: "review" })
+        .eq("client_id", client.id)
+        .eq("month", month);
+    } else {
+      await supabase.from("monthly_reports")
+        .insert({ client_id: client.id, month, status: "review" });
+    }
     setReportStatus("review");
   };
 
@@ -411,7 +494,7 @@ function ClientReport({ client, userRole, userDept, onBack }) {
           </div>
         </div>
 
-        {/* Month/Year selector */}
+        {/* Month/Year selector + action buttons */}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <select
             value={monthIdx}
@@ -428,7 +511,6 @@ function ClientReport({ client, userRole, userDept, onBack }) {
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
 
-          {/* Action buttons */}
           {userRole !== "viewer" && reportStatus !== "published" && (
             <button
               onClick={handleMarkReview}
@@ -437,6 +519,7 @@ function ClientReport({ client, userRole, userDept, onBack }) {
               Mark Ready for Review
             </button>
           )}
+
           {canPublish(userRole) && (
             <button
               onClick={handlePublish}
@@ -444,8 +527,10 @@ function ClientReport({ client, userRole, userDept, onBack }) {
               style={{
                 background: reportStatus === "published" ? C.oL : C.g,
                 color: reportStatus === "published" ? C.o : "#fff",
-                border: "none", borderRadius: 8, padding: "8px 18px",
-                fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F,
+                border: reportStatus === "published" ? `1px solid ${C.o}44` : "none",
+                borderRadius: 8, padding: "8px 18px",
+                fontSize: 13, fontWeight: 700, cursor: publishing ? "not-allowed" : "pointer", fontFamily: F,
+                opacity: publishing ? 0.7 : 1,
               }}
             >
               {publishing ? "..." : reportStatus === "published" ? "Unpublish" : "Publish Report"}
@@ -453,6 +538,20 @@ function ClientReport({ client, userRole, userDept, onBack }) {
           )}
         </div>
       </div>
+
+      {/* Publish error message */}
+      {publishError && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.r, fontFamily: F }}>
+          ⚠️ {publishError} — check your Supabase RLS policies for the monthly_reports table.
+        </div>
+      )}
+
+      {/* Published confirmation */}
+      {reportStatus === "published" && (
+        <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166534", fontFamily: F }}>
+          ✓ This report is live. Clients can see it now. Click "Unpublish" to hide it.
+        </div>
+      )}
 
       {/* Department tabs + form */}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -515,7 +614,6 @@ function ClientReport({ client, userRole, userDept, onBack }) {
 /* ─── OVERVIEW / CLIENT LIST ─── */
 function Overview({ clients, userRole, onSelectClient }) {
   const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}-01`;
   const lastMonth = now.getMonth() === 0
     ? `${now.getFullYear() - 1}-12-01`
     : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}-01`;
@@ -551,10 +649,10 @@ function Overview({ clients, userRole, onSelectClient }) {
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         {[
           { label: "Total Clients", value: clients.length, color: C.navy },
-          { label: "Published", value: statusCounts.published, color: C.g },
-          { label: "In Review", value: statusCounts.review, color: C.p },
-          { label: "In Progress", value: statusCounts.in_progress, color: C.o },
-          { label: "Not Started", value: statusCounts.draft, color: C.tl },
+          { label: "Published",     value: statusCounts.published,   color: C.g },
+          { label: "In Review",     value: statusCounts.review,      color: C.p },
+          { label: "In Progress",   value: statusCounts.in_progress, color: C.o },
+          { label: "Not Started",   value: statusCounts.draft,       color: C.tl },
         ].map((s, i) => (
           <div key={i} style={{ background: C.white, borderRadius: 10, padding: "16px 20px", flex: 1, minWidth: 120, boxShadow: C.sh, border: `1px solid ${C.bd}`, textAlign: "center" }}>
             <div style={{ fontSize: 11, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, fontFamily: F }}>{s.label}</div>
@@ -590,7 +688,7 @@ function Overview({ clients, userRole, onSelectClient }) {
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10,
                       padding: "14px 20px", cursor: "pointer", textAlign: "left",
-                      boxShadow: C.sh, fontFamily: F, transition: "box-shadow 0.15s",
+                      boxShadow: C.sh, fontFamily: F,
                     }}
                     onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)"}
                     onMouseLeave={e => e.currentTarget.style.boxShadow = C.sh}
@@ -646,13 +744,7 @@ function TeamPage({ currentUserId }) {
   const handleInvite = async () => {
     if (!inviteEmail) return;
     setInviting(true);
-    setInviteMsg("");
-    const { error } = await supabase.auth.admin?.inviteUserByEmail
-      ? await supabase.auth.admin.inviteUserByEmail(inviteEmail)
-      : { error: null };
-
-    // Fallback: just show instructions since admin invite requires service key
-    setInviteMsg(`To add ${inviteEmail}: Go to Supabase → Authentication → Users → Invite User. Then run:\nINSERT INTO user_profiles (id, email, role, department, full_name)\nSELECT id, email, '${inviteRole}', '${inviteDept}', email FROM auth.users WHERE email = '${inviteEmail}';`);
+    setInviteMsg(`To add ${inviteEmail}:\n1. Go to Supabase → Authentication → Users → Invite User\n2. Enter their email\n3. Then run this SQL in the Supabase SQL editor:\n\nINSERT INTO user_profiles (id, email, role, department, full_name)\nSELECT id, email, '${inviteRole}', '${inviteDept}', email\nFROM auth.users WHERE email = '${inviteEmail}';`);
     setInviting(false);
   };
 
@@ -662,7 +754,6 @@ function TeamPage({ currentUserId }) {
     <div>
       <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 20px", fontFamily: F }}>Team Members</h3>
 
-      {/* Current members */}
       <div style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 12, overflow: "hidden", boxShadow: C.sh, marginBottom: 24 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F, fontSize: 13 }}>
           <thead>
@@ -673,7 +764,7 @@ function TeamPage({ currentUserId }) {
             </tr>
           </thead>
           <tbody>
-            {members.map((m, i) => (
+            {members.map(m => (
               <tr key={m.id} style={{ borderTop: `1px solid ${C.bd}` }}>
                 <td style={{ padding: "12px 16px" }}>
                   <div style={{ fontWeight: 600, color: C.t }}>{m.full_name || "—"}</div>
@@ -784,8 +875,6 @@ export default function AdminApp() {
     const load = async () => {
       const { data: prof } = await supabase.from("user_profiles").select("*").eq("id", session.user.id).single();
       setProfile(prof);
-
-      // Block viewers from admin panel
       if (prof?.role === "viewer") return;
 
       let data;
@@ -840,7 +929,7 @@ export default function AdminApp() {
 
   const navItems = [
     { id: "overview", label: "📊 Overview" },
-    { id: "team",     label: "👥 Team",    adminOnly: true },
+    { id: "team",     label: "👥 Team", adminOnly: true },
   ];
 
   return (
