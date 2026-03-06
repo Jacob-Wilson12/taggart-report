@@ -21,8 +21,8 @@ export async function GET() {
     const mccId = process.env.GOOGLE_ADS_MCC_ID;
     const devToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
-    // Test v17
-    const url = `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:search`;
+    // Test v23
+    const url = `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
