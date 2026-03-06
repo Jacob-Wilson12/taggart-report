@@ -26,6 +26,9 @@ const DEPARTMENTS = [
 const LIVE_APIS = {
   seo: { label: "Search Console", endpoint: "/api/search-console" },
   ga4: { label: "GA4", endpoint: "/api/ga4" },
+  google_ads: { label: "Google Ads", endpoint: "/api/google-ads" },
+  callrail: { label: "CallRail", endpoint: "/api/callrail" },
+  meta_ads: { label: "Meta Ads", endpoint: "/api/meta-ads" },
 };
 
 const DEPT_FIELDS = {
