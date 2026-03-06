@@ -122,21 +122,39 @@ export default function App(){
     if(!session)return;
     const fetchClients=async()=>{
       setClientsLoading(true);
-      const{data,error}=await supabase
-        .from("clients")
-        .select("id, name, group_name")
-        .eq("active",true);
+
+      // Check if user is admin or editor
+      const{data:profile}=await supabase
+        .from("user_profiles")
+        .select("role")
+        .eq("id",session.user.id)
+        .single();
+
+      const isAdmin=profile?.role?.toLowerCase()==="admin"||profile?.role?.toLowerCase()==="editor";
+
+      let data,error;
+      if(isAdmin){
+        // Admins load all active clients
+        ({data,error}=await supabase
+          .from("clients")
+          .select("id, name, group_name")
+          .eq("active",true));
+      } else {
+        // Regular users load only assigned clients
+        ({data,error}=await supabase
+          .from("clients")
+          .select("id, name, group_name")
+          .eq("active",true)
+          .in("id",(await supabase.from("user_client_access").select("client_id").eq("user_id",session.user.id)).data?.map(r=>r.client_id)||[]));
+      }
+
       if(!error&&data){
         const sorted=data.sort((a,b)=>{
           const ai=CLIENT_ORDER.indexOf(a.name);
           const bi=CLIENT_ORDER.indexOf(b.name);
-          // Both in order list — use defined order
           if(ai!==-1&&bi!==-1)return ai-bi;
-          // Only a is in list — a comes first
           if(ai!==-1)return -1;
-          // Only b is in list — b comes first
           if(bi!==-1)return 1;
-          // Neither in list — sort alphabetically
           return a.name.localeCompare(b.name);
         });
         setClients(sorted);
