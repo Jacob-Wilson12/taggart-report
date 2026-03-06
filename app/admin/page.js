@@ -155,6 +155,7 @@ const JUNEAU_OEM_LABEL = {
   "Juneau Chevrolet":  "Chevrolet",
   "Juneau Honda":      "Honda",
 };
+const JUNEAU_LEAD_SOURCE = "Juneau Auto Mall";
 
 // Build leads fields for a Juneau store — identical to standard except Third Party → OEM brand
 const leadsFieldsJuneau = (oemLabel) => [
@@ -274,15 +275,20 @@ const FieldInput = ({ field, value, onChange, disabled }) => {
 };
 
 /* ─── DEPARTMENT FORM ─── */
-function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSaved }) {
+function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSaved, allClients }) {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const isGoode      = dept.id === "leads" && clientName === GOODE_MOTOR_GROUP;
-  const oemLabel     = dept.id === "leads" ? JUNEAU_OEM_LABEL[clientName] : null;
-  const isJuneau     = !!oemLabel;
+  const isGoode        = dept.id === "leads" && clientName === GOODE_MOTOR_GROUP;
+  const oemLabel       = dept.id === "leads" ? JUNEAU_OEM_LABEL[clientName] : null;
+  const isJuneau       = !!oemLabel;
+  const isJuneauSource = isJuneau && clientName === JUNEAU_LEAD_SOURCE;
+  const isJuneauChild  = isJuneau && !isJuneauSource;
+
+  // Shared keys that get synced from Auto Mall to all sibling stores
+  const SHARED_KEYS = ["total_leads","total_sold","website_leads","website_sold","facebook_leads","facebook_sold","phone_sold","notes"];
 
   const fields = isGoode
     ? LEADS_FIELDS_GOODE
@@ -312,10 +318,34 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
   const handleSave = async () => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
+    const ts = { last_updated_by: user.id, last_updated_at: new Date().toISOString() };
+
+    // Save this store's own data
     await supabase.from("report_data").upsert({
-      client_id: clientId, month, department: dept.id, data,
-      last_updated_by: user.id, last_updated_at: new Date().toISOString(),
+      client_id: clientId, month, department: dept.id, data, ...ts,
     }, { onConflict: "client_id,month,department" });
+
+    // If this is Juneau Auto Mall, sync shared keys to all sibling stores
+    // Each sibling keeps its own oem_leads/oem_sold — we only overwrite shared fields
+    if (isJuneauSource && allClients) {
+      const sharedPayload = Object.fromEntries(
+        SHARED_KEYS.map(k => [k, data[k] ?? null])
+      );
+      const siblings = allClients.filter(c =>
+        JUNEAU_OEM_LABEL[c.name] && c.name !== JUNEAU_LEAD_SOURCE
+      );
+      await Promise.all(siblings.map(async (sibling) => {
+        // Load the sibling's existing data so we don't wipe their OEM fields
+        const { data: existing } = await supabase
+          .from("report_data").select("data")
+          .eq("client_id", sibling.id).eq("month", month).eq("department", "leads").single();
+        const merged = { ...(existing?.data || {}), ...sharedPayload };
+        await supabase.from("report_data").upsert({
+          client_id: sibling.id, month, department: "leads", data: merged, ...ts,
+        }, { onConflict: "client_id,month,department" });
+      }));
+    }
+
     setSaving(false);
     setSaved(true);
     if (onSaved) onSaved(dept.id);
@@ -338,9 +368,14 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
           ℹ️ Goode Motor Group uses brand-level lead tracking. Sold % is calculated automatically.
         </div>
       )}
-      {isJuneau && (
+      {isJuneauSource && (
+        <div style={{ background: C.gL, border: `1px solid ${C.g}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>
+          📡 Saving here will automatically sync <strong>Total, Website, Facebook, and Phone</strong> leads to all other Juneau stores. Each store's OEM leads are not affected.
+        </div>
+      )}
+      {isJuneauChild && (
         <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
-          ℹ️ <strong>{oemLabel} Leads/Sold</strong> replaces Third Party for this store.
+          🔗 <strong>Total, Website, Facebook & Phone</strong> fields are synced from Juneau Auto Mall. Enter this store's <strong>{oemLabel}</strong> leads directly here.
         </div>
       )}
 
@@ -355,7 +390,7 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
             borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700,
             cursor: "pointer", fontFamily: F, minWidth: 100,
           }}>
-            {saving ? "Saving..." : saved ? "✓ Saved" : "Save"}
+            {saving ? "Saving..." : saved ? "✓ Saved" : isJuneauSource ? "Save & Sync Juneau" : "Save"}
           </button>
         )}
       </div>
@@ -367,15 +402,24 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-        {fields.map(field => (
-          <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
-              {field.label}
-              {field.hint && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
-            </label>
-            <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable} />
-          </div>
-        ))}
+        {fields.map(field => {
+          const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
+          return (
+            <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
+                {field.label}
+                {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>↔ synced</span>}
+                {field.hint && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
+              </label>
+              <FieldInput
+                field={field}
+                value={data[field.key]}
+                onChange={handleChange}
+                disabled={!editable || isSharedField}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {/* Goode auto-calculated sold % */}
@@ -401,7 +445,7 @@ function DeptForm({ dept, clientId, clientName, month, userRole, userDept, onSav
 }
 
 /* ─── CLIENT REPORT VIEW ─── */
-function ClientReport({ client, userRole, userDept, onBack }) {
+function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [monthIdx, setMonthIdx] = useState(now.getMonth() === 0 ? 11 : now.getMonth() - 1);
@@ -667,6 +711,7 @@ function ClientReport({ client, userRole, userDept, onBack }) {
             userRole={userRole}
             userDept={userDept}
             onSaved={handleSaved}
+            allClients={allClients}
           />
         </div>
       </div>
@@ -1040,6 +1085,7 @@ export default function AdminApp() {
             userRole={profile?.role}
             userDept={profile?.department}
             onBack={() => setSelectedClient(null)}
+            allClients={clients}
           />
         )}
         {activePage === "team" && profile?.role === "admin" && (
