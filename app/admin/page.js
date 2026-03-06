@@ -25,7 +25,7 @@ const DEPARTMENTS = [
 
 const LIVE_APIS = {
   seo: { label: "Search Console", endpoint: "/api/search-console" },
-  seo_ga4: { label: "GA4", endpoint: "/api/ga4" },
+  ga4: { label: "GA4", endpoint: "/api/ga4" },
 };
 
 const DEPT_FIELDS = {
@@ -50,9 +50,9 @@ const DEPT_FIELDS = {
   ],
   seo: [
     { key: "phone_calls",        label: "Phone Calls (SEO)",        type: "number",   manual: true },
-    { key: "form_submissions",   label: "Form Submissions",         type: "number",   manual: true },
-    { key: "organic_sessions",   label: "Organic Sessions",         type: "number",   manual: true },
-    { key: "vdp_views",          label: "VDP Views",                type: "number",   manual: true },
+    { key: "form_submissions",   label: "Form Submissions",         type: "number",   api: true },
+    { key: "organic_sessions",   label: "Organic Sessions",         type: "number",   api: true },
+    { key: "vdp_views",          label: "VDP Views",                type: "number",   api: true },
     { key: "direction_requests", label: "Direction Requests",       type: "number",   manual: true },
     { key: "chat_conversations", label: "Chat Conversations",       type: "number",   manual: true },
     { key: "ctr",                label: "CTR (%)",                  type: "decimal",  api: true },
