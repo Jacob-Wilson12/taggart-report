@@ -25,6 +25,7 @@ const DEPARTMENTS = [
 
 const LIVE_APIS = {
   seo: { label: "Search Console", endpoint: "/api/search-console" },
+  seo_ga4: { label: "GA4", endpoint: "/api/ga4" },
 };
 
 const DEPT_FIELDS = {
