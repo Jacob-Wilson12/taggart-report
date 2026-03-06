@@ -59,7 +59,7 @@ export async function GET(request) {
 
     // ─── Query 1: Total calls summary ───
     const callsData = await callRailFetch(
-      `/a/ACC36d8cf484f1442908d76e394a410a296/calls.json?company_id=${companyId}&start_date=${startDate}&end_date=${endDate}&per_page=250&fields=direction,answered,duration,tracking_source,first_call`
+      `/a/ACC36d8cf484f1442908d76e394a410a296/calls.json?company_id=${companyId}&start_date=${startDate}&end_date=${endDate}&per_page=250&fields=direction,answered,duration,source_name,first_call`
     );
 
     const calls = callsData.calls || [];
@@ -75,7 +75,7 @@ export async function GET(request) {
     // ─── Query 2: Calls by source ───
     const sourceMap = {};
     for (const call of calls) {
-      const source = call.tracking_source || "Unknown";
+      const source = call.source_name || "Unknown";
       sourceMap[source] = (sourceMap[source] || 0) + 1;
     }
     const callsBySource = Object.entries(sourceMap)
@@ -92,7 +92,7 @@ export async function GET(request) {
         name: t.name,
         number: t.formatted_tracking_number,
         type: t.type,
-        source: t.tracking_source,
+        source: t.source_name,
       }));
     } catch (e) {
       trackingNumbers = [];
