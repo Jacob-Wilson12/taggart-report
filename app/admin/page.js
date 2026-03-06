@@ -29,6 +29,7 @@ const LIVE_APIS = {
   google_ads: { label: "Google Ads", endpoint: "/api/google-ads" },
   callrail: { label: "CallRail", endpoint: "/api/callrail" },
   meta_ads: { label: "Meta Ads", endpoint: "/api/meta-ads" },
+  social: { label: "Social", endpoint: "/api/social" },
 };
 
 const DEPT_FIELDS = {
