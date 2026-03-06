@@ -14,7 +14,7 @@ const F = "Inter,system-ui,sans-serif";
 const DEPARTMENTS = [
   { id: "leads",      label: "Leads & CRM",    icon: "🎯" },
   { id: "callrail",   label: "CallRail",        icon: "📞" },
-  { id: "seo",        label: "SEO",             icon: "🔍", apiKey: "search_console" },
+  { id: "seo",        label: "SEO",             icon: "🔍" },
   { id: "gbp",        label: "Google Business", icon: "📍" },
   { id: "google_ads", label: "Google Ads",      icon: "📢" },
   { id: "meta_ads",   label: "Meta Ads",        icon: "📱" },
@@ -23,7 +23,6 @@ const DEPARTMENTS = [
   { id: "creative",   label: "Creative",        icon: "🎨" },
 ];
 
-// Live APIs — add more here as they're built
 const LIVE_APIS = {
   seo: { label: "Search Console", endpoint: "/api/search-console" },
 };
@@ -156,7 +155,6 @@ const JUNEAU_OEM_LABEL = {
 };
 const JUNEAU_LEAD_SOURCE = "Juneau Auto Mall";
 const SHARED_KEYS = ["total_leads","total_sold","website_leads","website_sold","facebook_leads","facebook_sold","phone_sold","notes"];
-
 const leadsFieldsJuneau = (oemLabel) => [
   { key: "total_leads",    label: "Total Leads",       type: "number" },
   { key: "website_leads",  label: "Website Leads",     type: "number" },
@@ -169,7 +167,6 @@ const leadsFieldsJuneau = (oemLabel) => [
   { key: "phone_sold",     label: "Phone Sold",        type: "number" },
   { key: "notes",          label: "Notes",             type: "textarea" },
 ];
-
 const LEADS_FIELDS_GOODE = [
   { key: "total_leads",  label: "Total Leads (All Brands)", type: "number" },
   { key: "ford_leads",   label: "Ford Leads",               type: "number" },
@@ -181,17 +178,27 @@ const LEADS_FIELDS_GOODE = [
   { key: "total_sold",   label: "Total Sold",               type: "number" },
   { key: "notes",        label: "Notes",                    type: "textarea" },
 ];
-
 const MONTHS = ["January","February","March","April","May","June",
   "July","August","September","October","November","December"];
 
+function getBackfillMonths() {
+  const months = [];
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  let cur = new Date(2024, 0, 1);
+  while (cur <= end) {
+    months.push({ year: cur.getFullYear(), month: cur.getMonth() + 1 });
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+  return months;
+}
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const canEdit = (role, department, deptId) => {
   if (role === "admin" || role === "account_manager") return true;
   if (role === "editor" && department === deptId) return true;
   return false;
 };
 const canPublish = (role) => role === "admin" || role === "account_manager";
-
 /* ─── UI HELPERS ─── */
 const Badge = ({ label, color = C.cyan }) => (
   <span style={{ background: color + "22", color, borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, fontFamily: F }}>{label}</span>
@@ -214,6 +221,137 @@ const CompletionBar = ({ filled, total }) => {
   );
 };
 
+/* ─── BACKFILL MODAL ─── */
+function BackfillModal({ clients, onClose }) {
+  const backfillMonths = getBackfillMonths();
+  const apiDepts = Object.entries(LIVE_APIS);
+  const total = clients.length * backfillMonths.length * apiDepts.length;
+  const [running, setRunning] = useState(false);
+  const [done, setDone] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentLabel, setCurrentLabel] = useState("");
+  const [log, setLog] = useState([]);
+  const [counts, setCounts] = useState({ success: 0, skipped: 0, error: 0 });
+
+  const addLog = (msg, type = "info") => setLog(prev => [...prev.slice(-49), { msg, type, ts: new Date().toLocaleTimeString() }]);
+
+  const handleRun = async () => {
+    setRunning(true); setLog([]); setProgress(0); setCounts({ success: 0, skipped: 0, error: 0 });
+    let completed = 0, success = 0, skipped = 0, error = 0;
+    for (const client of clients) {
+      for (const { year, month } of backfillMonths) {
+        for (const [deptId, api] of apiDepts) {
+          const label = `${client.name} · ${MONTHS[month - 1]} ${year} · ${api.label}`;
+          setCurrentLabel(label);
+          try {
+            const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${year}&month=${month}&save=true`);
+            const json = await res.json();
+            if (json.success && json.saved) {
+              success++; addLog(`✓ ${label}`, "success");
+            } else if (json.error?.includes("No Search Console")) {
+              skipped++; addLog(`— ${client.name} · No integration configured`, "skip");
+            } else {
+              error++; addLog(`⚠ ${label}: ${json.error || "failed"}`, "error");
+            }
+          } catch (e) {
+            error++; addLog(`✗ ${label}: ${e.message}`, "error");
+          }
+          completed++;
+          setProgress(completed);
+          setCounts({ success, skipped, error });
+          await sleep(200);
+        }
+      }
+    }
+    setRunning(false); setDone(true); setCurrentLabel("");
+    addLog(`✅ Backfill complete — ${success} saved, ${skipped} skipped, ${error} errors`, "done");
+  };
+
+  const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: C.white, borderRadius: 16, width: "100%", maxWidth: 680, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${C.bd}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.t, fontFamily: F }}>Historical Data Backfill</h3>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: C.tl, fontFamily: F }}>
+              {clients.length} clients × {backfillMonths.length} months × {apiDepts.length} API{apiDepts.length !== 1 ? "s" : ""} = <strong>{total} requests</strong> · Jan 2024 → last month
+            </p>
+          </div>
+          {!running && <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.tl, padding: 4 }}>✕</button>}
+        </div>
+        <div style={{ padding: 24, flex: 1, overflow: "auto" }}>
+          {!running && !done && (
+            <div>
+              <div style={{ background: C.oL, border: `1px solid ${C.o}44`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.o, marginBottom: 6, fontFamily: F }}>⚠ Before you run this</div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: C.t, fontFamily: F, lineHeight: 1.8 }}>
+                  <li>This will take approximately <strong>{Math.round(total * 0.2 / 60)} minutes</strong> to complete</li>
+                  <li>Keep this browser tab open the entire time</li>
+                  <li>It will not overwrite any manually entered data</li>
+                  <li>Clients without a Search Console integration will be skipped</li>
+                  <li>Goode Ford will be skipped until its domain is verified</li>
+                </ul>
+              </div>
+              <div style={{ background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>What will be pulled</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {apiDepts.map(([deptId, api]) => (
+                    <div key={deptId} style={{ background: C.cyanL, color: C.cyanD, borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 600, fontFamily: F }}>{api.label}</div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 12, fontSize: 12, color: C.tl, fontFamily: F }}>
+                  Months: {MONTHS[backfillMonths[0].month - 1]} {backfillMonths[0].year} → {MONTHS[backfillMonths[backfillMonths.length - 1].month - 1]} {backfillMonths[backfillMonths.length - 1].year}
+                </div>
+              </div>
+            </div>
+          )}
+          {(running || done) && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.t, fontFamily: F }}>{done ? "Complete" : "Running..."}</span>
+                <span style={{ fontSize: 13, color: C.tl, fontFamily: F }}>{progress} / {total} ({pct}%)</span>
+              </div>
+              <div style={{ background: C.bl2, borderRadius: 6, height: 10, marginBottom: 12 }}>
+                <div style={{ background: done ? C.g : C.cyan, borderRadius: 6, height: 10, width: `${pct}%`, transition: "width 0.3s" }} />
+              </div>
+              {currentLabel && <div style={{ fontSize: 12, color: C.tl, fontFamily: F, marginBottom: 12 }}>↻ {currentLabel}</div>}
+              <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                {[{ label: "Saved", value: counts.success, color: C.g }, { label: "Skipped", value: counts.skipped, color: C.tl }, { label: "Errors", value: counts.error, color: C.r }].map(s => (
+                  <div key={s.label} style={{ background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 16px", flex: 1, textAlign: "center" }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: s.color, fontFamily: F }}>{s.value}</div>
+                    <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {log.length > 0 && (
+            <div style={{ background: "#0c1a2e", borderRadius: 10, padding: 14, maxHeight: 240, overflow: "auto", fontFamily: "monospace", fontSize: 11, lineHeight: 1.8 }}>
+              {log.map((entry, i) => (
+                <div key={i} style={{ color: entry.type === "success" ? "#6ee7b7" : entry.type === "error" ? "#fca5a5" : entry.type === "skip" ? "#9ca3af" : entry.type === "done" ? C.cyan : "#e5e7eb" }}>
+                  <span style={{ color: "#6b7280", marginRight: 8 }}>{entry.ts}</span>{entry.msg}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          {!running && !done && (
+            <>
+              <button onClick={onClose} style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, color: C.t }}>Cancel</button>
+              <button onClick={handleRun} style={{ background: C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>⬇ Start Backfill</button>
+            </>
+          )}
+          {done && <button onClick={onClose} style={{ background: C.g, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Done</button>}
+          {running && <div style={{ fontSize: 13, color: C.tl, fontFamily: F, alignSelf: "center" }}>Do not close this tab...</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── API PULL BUTTON ─── */
 const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
   const api = LIVE_APIS[deptId];
@@ -221,7 +359,6 @@ const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
   const [result, setResult] = useState(null);
   const [msg, setMsg] = useState("");
   if (!api) return null;
-
   const handlePull = async () => {
     setPulling(true); setResult(null); setMsg("");
     try {
@@ -231,26 +368,13 @@ const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
         setResult("success");
         setMsg(json.data._pulled_at ? `Pulled at ${new Date(json.data._pulled_at).toLocaleTimeString()}` : "");
         if (onPulled) onPulled(deptId);
-      } else {
-        setResult("error");
-        setMsg(json.error || json.save_error || "Unknown error");
-      }
-    } catch (e) {
-      setResult("error"); setMsg(e.message);
-    }
+      } else { setResult("error"); setMsg(json.error || json.save_error || "Unknown error"); }
+    } catch (e) { setResult("error"); setMsg(e.message); }
     setPulling(false);
   };
-
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <button onClick={handlePull} disabled={pulling} style={{
-        background: result === "success" ? C.gL : result === "error" ? C.rL : C.cyanL,
-        color: result === "success" ? "#166534" : result === "error" ? C.r : C.cyanD,
-        border: `1px solid ${result === "success" ? "#bbf7d0" : result === "error" ? "#fecaca" : C.cyan + "44"}`,
-        borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 700,
-        cursor: pulling ? "not-allowed" : "pointer", fontFamily: F,
-        display: "flex", alignItems: "center", gap: 6, opacity: pulling ? 0.7 : 1,
-      }}>
+      <button onClick={handlePull} disabled={pulling} style={{ background: result === "success" ? C.gL : result === "error" ? C.rL : C.cyanL, color: result === "success" ? "#166534" : result === "error" ? C.r : C.cyanD, border: `1px solid ${result === "success" ? "#bbf7d0" : result === "error" ? "#fecaca" : C.cyan + "44"}`, borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: pulling ? "not-allowed" : "pointer", fontFamily: F, display: "flex", alignItems: "center", gap: 6, opacity: pulling ? 0.7 : 1 }}>
         {pulling ? "↻ Pulling..." : result === "success" ? `✓ Pulled from ${api.label}` : result === "error" ? `⚠ Retry ${api.label}` : `⬇ Pull from ${api.label}`}
       </button>
       {msg && <span style={{ fontSize: 11, color: result === "error" ? C.r : C.tl, fontFamily: F }}>{msg}</span>}
@@ -260,26 +384,12 @@ const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
 
 /* ─── FIELD INPUT ─── */
 const FieldInput = ({ field, value, onChange, disabled }) => {
-  const base = {
-    width: "100%", padding: "10px 12px", borderRadius: 7,
-    border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`,
-    fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box",
-    background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t,
-    cursor: disabled ? "not-allowed" : "text",
-  };
+  const base = { width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box", background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t, cursor: disabled ? "not-allowed" : "text" };
   if (field.type === "textarea") return (
-    <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)}
-      disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`}
-      style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
+    <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`} style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
   );
-  return (
-    <input type={field.type === "number" || field.type === "decimal" ? "number" : "text"}
-      step={field.type === "decimal" ? "0.01" : "1"}
-      value={value || ""} onChange={e => onChange(field.key, e.target.value)}
-      disabled={disabled} placeholder={field.hint || "0"} style={base} />
-  );
+  return <input type={field.type === "number" || field.type === "decimal" ? "number" : "text"} step={field.type === "decimal" ? "0.01" : "1"} value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} placeholder={field.hint || "0"} style={base} />;
 };
-
 /* ─── DEPT FORM ─── */
 function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole, userDept, onSaved, allClients, onApiPulled }) {
   const [data, setData] = useState({});
@@ -347,7 +457,6 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
 
   return (
     <div>
-      {/* API status banner */}
       {LIVE_APIS[dept.id] && (
         <div style={{ background: pulledAt ? C.gL : C.cyanL, border: `1px solid ${pulledAt ? "#bbf7d0" : C.cyan + "44"}`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div style={{ fontSize: 12, color: pulledAt ? "#166534" : C.cyanD, fontFamily: F }}>
@@ -356,10 +465,8 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           <ApiPullButton deptId={dept.id} clientId={clientId} year={year} monthIdx={monthIdx} onPulled={handleApiPulled} />
         </div>
       )}
-
       {isJuneauSource && <div style={{ background: C.gL, border: `1px solid ${C.g}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>📡 Saving here syncs Total, Website, Facebook & Phone leads to all Juneau stores.</div>}
       {isJuneauChild && <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>🔗 Total, Website, Facebook & Phone synced from Juneau Auto Mall. Enter {oemLabel} leads here.</div>}
-
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 13, color: C.tl, fontFamily: F }}>{filledCount} of {fields.length} fields filled</div>
@@ -371,10 +478,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           </button>
         )}
       </div>
-
       {!editable && <div style={{ background: C.oL, border: `1px solid ${C.o}22`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.o, fontFamily: F }}>👁 View only — you can edit <strong>{userDept}</strong> data only.</div>}
-
-      {/* API fields section */}
       {apiFields.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.cyanD, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>
@@ -390,8 +494,6 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           </div>
         </div>
       )}
-
-      {/* Manual fields */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {(apiFields.length > 0 ? manualFields : fields).map(field => {
           const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
@@ -407,8 +509,6 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           );
         })}
       </div>
-
-      {/* Goode sold % */}
       {isGoode && [data.ford_leads, data.mazda_leads, data.vw_leads].some(v => v) && (
         <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>Sold % by Brand (auto-calculated)</div>
@@ -429,7 +529,6 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     </div>
   );
 }
-
 /* ─── CLIENT REPORT ─── */
 function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const now = new Date();
@@ -446,11 +545,9 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const month = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
 
   useEffect(() => {
-    setDeptCompletion({});
-    setPullAllResult("");
+    setDeptCompletion({}); setPullAllResult("");
     const loadStatus = async () => {
-      const { data } = await supabase.from("monthly_reports").select("status")
-        .eq("client_id", client.id).eq("month", month).single();
+      const { data } = await supabase.from("monthly_reports").select("status").eq("client_id", client.id).eq("month", month).single();
       setReportStatus(data?.status || "draft");
     };
     loadStatus();
@@ -458,23 +555,16 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
 
   const refreshCompletion = useCallback(async (deptId) => {
     const fields = DEPT_FIELDS[deptId] || [];
-    const { data: row } = await supabase.from("report_data").select("data")
-      .eq("client_id", client.id).eq("month", month).eq("department", deptId).single();
+    const { data: row } = await supabase.from("report_data").select("data").eq("client_id", client.id).eq("month", month).eq("department", deptId).single();
     const filled = fields.filter(f => row?.data?.[f.key] && String(row.data[f.key]).trim() !== "").length;
     setDeptCompletion(prev => ({ ...prev, [deptId]: { filled, total: fields.length } }));
   }, [client.id, month]);
 
   const handleSaved = useCallback(async (deptId) => {
     await refreshCompletion(deptId);
-    const { data: existing } = await supabase.from("monthly_reports").select("status")
-      .eq("client_id", client.id).eq("month", month).single();
-    if (!existing) {
-      await supabase.from("monthly_reports").insert({ client_id: client.id, month, status: "in_progress" });
-      setReportStatus("in_progress");
-    } else if (existing.status === "draft") {
-      await supabase.from("monthly_reports").update({ status: "in_progress" }).eq("client_id", client.id).eq("month", month);
-      setReportStatus("in_progress");
-    }
+    const { data: existing } = await supabase.from("monthly_reports").select("status").eq("client_id", client.id).eq("month", month).single();
+    if (!existing) { await supabase.from("monthly_reports").insert({ client_id: client.id, month, status: "in_progress" }); setReportStatus("in_progress"); }
+    else if (existing.status === "draft") { await supabase.from("monthly_reports").update({ status: "in_progress" }).eq("client_id", client.id).eq("month", month); setReportStatus("in_progress"); }
   }, [client.id, month, refreshCompletion]);
 
   const handlePullAll = async () => {
@@ -486,18 +576,11 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
       try {
         const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${year}&month=${monthIdx + 1}&save=true`);
         const json = await res.json();
-        if (json.success && json.saved) {
-          results.push(`✓ ${dept.label}`);
-          await refreshCompletion(dept.id);
-        } else {
-          results.push(`⚠ ${dept.label}: ${json.error || "failed"}`);
-        }
-      } catch (e) {
-        results.push(`✗ ${dept.label}: ${e.message}`);
-      }
+        if (json.success && json.saved) { results.push(`✓ ${dept.label}`); await refreshCompletion(dept.id); }
+        else results.push(`⚠ ${dept.label}: ${json.error || "failed"}`);
+      } catch (e) { results.push(`✗ ${dept.label}: ${e.message}`); }
     }
-    setPullAllResult(results.join(" · "));
-    setPullingAll(false);
+    setPullAllResult(results.join(" · ")); setPullingAll(false);
   };
 
   const handlePublish = async () => {
@@ -506,35 +589,21 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
     const { data: { user } } = await supabase.auth.getUser();
     const newStatus = reportStatus === "published" ? "in_progress" : "published";
     const ts = new Date().toISOString();
-    const { data: existing } = await supabase.from("monthly_reports").select("id")
-      .eq("client_id", client.id).eq("month", month).single();
+    const { data: existing } = await supabase.from("monthly_reports").select("id").eq("client_id", client.id).eq("month", month).single();
     let error;
     if (existing) {
-      ({ error } = await supabase.from("monthly_reports").update({
-        status: newStatus,
-        published_at: newStatus === "published" ? ts : null,
-        published_by: newStatus === "published" ? user.id : null,
-      }).eq("client_id", client.id).eq("month", month));
+      ({ error } = await supabase.from("monthly_reports").update({ status: newStatus, published_at: newStatus === "published" ? ts : null, published_by: newStatus === "published" ? user.id : null }).eq("client_id", client.id).eq("month", month));
     } else {
-      ({ error } = await supabase.from("monthly_reports").insert({
-        client_id: client.id, month, status: newStatus,
-        published_at: newStatus === "published" ? ts : null,
-        published_by: newStatus === "published" ? user.id : null,
-      }));
+      ({ error } = await supabase.from("monthly_reports").insert({ client_id: client.id, month, status: newStatus, published_at: newStatus === "published" ? ts : null, published_by: newStatus === "published" ? user.id : null }));
     }
-    if (error) setPublishError(`Error: ${error.message}`);
-    else setReportStatus(newStatus);
+    if (error) setPublishError(`Error: ${error.message}`); else setReportStatus(newStatus);
     setPublishing(false);
   };
 
   const handleMarkReview = async () => {
-    const { data: existing } = await supabase.from("monthly_reports").select("id")
-      .eq("client_id", client.id).eq("month", month).single();
-    if (existing) {
-      await supabase.from("monthly_reports").update({ status: "review" }).eq("client_id", client.id).eq("month", month);
-    } else {
-      await supabase.from("monthly_reports").insert({ client_id: client.id, month, status: "review" });
-    }
+    const { data: existing } = await supabase.from("monthly_reports").select("id").eq("client_id", client.id).eq("month", month).single();
+    if (existing) await supabase.from("monthly_reports").update({ status: "review" }).eq("client_id", client.id).eq("month", month);
+    else await supabase.from("monthly_reports").insert({ client_id: client.id, month, status: "review" });
     setReportStatus("review");
   };
 
@@ -548,7 +617,6 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
         <span style={{ color: C.tl }}>/</span>
         <span style={{ fontSize: 13, fontWeight: 600, color: C.t, fontFamily: F }}>{client.name}</span>
       </div>
-
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>{client.name}</h2>
@@ -557,53 +625,30 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
             <span style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{client.group_name}</span>
           </div>
         </div>
-
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {/* Month selector */}
-          <select value={monthIdx} onChange={e => setMonthIdx(Number(e.target.value))}
-            style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}>
+          <select value={monthIdx} onChange={e => setMonthIdx(Number(e.target.value))} style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}>
             {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
           </select>
-          {/* Year selector */}
-          <select value={year} onChange={e => setYear(Number(e.target.value))}
-            style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}>
+          <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}>
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-
-          {/* Pull All */}
-          <button onClick={handlePullAll} disabled={pullingAll} style={{
-            background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}44`,
-            borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700,
-            cursor: pullingAll ? "not-allowed" : "pointer", fontFamily: F, opacity: pullingAll ? 0.7 : 1,
-          }}>
+          <button onClick={handlePullAll} disabled={pullingAll} style={{ background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: pullingAll ? "not-allowed" : "pointer", fontFamily: F, opacity: pullingAll ? 0.7 : 1 }}>
             {pullingAll ? "⬇ Pulling..." : `⬇ Pull All APIs (${apiDeptCount})`}
           </button>
-
           {userRole !== "viewer" && reportStatus !== "published" && (
-            <button onClick={handleMarkReview} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F }}>
-              Mark Ready for Review
-            </button>
+            <button onClick={handleMarkReview} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F }}>Mark Ready for Review</button>
           )}
           {canPublish(userRole) && (
-            <button onClick={handlePublish} disabled={publishing} style={{
-              background: reportStatus === "published" ? C.oL : C.g,
-              color: reportStatus === "published" ? C.o : "#fff",
-              border: reportStatus === "published" ? `1px solid ${C.o}44` : "none",
-              borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700,
-              cursor: publishing ? "not-allowed" : "pointer", fontFamily: F, opacity: publishing ? 0.7 : 1,
-            }}>
+            <button onClick={handlePublish} disabled={publishing} style={{ background: reportStatus === "published" ? C.oL : C.g, color: reportStatus === "published" ? C.o : "#fff", border: reportStatus === "published" ? `1px solid ${C.o}44` : "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: publishing ? "not-allowed" : "pointer", fontFamily: F, opacity: publishing ? 0.7 : 1 }}>
               {publishing ? "..." : reportStatus === "published" ? "Unpublish" : "Publish Report"}
             </button>
           )}
         </div>
       </div>
-
       {pullAllResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>{pullAllResult}</div>}
       {publishError && <div style={{ background: C.rL, border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.r, fontFamily: F }}>⚠️ {publishError}</div>}
       {reportStatus === "published" && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166534", fontFamily: F }}>✓ This report is live. Clients can see it now.</div>}
-
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-        {/* Sidebar */}
         <div style={{ width: 200, flexShrink: 0, display: "flex", flexDirection: "column", gap: 4 }}>
           {DEPARTMENTS.map(dept => {
             const comp = deptCompletion[dept.id];
@@ -611,13 +656,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
             const pct = comp ? Math.round((comp.filled / comp.total) * 100) : null;
             const hasApi = !!LIVE_APIS[dept.id];
             return (
-              <button key={dept.id} onClick={() => setActiveDept(dept.id)} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer",
-                background: isActive ? C.navy : C.white, color: isActive ? "#fff" : C.t,
-                fontFamily: F, fontSize: 13, fontWeight: isActive ? 700 : 500,
-                boxShadow: isActive ? "none" : C.sh, textAlign: "left",
-              }}>
+              <button key={dept.id} onClick={() => setActiveDept(dept.id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer", background: isActive ? C.navy : C.white, color: isActive ? "#fff" : C.t, fontFamily: F, fontSize: 13, fontWeight: isActive ? 700 : 500, boxShadow: isActive ? "none" : C.sh, textAlign: "left" }}>
                 <span>{dept.icon} {dept.label}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   {hasApi && <span style={{ fontSize: 9, color: C.cyan, fontWeight: 700, background: isActive ? "rgba(0,201,232,0.2)" : "transparent", padding: "1px 4px", borderRadius: 3 }}>API</span>}
@@ -627,27 +666,19 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
             );
           })}
         </div>
-
-        {/* Form */}
         <div style={{ flex: 1, background: C.white, borderRadius: 12, padding: 24, border: `1px solid ${C.bd}`, boxShadow: C.sh }}>
           <div style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>{activeDeptObj?.icon} {activeDeptObj?.label}</h3>
             <p style={{ fontSize: 12, color: C.tl, margin: 0, fontFamily: F }}>{MONTHS[monthIdx]} {year} — {client.name}</p>
           </div>
-          <DeptForm
-            dept={activeDeptObj} clientId={client.id} clientName={client.name}
-            month={month} monthIdx={monthIdx} year={year}
-            userRole={userRole} userDept={userDept}
-            onSaved={handleSaved} allClients={allClients} onApiPulled={refreshCompletion}
-          />
+          <DeptForm dept={activeDeptObj} clientId={client.id} clientName={client.name} month={month} monthIdx={monthIdx} year={year} userRole={userRole} userDept={userDept} onSaved={handleSaved} allClients={allClients} onApiPulled={refreshCompletion} />
         </div>
       </div>
     </div>
   );
 }
-
 /* ─── OVERVIEW ─── */
-function Overview({ clients, userRole, onSelectClient }) {
+function Overview({ clients, userRole, onSelectClient, onBackfill }) {
   const now = new Date();
   const lastMonth = now.getMonth() === 0 ? `${now.getFullYear() - 1}-12-01` : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}-01`;
   const [statuses, setStatuses] = useState({});
@@ -667,6 +698,10 @@ function Overview({ clients, userRole, onSelectClient }) {
   const filtered = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
   const statusCounts = { draft: 0, in_progress: 0, review: 0, published: 0 };
   clients.forEach(c => { const s = statuses[`${c.id}_${lastMonth}`] || "draft"; statusCounts[s]++; });
+  const backfillMonths = getBackfillMonths();
+  const apiCount = Object.keys(LIVE_APIS).length;
+  const totalBackfillRequests = clients.length * backfillMonths.length * apiCount;
+  const estMinutes = Math.round(totalBackfillRequests * 0.2 / 60);
 
   return (
     <div>
@@ -678,8 +713,26 @@ function Overview({ clients, userRole, onSelectClient }) {
           </div>
         ))}
       </div>
-      <input type="text" placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)}
-        style={{ width: "100%", maxWidth: 320, padding: "10px 14px", borderRadius: 8, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", marginBottom: 20, boxSizing: "border-box" }} />
+
+      {userRole === "admin" && (
+        <div style={{ background: C.navy, borderRadius: 12, padding: "18px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4, fontFamily: F }}>📥 Historical Data Backfill</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>
+              Pull all Search Console data for all clients from Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min
+            </div>
+          </div>
+          <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>
+            ⬇ Run Backfill
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <input type="text" placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)}
+          style={{ width: "100%", maxWidth: 320, padding: "10px 14px", borderRadius: 8, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box" }} />
+      </div>
+
       {groups.map(group => {
         const groupClients = filtered.filter(c => c.group_name === group);
         if (!groupClients.length) return null;
@@ -722,11 +775,7 @@ function TeamPage({ currentUserId }) {
   const [inviteMsg, setInviteMsg] = useState("");
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data } = await supabase.from("user_profiles").select("*").order("created_at");
-      setMembers(data || []); setLoading(false);
-    };
+    const load = async () => { setLoading(true); const { data } = await supabase.from("user_profiles").select("*").order("created_at"); setMembers(data || []); setLoading(false); };
     load();
   }, []);
 
@@ -797,7 +846,6 @@ function TeamPage({ currentUserId }) {
     </div>
   );
 }
-
 /* ─── ROOT ─── */
 export default function AdminApp() {
   const [session, setSession] = useState(null);
@@ -806,6 +854,7 @@ export default function AdminApp() {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [activePage, setActivePage] = useState("overview");
+  const [showBackfill, setShowBackfill] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setAuthLoading(false); });
@@ -828,14 +877,24 @@ export default function AdminApp() {
         ({ data } = await supabase.from("clients").select("id,name,group_name,tier").eq("active", true).in("id", ids));
       }
       const ORDER = ["Goode Motor Group","Goode Motor Ford","Goode Motor Mazda","Twin Falls Volkswagen","Juneau Auto Mall","Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet","Juneau Honda","Juneau Powersports","Cassia Car Rental","Explore Juneau"];
-      setClients((data || []).sort((a, b) => { const ai = ORDER.indexOf(a.name), bi = ORDER.indexOf(b.name); if (ai !== -1 && bi !== -1) return ai - bi; if (ai !== -1) return -1; if (bi !== -1) return 1; return a.name.localeCompare(b.name); }));
+      setClients((data || []).sort((a, b) => {
+        const ai = ORDER.indexOf(a.name), bi = ORDER.indexOf(b.name);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return a.name.localeCompare(b.name);
+      }));
     };
     load();
   }, [session]);
 
   const handleLogout = async () => { await supabase.auth.signOut(); setSession(null); };
 
-  if (authLoading) return <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ color: "#fff", fontFamily: F }}>Loading...</div></div>;
+  if (authLoading) return (
+    <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ color: "#fff", fontFamily: F }}>Loading...</div>
+    </div>
+  );
 
   if (!session) return (
     <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F }}>
@@ -860,6 +919,7 @@ export default function AdminApp() {
 
   return (
     <div style={{ minHeight: "100vh", fontFamily: F, background: C.bg }}>
+      {showBackfill && <BackfillModal clients={clients} onClose={() => setShowBackfill(false)} />}
       <div style={{ background: C.navy, padding: "0 24px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <img src="/Taggart_Advertising_Logo.png" alt="Taggart" style={{ height: 36 }} />
@@ -873,14 +933,25 @@ export default function AdminApp() {
         </div>
       </div>
       <div style={{ background: C.white, borderBottom: `1px solid ${C.bd}`, padding: "0 24px", display: "flex", gap: 4 }}>
-        {[{ id: "overview", label: "📊 Overview" }, { id: "team", label: "👥 Team", adminOnly: true }].filter(n => !n.adminOnly || profile?.role === "admin").map(n => (
-          <button key={n.id} onClick={() => { setActivePage(n.id); setSelectedClient(null); }} style={{ padding: "11px 16px", border: "none", cursor: "pointer", background: "transparent", fontSize: 13, fontWeight: 600, fontFamily: F, color: activePage === n.id ? C.cyanD : C.tl, borderBottom: activePage === n.id ? `2px solid ${C.cyan}` : "2px solid transparent" }}>{n.label}</button>
-        ))}
+        {[{ id: "overview", label: "📊 Overview" }, { id: "team", label: "👥 Team", adminOnly: true }]
+          .filter(n => !n.adminOnly || profile?.role === "admin")
+          .map(n => (
+            <button key={n.id} onClick={() => { setActivePage(n.id); setSelectedClient(null); }}
+              style={{ padding: "11px 16px", border: "none", cursor: "pointer", background: "transparent", fontSize: 13, fontWeight: 600, fontFamily: F, color: activePage === n.id ? C.cyanD : C.tl, borderBottom: activePage === n.id ? `2px solid ${C.cyan}` : "2px solid transparent" }}>
+              {n.label}
+            </button>
+          ))}
       </div>
       <div style={{ padding: "28px 24px", maxWidth: 1200, margin: "0 auto" }}>
-        {activePage === "overview" && !selectedClient && <Overview clients={clients} userRole={profile?.role} onSelectClient={c => { setSelectedClient(c); setActivePage("overview"); }} />}
-        {activePage === "overview" && selectedClient && <ClientReport client={selectedClient} userRole={profile?.role} userDept={profile?.department} onBack={() => setSelectedClient(null)} allClients={clients} />}
-        {activePage === "team" && profile?.role === "admin" && <TeamPage currentUserId={session.user.id} />}
+        {activePage === "overview" && !selectedClient && (
+          <Overview clients={clients} userRole={profile?.role} onSelectClient={c => { setSelectedClient(c); setActivePage("overview"); }} onBackfill={() => setShowBackfill(true)} />
+        )}
+        {activePage === "overview" && selectedClient && (
+          <ClientReport client={selectedClient} userRole={profile?.role} userDept={profile?.department} onBack={() => setSelectedClient(null)} allClients={clients} />
+        )}
+        {activePage === "team" && profile?.role === "admin" && (
+          <TeamPage currentUserId={session.user.id} />
+        )}
       </div>
     </div>
   );
