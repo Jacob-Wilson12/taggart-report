@@ -250,7 +250,7 @@ function ServiceToggle({ clientId, deptId, onToggle }) {
     const newVal = !enabled;
     setEnabled(newVal);
     await supabase.from("client_services").upsert(
-      { client_id: clientId, department: deptId, enabled: newVal },
+      { client_id: clientId, department: deptId, enabled: newVal, updated_at: new Date().toISOString() },
       { onConflict: "client_id,department" }
     );
     if (onToggle) onToggle(deptId, newVal);
