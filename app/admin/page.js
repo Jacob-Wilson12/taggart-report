@@ -120,30 +120,26 @@ const DEPT_FIELDS = {
     { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   social: [
-    // ── Aggregate ──
-    { key: "total_reach",       label: "Total Reach (FB+IG+YT+TT)",      type: "number",   api: true },
-    { key: "total_engagement",  label: "Total Engagement (FB+IG+YT+TT)", type: "number",   api: true },
-    { key: "new_followers",     label: "New Followers (FB+IG+TT)",        type: "number",   api: true },
-    // ── Facebook ──
+    // ── Facebook (API) ──
     { key: "fb_followers",      label: "FB Followers",            type: "number",   api: true },
     { key: "fb_reach",          label: "FB Reach",                type: "number",   api: true },
     { key: "fb_engagement",     label: "FB Engagement",           type: "number",   api: true },
     { key: "fb_new_followers",  label: "FB New Followers",        type: "number",   api: true },
     { key: "fb_page_views",     label: "FB Page Views",           type: "number",   api: true },
-    // ── Instagram ──
+    // ── Instagram (API) ──
     { key: "ig_followers",      label: "IG Followers",            type: "number",   api: true },
     { key: "ig_reach",          label: "IG Reach",                type: "number",   api: true },
     { key: "ig_impressions",    label: "IG Impressions",          type: "number",   api: true },
     { key: "ig_profile_views",  label: "IG Profile Views",        type: "number",   api: true },
     { key: "ig_new_followers",  label: "IG New Followers",        type: "number",   api: true },
-    // ── YouTube ──
+    // ── YouTube (API) ──
     { key: "yt_followers",      label: "YT Subscribers",          type: "number",   api: true },
     { key: "yt_month_views",    label: "YT Views (Month)",        type: "number",   api: true },
     { key: "yt_month_videos",   label: "YT Videos Published",     type: "number",   api: true },
     { key: "yt_month_likes",    label: "YT Likes (Month)",        type: "number",   api: true },
     { key: "yt_month_comments", label: "YT Comments (Month)",     type: "number",   api: true },
     { key: "yt_total_views",    label: "YT Total Views",          type: "number",   api: true },
-    // ── TikTok (manual only) ──
+    // ── TikTok (manual) ──
     { key: "tiktok_followers",  label: "TikTok Followers",        type: "number",   manual: true },
     { key: "tiktok_reach",      label: "TikTok Reach",            type: "number",   manual: true },
     { key: "tiktok_views",      label: "TikTok Video Views",      type: "number",   manual: true },
