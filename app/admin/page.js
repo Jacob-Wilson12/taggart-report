@@ -147,6 +147,7 @@ const DEPT_FIELDS = {
     { key: "avg_session_duration",  label: "Avg Session Duration (sec)",  type: "number",   api: true,    hint: "From GA4, in seconds" },
     { key: "organic_traffic_pct",   label: "Organic % of Traffic",        type: "decimal",  api: true,    hint: "From GA4 channel breakdown" },
     { key: "top_query",             label: "Top Performing Query",        type: "text",     api: true },
+    { key: "tracked_keywords",       label: "Tracked Keywords",            type: "keywords", manual: true, optional: true, hint: "Enter keywords + target positions — positions auto-fill from Search Console" },
     { key: "page_links",            label: "Page Links (SEO)",            type: "links",    manual: true },
     { key: "work_completed",        label: "Work Completed",              type: "textarea", manual: true },
     { key: "wins",                  label: "Wins",                        type: "textarea", manual: true, optional: true, hint: "One per line" },
@@ -408,6 +409,134 @@ function LinksField({ value, onChange, disabled }) {
           <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Label (optional)" style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
           <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." style={{ flex: 2, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} onKeyDown={e => e.key === "Enter" && addLink()} />
           <button onClick={addLink} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 6, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Add</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── TRACKED KEYWORDS FIELD ─── */
+function TrackedKeywordsField({ value, onChange, disabled, scData }) {
+  // value = array of { keyword, target_position }
+  // scData = the SEO row's data object (has top_query, page1_keywords etc. from Search Console)
+  const rows = Array.isArray(value) ? value : [];
+  const [newKw, setNewKw] = useState("");
+  const [newTarget, setNewTarget] = useState("");
+
+  // Build a lookup map from Search Console row data if available
+  // SC data stores query-level data under _sc_queries key (if we add it), otherwise we use top_query
+  // For now, we check the stored _sc_queries array that the search-console route can optionally save
+  const scQueries = scData?._sc_queries || [];
+  const queryMap = {};
+  scQueries.forEach(q => { if (q.query) queryMap[q.query.toLowerCase()] = q; });
+
+  const addRow = () => {
+    if (!newKw.trim()) return;
+    const updated = [...rows, { keyword: newKw.trim(), target_position: newTarget ? Number(newTarget) : null }];
+    onChange(updated);
+    setNewKw(""); setNewTarget("");
+  };
+
+  const removeRow = (i) => onChange(rows.filter((_, idx) => idx !== i));
+
+  const updateRow = (i, field, val) => {
+    const updated = rows.map((r, idx) => idx === i ? { ...r, [field]: val } : r);
+    onChange(updated);
+  };
+
+  const getStatus = (current, target) => {
+    if (current == null) return null;
+    if (target == null) return current <= 10 ? "top10" : "tracking";
+    if (current <= target) return "on_target";
+    if (current <= target + 3) return "close";
+    return "off";
+  };
+
+  const STATUS_STYLE = {
+    on_target: { bg: "#f0fdf4", color: "#166534", label: "✓ On Target" },
+    close:     { bg: "#fffbeb", color: "#92400e", label: "~ Close" },
+    off:       { bg: "#fef2f2", color: "#991b1b", label: "↓ Off" },
+    top10:     { bg: "#e6f9fc", color: "#00a5bf", label: "Top 10" },
+    tracking:  { bg: "#f8fafc", color: "#6b7280", label: "Tracking" },
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {/* Table header */}
+      {rows.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px 70px 80px 80px", gap: 6, padding: "6px 8px", background: "#f8fafc", borderRadius: "8px 8px 0 0", border: `1px solid ${C.bd}`, borderBottom: "none" }}>
+          {["Keyword", "Target", "Position", "Clicks", "Impr.", "CTR", "Status"].map(h => (
+            <div key={h} style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F }}>{h}</div>
+          ))}
+        </div>
+      )}
+
+      {/* Rows */}
+      {rows.map((row, i) => {
+        const sc = queryMap[row.keyword?.toLowerCase()];
+        const current = sc?.position != null ? Math.round(sc.position) : null;
+        const status = getStatus(current, row.target_position);
+        const st = status ? STATUS_STYLE[status] : null;
+        return (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px 70px 80px 80px", gap: 6, padding: "8px 8px", border: `1px solid ${C.bd}`, borderTop: i === 0 && rows.length > 0 ? `1px solid ${C.bd}` : "none", background: i % 2 === 0 ? C.white : "#fafafa", borderRadius: i === rows.length - 1 && disabled ? "0 0 8px 8px" : 0 }}>
+            {/* Keyword */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {!disabled && <button onClick={() => removeRow(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 12, padding: 0, lineHeight: 1, flexShrink: 0 }}>✕</button>}
+              <span style={{ fontSize: 12, fontFamily: F, color: C.t, fontWeight: 500 }}>{row.keyword}</span>
+            </div>
+            {/* Target */}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              {disabled ? (
+                <span style={{ fontSize: 12, fontFamily: F, color: C.tl }}>{row.target_position ?? "—"}</span>
+              ) : (
+                <input type="number" value={row.target_position ?? ""} onChange={e => updateRow(i, "target_position", e.target.value ? Number(e.target.value) : null)} placeholder="—" min="1" max="100"
+                  style={{ width: "100%", padding: "4px 6px", borderRadius: 5, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+              )}
+            </div>
+            {/* Current position from SC */}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F, color: current != null ? C.navy : C.tl }}>{current != null ? `#${current}` : "—"}</span>
+            </div>
+            {/* Clicks */}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span style={{ fontSize: 12, fontFamily: F, color: C.t }}>{sc?.clicks != null ? sc.clicks.toLocaleString() : "—"}</span>
+            </div>
+            {/* Impressions */}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span style={{ fontSize: 12, fontFamily: F, color: C.t }}>{sc?.impressions != null ? (sc.impressions >= 1000 ? (sc.impressions / 1000).toFixed(1) + "k" : sc.impressions) : "—"}</span>
+            </div>
+            {/* CTR */}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span style={{ fontSize: 12, fontFamily: F, color: C.t }}>{sc?.ctr != null ? (sc.ctr * 100).toFixed(1) + "%" : "—"}</span>
+            </div>
+            {/* Status */}
+            <div style={{ display: "flex", alignItems: "center" }}>
+              {st ? (
+                <span style={{ background: st.bg, color: st.color, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 700, fontFamily: F, whiteSpace: "nowrap" }}>{st.label}</span>
+              ) : <span style={{ fontSize: 11, color: C.tl, fontFamily: F }}>—</span>}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Add row */}
+      {!disabled && (
+        <div style={{ display: "flex", gap: 6, marginTop: rows.length > 0 ? 10 : 0 }}>
+          <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === "Enter" && addRow()} placeholder='e.g. "ford dealer twin falls"'
+            style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          <input type="number" value={newTarget} onChange={e => setNewTarget(e.target.value)} onKeyDown={e => e.key === "Enter" && addRow()} placeholder="Target #" min="1" max="100"
+            style={{ width: 90, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          <button onClick={addRow} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Add</button>
+        </div>
+      )}
+      {scQueries.length === 0 && rows.length > 0 && (
+        <div style={{ fontSize: 11, color: C.tl, fontFamily: F, marginTop: 8 }}>
+          ⓘ Pull Search Console data to see live positions, clicks & CTR per keyword.
+        </div>
+      )}
+      {scQueries.length > 0 && (
+        <div style={{ fontSize: 11, color: "#166534", fontFamily: F, marginTop: 8 }}>
+          ✓ Showing live data from Search Console · {scQueries.length} queries tracked
         </div>
       )}
     </div>
@@ -811,8 +940,9 @@ const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
 };
 
 /* ─── FIELD INPUT ─── */
-const FieldInput = ({ field, value, onChange, disabled }) => {
+const FieldInput = ({ field, value, onChange, disabled, scData }) => {
   if (field.type === "links") return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
+  if (field.type === "keywords") return <TrackedKeywordsField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} scData={scData} />;
   const base = { width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box", background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t, cursor: disabled ? "not-allowed" : "text" };
   if (field.type === "textarea") return (
     <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`} style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
@@ -934,7 +1064,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
             {apiFields.map(field => (
               <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: C.cyanD, fontFamily: F }}>{field.label}</label>
-                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable} />
+                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable} scData={data} />
               </div>
             ))}
           </div>
@@ -943,7 +1073,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {(apiFields.length > 0 ? manualFields : fields).map(field => {
           const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
-          const isFullWidth = field.type === "textarea" || field.type === "links";
+          const isFullWidth = field.type === "textarea" || field.type === "links" || field.type === "keywords";
           return (
             <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto" }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
@@ -952,7 +1082,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                 {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>↔ synced</span>}
                 {field.hint && !field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
               </label>
-              <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField} />
+              <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField} scData={data} />
             </div>
           );
         })}
@@ -1291,6 +1421,8 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const [deptCompletion, setDeptCompletion] = useState({});
   const [pullingAll, setPullingAll] = useState(false);
   const [pullAllResult, setPullAllResult] = useState("");
+  const [pullingLastMonth, setPullingLastMonth] = useState(false);
+  const [pullLastMonthResult, setPullLastMonthResult] = useState("");
   const [serviceStates, setServiceStates] = useState({});
 
   const month = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
@@ -1333,7 +1465,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   }, [client.id, month, refreshCompletion]);
 
   const handlePullAll = async () => {
-    setPullingAll(true); setPullAllResult("");
+    setPullingAll(true); setPullAllResult(""); setPullLastMonthResult("");
     const apiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id] && getServiceEnabled(d.id));
     const results = [];
     for (const dept of apiDepts) {
@@ -1346,6 +1478,32 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
       } catch (e) { results.push(`✗ ${dept.label}: ${e.message}`); }
     }
     setPullAllResult(results.join(" · ")); setPullingAll(false);
+  };
+
+  // Pull Last Month: same as Pull All but fires for the currently selected month only
+  const handlePullLastMonth = async () => {
+    // Calculate last calendar month
+    const now = new Date();
+    const lmDate = now.getMonth() === 0
+      ? { year: now.getFullYear() - 1, month: 12 }
+      : { year: now.getFullYear(), month: now.getMonth() };
+    setPullingLastMonth(true); setPullLastMonthResult(""); setPullAllResult("");
+    const apiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id] && getServiceEnabled(d.id));
+    const results = [];
+    for (const dept of apiDepts) {
+      const api = LIVE_APIS[dept.id];
+      try {
+        const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${lmDate.year}&month=${lmDate.month}&save=true`);
+        const json = await res.json();
+        if (json.success && json.saved) { results.push(`✓ ${dept.label}`); }
+        else results.push(`⚠ ${dept.label}: ${json.error || "failed"}`);
+      } catch (e) { results.push(`✗ ${dept.label}: ${e.message}`); }
+    }
+    // Also refresh completion for the currently displayed month
+    for (const dept of apiDepts) { await refreshCompletion(dept.id); }
+    const lmLabel = `${MONTHS[lmDate.month - 1]} ${lmDate.year}`;
+    setPullLastMonthResult(`${lmLabel}: ${results.join(" · ")}`);
+    setPullingLastMonth(false);
   };
 
   const handlePublish = async () => {
@@ -1397,8 +1555,11 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
           <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}>
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={handlePullAll} disabled={pullingAll} style={{ background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: pullingAll ? "not-allowed" : "pointer", fontFamily: F, opacity: pullingAll ? 0.7 : 1 }}>
+          <button onClick={handlePullAll} disabled={pullingAll || pullingLastMonth} style={{ background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: (pullingAll || pullingLastMonth) ? "not-allowed" : "pointer", fontFamily: F, opacity: (pullingAll || pullingLastMonth) ? 0.7 : 1 }}>
             {pullingAll ? "⬇ Pulling..." : `⬇ Pull All APIs (${enabledApiDepts.length})`}
+          </button>
+          <button onClick={handlePullLastMonth} disabled={pullingAll || pullingLastMonth} title="Pull last calendar month's data for all APIs" style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: (pullingAll || pullingLastMonth) ? "not-allowed" : "pointer", fontFamily: F, opacity: (pullingAll || pullingLastMonth) ? 0.7 : 1, whiteSpace: "nowrap" }}>
+            {pullingLastMonth ? "⬇ Pulling..." : "⬇ Last Month"}
           </button>
           {userRole !== "viewer" && reportStatus !== "published" && (
             <button onClick={handleMarkReview} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F }}>Mark Ready for Review</button>
@@ -1411,6 +1572,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
         </div>
       </div>
       {pullAllResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>{pullAllResult}</div>}
+      {pullLastMonthResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>📅 {pullLastMonthResult}</div>}
       {publishError && <div style={{ background: C.rL, border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.r, fontFamily: F }}>⚠️ {publishError}</div>}
       {reportStatus === "published" && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166534", fontFamily: F }}>✓ This report is live. Clients can see it now.</div>}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
