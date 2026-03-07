@@ -24,19 +24,16 @@ async function metaFetch(path, token) {
   return response.json();
 }
 
-// ─── Get Page Access Token ────────────────────────────────────────────────────
 async function getPageAccessToken(pageId) {
   const data = await metaFetch(`/${pageId}?fields=access_token`);
   if (!data.access_token) throw new Error("Could not get page access token");
   return data.access_token;
 }
 
-// ─── Facebook Page Insights ───────────────────────────────────────────────────
 async function getFacebookData(pageId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
   const pageToken = await getPageAccessToken(pageId);
 
-  // Fetch metrics in two groups (some don't combine well)
   const metricsGroup1 = ["page_impressions_unique", "page_post_engagements", "page_views_total"].join(",");
   const metricsGroup2 = "page_daily_follows_unique";
 
@@ -65,12 +62,10 @@ async function getFacebookData(pageId, year, month) {
   };
 }
 
-// ─── Instagram Insights ───────────────────────────────────────────────────────
 async function getInstagramData(pageId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
   const pageToken = await getPageAccessToken(pageId);
 
-  // Get Instagram account ID via the linked Facebook Page
   const pageData = await metaFetch(
     `/${pageId}?fields=instagram_business_account`,
     pageToken
@@ -104,12 +99,10 @@ async function getInstagramData(pageId, year, month) {
   };
 }
 
-// ─── YouTube Public Data API ──────────────────────────────────────────────────
 async function getYouTubeData(channelId, year, month) {
   const apiKey = process.env.YOUTUBE_API_KEY;
   const { startDate, endDate } = getMonthRange(year, month);
 
-  // Channel stats (public)
   const channelRes = await fetch(
     `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelId}&key=${apiKey}`
   );
@@ -124,7 +117,6 @@ async function getYouTubeData(channelId, year, month) {
   const stats = item.statistics || {};
   const channelName = item.snippet?.title || "";
 
-  // Videos published this month
   const searchRes = await fetch(
     `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${channelId}&type=video&publishedAfter=${startDate}T00:00:00Z&publishedBefore=${endDate}T23:59:59Z&maxResults=50&key=${apiKey}`
   );
@@ -199,7 +191,6 @@ export async function GET(request) {
         errors.facebook = e.message;
       }
 
-      // Instagram via Facebook Page link
       try {
         results.instagram = await getInstagramData(config.facebook_page_id, year, month);
       } catch (e) {
@@ -217,41 +208,41 @@ export async function GET(request) {
       }
     }
 
-    const fb  = results.facebook  || {};
-    const ig  = results.instagram || {};
-    const yt  = results.youtube   || {};
+    const fb = results.facebook  || {};
+    const ig = results.instagram || {};
+    const yt = results.youtube   || {};
 
     const socialData = {
       // ── Facebook ──
-      fb_followers:       fb.followers || 0,
-      fb_reach:           fb.reach || 0,
-      fb_engagement:      fb.post_engagements || 0,
-      fb_new_followers:   fb.new_followers || 0,
-      fb_page_views:      fb.page_views || 0,
+      fb_followers:      fb.followers || 0,
+      fb_reach:          fb.reach || 0,
+      fb_engagement:     fb.post_engagements || 0,
+      fb_new_followers:  fb.new_followers || 0,
+      fb_page_views:     fb.page_views || 0,
       // ── Instagram ──
-      ig_followers:       ig.followers || 0,
-      ig_reach:           ig.reach || 0,
-      ig_impressions:     ig.impressions || 0,
-      ig_profile_views:   ig.profile_views || 0,
-      ig_new_followers:   ig.new_followers || 0,
+      ig_followers:      ig.followers || 0,
+      ig_reach:          ig.reach || 0,
+      ig_impressions:    ig.impressions || 0,
+      ig_profile_views:  ig.profile_views || 0,
+      ig_new_followers:  ig.new_followers || 0,
       // ── YouTube ──
-      yt_followers:       yt.subscribers || 0,
-      yt_total_views:     yt.total_views || 0,
-      yt_month_views:     yt.month_views || 0,
-      yt_month_videos:    yt.month_videos_published || 0,
-      yt_month_likes:     yt.month_likes || 0,
-      yt_month_comments:  yt.month_comments || 0,
-      // ── TikTok — always 0 from API, preserved from manual entry at merge ──
-      tiktok_followers:   0,
-      tiktok_reach:       0,
-      tiktok_views:       0,
-      tiktok_likes:       0,
-      // ── Other manual ──
-      videos_published:   yt.month_videos_published || 0,
-      top_video_views:    yt.month_views || 0,
-      posts_published:    0,
-      top_video:          "",
-      // ── Raw nested data preserved for reference ──
+      yt_followers:      yt.subscribers || 0,
+      yt_total_views:    yt.total_views || 0,
+      yt_month_views:    yt.month_views || 0,
+      yt_month_videos:   yt.month_videos_published || 0,
+      yt_month_likes:    yt.month_likes || 0,
+      yt_month_comments: yt.month_comments || 0,
+      // ── TikTok — API always 0, manual entry preserved at merge ──
+      tiktok_followers:  0,
+      tiktok_reach:      0,
+      tiktok_views:      0,
+      tiktok_likes:      0,
+      // ── Other manual fields ──
+      videos_published:  yt.month_videos_published || 0,
+      top_video_views:   yt.month_views || 0,
+      posts_published:   0,
+      top_video:         "",
+      // ── Raw nested data ──
       _facebook:  Object.keys(fb).length ? fb : undefined,
       _instagram: Object.keys(ig).length ? ig : undefined,
       _youtube:   Object.keys(yt).length ? yt : undefined,
@@ -260,6 +251,7 @@ export async function GET(request) {
       _pulled_at: new Date().toISOString(),
     };
 
+    // ─── Auto-save if ?save=true ───
     const autoSave = searchParams.get("save") === "true";
     if (autoSave) {
       const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -272,19 +264,22 @@ export async function GET(request) {
         .eq("department", "social")
         .single();
 
-      const existing2 = existing?.data || {};
-      const merged = {
-        ...existing2,
-        ...socialData,
-        // Preserve manually entered TikTok fields — never overwrite with 0
-        tiktok_followers: existing2.tiktok_followers || 0,
-        tiktok_reach:     existing2.tiktok_reach     || 0,
-        tiktok_views:     existing2.tiktok_views     || 0,
-        tiktok_likes:     existing2.tiktok_likes     || 0,
-        // Preserve manually entered text fields
-        top_video:        existing2.top_video        || "",
-        posts_published:  existing2.posts_published  ?? 0,
-      };
+      const existingData = existing?.data || {};
+      const manualOverrides = new Set(existingData._manual_overrides || []);
+
+      // Always treat TikTok and manual text fields as protected —
+      // API intentionally outputs 0/empty for these, never overwrite real data
+      const alwaysPreserve = new Set([
+        "tiktok_followers", "tiktok_reach", "tiktok_views", "tiktok_likes",
+        "top_video", "posts_published",
+      ]);
+
+      const merged = { ...existingData };
+      for (const [key, val] of Object.entries(socialData)) {
+        if (!manualOverrides.has(key) && !alwaysPreserve.has(key)) {
+          merged[key] = val;
+        }
+      }
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
         {
@@ -322,6 +317,7 @@ export async function GET(request) {
       period: getMonthRange(year, month),
       data: socialData,
     });
+
   } catch (err) {
     console.error("Social API error:", err);
     return Response.json(
