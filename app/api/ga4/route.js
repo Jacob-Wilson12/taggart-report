@@ -113,7 +113,25 @@ export async function GET(request) {
       (sum, row) => sum + Math.round(Number(row.metricValues[0]?.value || 0)), 0
     );
 
-    // ─── Query 4: Form/lead events ───
+    // ─── Query 4: Conversion events (per-client config) ───
+    // Reads conversion_events array from client_integrations config.
+    // Falls back to generic automotive events if not configured.
+    // To update a client's events: set config.conversion_events in Supabase client_integrations.
+    const configuredEvents = integration.config.conversion_events;
+    const conversionEvents = Array.isArray(configuredEvents) && configuredEvents.length > 0
+      ? configuredEvents
+      : [
+          // ASC standard events (Dealer Inspire, Dealer Alchemist, etc.)
+          "asc_form_submission",
+          "asc_call",
+          "asc_chat",
+          // Google / generic fallbacks
+          "generate_lead",
+          "form_submit",
+          "contact_form",
+          "form_submission",
+        ];
+
     const [formReport] = await analyticsClient.runReport({
       property: `properties/${propertyId}`,
       dateRanges: [{ startDate, endDate }],
@@ -121,19 +139,23 @@ export async function GET(request) {
       metrics: [{ name: "eventCount" }],
       dimensionFilter: {
         orGroup: {
-          expressions: [
-            { filter: { fieldName: "eventName", stringFilter: { matchType: "CONTAINS", value: "form" } } },
-            { filter: { fieldName: "eventName", stringFilter: { matchType: "CONTAINS", value: "lead" } } },
-            { filter: { fieldName: "eventName", stringFilter: { matchType: "CONTAINS", value: "contact" } } },
-            { filter: { fieldName: "eventName", stringFilter: { matchType: "CONTAINS", value: "submit" } } },
-          ],
+          expressions: conversionEvents.map(eventName => ({
+            filter: {
+              fieldName: "eventName",
+              stringFilter: { matchType: "EXACT", value: eventName },
+            },
+          })),
         },
       },
     });
 
-    const formSubmissions = (formReport.rows || []).reduce(
-      (sum, row) => sum + Math.round(Number(row.metricValues[0]?.value || 0)), 0
-    );
+    // Build per-event breakdown so you can see exactly which events are firing
+    const conversionBreakdown = (formReport.rows || []).map(row => ({
+      event: row.dimensionValues[0]?.value,
+      count: Math.round(Number(row.metricValues[0]?.value || 0)),
+    })).sort((a, b) => b.count - a.count);
+
+    const formSubmissions = conversionBreakdown.reduce((sum, r) => sum + r.count, 0);
 
     // ─── Query 5: Top pages ───
     const [pagesReport] = await analyticsClient.runReport({
@@ -162,6 +184,8 @@ export async function GET(request) {
       avg_session_duration: avgSessionDuration,
       vdp_views: vdpViews,
       form_submissions: formSubmissions,
+      conversion_breakdown: conversionBreakdown,   // per-event counts
+      conversion_events_used: conversionEvents,    // which events were queried
       top_pages: topPages,
       channel_breakdown: channelBreakdown,
       _source: "ga4",
