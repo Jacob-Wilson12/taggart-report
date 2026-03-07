@@ -221,28 +221,31 @@ export async function GET(request) {
     const ig  = results.instagram || {};
     const yt  = results.youtube   || {};
 
-    // Flat keys that match DEPT_FIELDS social form fields in the admin panel
+    // Aggregates only include platforms the API can reach (FB + IG + YT)
+    // TikTok is manual-only — it gets preserved from existing data and added to totals on save
     const socialData = {
-      // ── Aggregate totals ──
+      // ── Aggregate totals (FB + IG + YT only — TikTok added at merge time) ──
       total_reach:      (fb.reach || 0) + (ig.reach || 0),
       total_engagement: (fb.post_engagements || 0) + (ig.engagement || 0),
       new_followers:    (fb.new_followers || 0) + (ig.new_followers || 0),
       videos_published: yt.month_videos_published || 0,
       top_video_views:  yt.month_views || 0,
 
-      // ── Per-platform flat keys (auto-populated) ──
+      // ── Facebook ──
       fb_followers:       fb.followers || 0,
       fb_reach:           fb.reach || 0,
       fb_engagement:      fb.post_engagements || 0,
       fb_new_followers:   fb.new_followers || 0,
       fb_page_views:      fb.page_views || 0,
 
+      // ── Instagram ──
       ig_followers:       ig.followers || 0,
       ig_reach:           ig.reach || 0,
       ig_impressions:     ig.impressions || 0,
       ig_profile_views:   ig.profile_views || 0,
       ig_new_followers:   ig.new_followers || 0,
 
+      // ── YouTube ──
       yt_followers:       yt.subscribers || 0,
       yt_total_views:     yt.total_views || 0,
       yt_month_views:     yt.month_views || 0,
@@ -250,10 +253,14 @@ export async function GET(request) {
       yt_month_likes:     yt.month_likes || 0,
       yt_month_comments:  yt.month_comments || 0,
 
-      // ── Manual fields (not auto-populated) ──
-      posts_published:    0,
-      website_clicks:     fb.page_views || 0,
+      // ── TikTok — always 0 from API, preserved from manual entry at merge time ──
       tiktok_followers:   0,
+      tiktok_reach:       0,
+      tiktok_views:       0,
+      tiktok_likes:       0,
+
+      // ── Other manual ──
+      posts_published:    0,
       top_video:          "",
 
       // ── Raw nested data preserved for reference ──
@@ -278,17 +285,33 @@ export async function GET(request) {
         .single();
 
       const existing2 = existing?.data || {};
+
+      // Preserve manual TikTok fields — never overwrite with 0
+      const tiktok_followers = existing2.tiktok_followers || 0;
+      const tiktok_reach     = existing2.tiktok_reach     || 0;
+      const tiktok_views     = existing2.tiktok_views     || 0;
+      const tiktok_likes     = existing2.tiktok_likes     || 0;
+
+      // Recalculate aggregates now that we know TikTok values
+      const total_reach      = socialData.total_reach      + tiktok_reach;
+      const total_engagement = socialData.total_engagement + tiktok_likes;
+      const new_followers    = socialData.new_followers    + tiktok_followers;
+
       const merged = {
         ...existing2,
         ...socialData,
-        // Preserve manually entered TikTok fields — never overwrite with 0
-        tiktok_followers: socialData.tiktok_followers || existing2.tiktok_followers || 0,
-        tiktok_reach:     socialData.tiktok_reach     || existing2.tiktok_reach     || 0,
-        tiktok_views:     socialData.tiktok_views     || existing2.tiktok_views     || 0,
-        tiktok_likes:     socialData.tiktok_likes     || existing2.tiktok_likes     || 0,
-        // Preserve manually entered text fields too
-        top_video:        existing2.top_video     || socialData.top_video     || "",
-        posts_published:  existing2.posts_published ?? socialData.posts_published ?? 0,
+        // Recalculated totals (API platforms + TikTok)
+        total_reach,
+        total_engagement,
+        new_followers,
+        // Preserved manual TikTok fields
+        tiktok_followers,
+        tiktok_reach,
+        tiktok_views,
+        tiktok_likes,
+        // Preserve other manual text fields
+        top_video:       existing2.top_video       || "",
+        posts_published: existing2.posts_published ?? 0,
       };
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
