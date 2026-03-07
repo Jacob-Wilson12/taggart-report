@@ -97,7 +97,16 @@ export async function GET(request) {
         leads: rowLeads,
       };
     });
+    
+// ─── Query 3: Top ad by spend ───
+    const adData = await metaFetch(
+      `/act_${adAccountId}/insights?fields=ad_name,impressions,clicks,spend,actions&time_range={"since":"${startDate}","until":"${endDate}"}&level=ad&sort=["spend_descending"]&limit=1`,
+      accessToken
+    );
 
+    const topAdRow = adData.data?.[0] || null;
+    const topAd = topAdRow ? topAdRow.ad_name : null;
+    
     const metaData = {
       // Core metrics
       impressions,
@@ -111,6 +120,7 @@ export async function GET(request) {
 
       // Breakdowns
       top_campaigns: topCampaigns,
+      top_ad: topAd,
 
       // Meta
       _source: "meta_ads",
@@ -131,7 +141,11 @@ export async function GET(request) {
         .eq("department", "meta_ads")
         .single();
 
-      const mergedMeta = { ...(existingMeta?.data || {}), ...metaData };
+      const manualOverrides = new Set(existingMeta?.data?._manual_overrides || []);
+      const mergedMeta = { ...(existingMeta?.data || {}) };
+      for (const [key, val] of Object.entries(metaData)) {
+        if (!manualOverrides.has(key)) mergedMeta[key] = val;
+      }
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
         {
