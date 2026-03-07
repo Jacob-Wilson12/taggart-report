@@ -29,6 +29,7 @@ async function metaFetch(path) {
 async function getFacebookData(pageId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
 
+  // Use period=day with since/until and sum the values
   const metricsToFetch = [
     "page_impressions",
     "page_impressions_unique",
@@ -38,13 +39,17 @@ async function getFacebookData(pageId, year, month) {
   ].join(",");
 
   const insightsData = await metaFetch(
-    `/${pageId}/insights?metric=${metricsToFetch}&period=month&since=${startDate}&until=${endDate}`
+    `/${pageId}/insights?metric=${metricsToFetch}&period=day&since=${startDate}&until=${endDate}`
   );
 
+  // Sum up daily values for the month
   const metrics = {};
   for (const item of insightsData.data || []) {
-    const val = item.values?.[0]?.value || 0;
-    metrics[item.name] = typeof val === "object" ? Object.values(val).reduce((a, b) => a + b, 0) : val;
+    const total = (item.values || []).reduce((sum, v) => {
+      const val = v.value || 0;
+      return sum + (typeof val === "object" ? Object.values(val).reduce((a, b) => a + b, 0) : val);
+    }, 0);
+    metrics[item.name] = total;
   }
 
   const pageData = await metaFetch(`/${pageId}?fields=fan_count,name`);
@@ -61,29 +66,32 @@ async function getFacebookData(pageId, year, month) {
 }
 
 // ─── Instagram Insights ───────────────────────────────────────────────────────
-async function getInstagramData(instagramAccountId, year, month) {
+async function getInstagramData(pageId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
 
-  const metricsToFetch = [
-    "impressions",
-    "reach",
-    "profile_views",
-    "follower_count",
-  ].join(",");
+  // Get Instagram account ID via the linked Facebook Page
+  const pageData = await metaFetch(
+    `/${pageId}?fields=instagram_business_account`
+  );
+  const igId = pageData.instagram_business_account?.id;
+  if (!igId) throw new Error("No Instagram business account linked to this Facebook Page");
 
+  // Account info
+  const accountData = await metaFetch(
+    `/${igId}?fields=followers_count,username`
+  );
+
+  // Instagram insights
+  const metricsToFetch = ["impressions", "reach", "profile_views"].join(",");
   const insightsData = await metaFetch(
-    `/${instagramAccountId}/insights?metric=${metricsToFetch}&period=month&since=${startDate}&until=${endDate}`
+    `/${igId}/insights?metric=${metricsToFetch}&period=day&since=${startDate}&until=${endDate}`
   );
 
   const metrics = {};
   for (const item of insightsData.data || []) {
-    const val = item.values?.[0]?.value || 0;
-    metrics[item.name] = val;
+    const total = (item.values || []).reduce((sum, v) => sum + (v.value || 0), 0);
+    metrics[item.name] = total;
   }
-
-  const accountData = await metaFetch(
-    `/${instagramAccountId}?fields=followers_count,username`
-  );
 
   return {
     username: accountData.username,
@@ -91,7 +99,6 @@ async function getInstagramData(instagramAccountId, year, month) {
     impressions: metrics["impressions"] || 0,
     reach: metrics["reach"] || 0,
     profile_views: metrics["profile_views"] || 0,
-    new_followers: metrics["follower_count"] || 0,
   };
 }
 
@@ -190,11 +197,15 @@ export async function GET(request) {
       }
     }
 
-    if (config.instagram_account_id) {
+    // Instagram is pulled via the Facebook Page link
+    if (config.facebook_page_id) {
       try {
-        results.instagram = await getInstagramData(config.instagram_account_id, year, month);
+        results.instagram = await getInstagramData(config.facebook_page_id, year, month);
       } catch (e) {
-        errors.instagram = e.message;
+        // Not all pages have Instagram linked - silently skip
+        if (!e.message.includes("No Instagram business account")) {
+          errors.instagram = e.message;
+        }
       }
     }
 
