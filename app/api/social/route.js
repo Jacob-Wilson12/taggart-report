@@ -36,28 +36,24 @@ async function getFacebookData(pageId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
   const pageToken = await getPageAccessToken(pageId);
 
-  const metricsToFetch = [
-    "page_impressions_unique",
-    "page_post_engagements",
-    "page_daily_follows_unique",
-    "page_views_total",
-  ].join(",");
+  // Fetch metrics in two groups (some don't combine well)
+  const metricsGroup1 = ["page_impressions_unique", "page_post_engagements", "page_views_total"].join(",");
+  const metricsGroup2 = "page_daily_follows_unique";
 
-  const insightsData = await metaFetch(
-    `/${pageId}/insights?metric=${metricsToFetch}&period=day&since=${startDate}&until=${endDate}`,
-    pageToken
-  );
+  const [insightsData1, insightsData2, pageData] = await Promise.all([
+    metaFetch(`/${pageId}/insights?metric=${metricsGroup1}&period=day&since=${startDate}&until=${endDate}`, pageToken),
+    metaFetch(`/${pageId}/insights?metric=${metricsGroup2}&period=day&since=${startDate}&until=${endDate}`, pageToken),
+    metaFetch(`/${pageId}?fields=fan_count,name`, pageToken),
+  ]);
 
   const metrics = {};
-  for (const item of insightsData.data || []) {
+  for (const item of [...(insightsData1.data || []), ...(insightsData2.data || [])]) {
     const total = (item.values || []).reduce((sum, v) => {
       const val = v.value || 0;
       return sum + (typeof val === "object" ? Object.values(val).reduce((a, b) => a + b, 0) : val);
     }, 0);
     metrics[item.name] = total;
   }
-
-  const pageData = await metaFetch(`/${pageId}?fields=fan_count,name`, pageToken);
 
   return {
     name: pageData.name,
