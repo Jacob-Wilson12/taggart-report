@@ -17,16 +17,31 @@ export async function GET() {
     const auth = getOAuthClient();
     const { token: accessToken } = await auth.getAccessToken();
 
-    // Check token info to see what scopes it has
-    const tokenInfoRes = await fetch(
-      `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`
-    );
-    const tokenInfo = await tokenInfoRes.json();
+    const customerId = "4785711849";
+    const mccId = process.env.GOOGLE_ADS_MCC_ID;
+    const devToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
-    return Response.json({
-      token_length: accessToken?.length,
-      token_info: tokenInfo,
-    });
+    // Try v19 with both search and searchStream
+    const query = `SELECT metrics.impressions, metrics.clicks, metrics.cost_micros FROM customer WHERE segments.date BETWEEN '2026-02-01' AND '2026-02-28'`;
+    const results = {};
+
+    for (const endpoint of ["googleAds:search", "googleAds:searchStream"]) {
+      const url = `https://googleads.googleapis.com/v19/customers/${customerId}/${endpoint}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "developer-token": devToken,
+          "login-customer-id": mccId,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query }),
+      });
+      const text = await res.text();
+      results[endpoint] = `${res.status}: ${text.substring(0, 400)}`;
+    }
+
+    return Response.json({ token_length: accessToken?.length, ...results });
   } catch (err) {
     return Response.json({ error: err.message });
   }
