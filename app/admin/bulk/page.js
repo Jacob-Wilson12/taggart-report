@@ -24,7 +24,6 @@ const BULK_DEPTS = [
       { key: "website_sold",     label: "Web Sold",       type: "number" },
       { key: "third_party_sold", label: "3P Sold",        type: "number" },
       { key: "facebook_sold",    label: "FB Sold",        type: "number" },
-      { key: "phone_sold",       label: "Phone Sold",     type: "number" },
     ]
   },
   {
