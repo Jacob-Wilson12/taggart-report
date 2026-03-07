@@ -108,13 +108,11 @@ export async function GET(request) {
     const campaignQuery = `
       SELECT
         campaign.name,
-        campaign.status,
         metrics.impressions,
         metrics.clicks,
         metrics.cost_micros
       FROM campaign
       WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
-        AND campaign.status = 'ENABLED'
       ORDER BY metrics.cost_micros DESC
       LIMIT 10
     `;
@@ -136,7 +134,6 @@ export async function GET(request) {
         metrics.clicks
       FROM search_term_view
       WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
-      ORDER BY metrics.clicks DESC
       LIMIT 10
     `;
 
