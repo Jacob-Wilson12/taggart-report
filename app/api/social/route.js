@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { google } from "googleapis";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -13,8 +12,8 @@ function getMonthRange(year, month) {
   return { startDate: fmt(start), endDate: fmt(end) };
 }
 
-async function metaFetch(path) {
-  const accessToken = process.env.META_ADS_ACCESS_TOKEN;
+async function metaFetch(path, token) {
+  const accessToken = token || process.env.META_ADS_ACCESS_TOKEN;
   const response = await fetch(
     `https://graph.facebook.com/v19.0${path}&access_token=${accessToken}`
   );
@@ -25,11 +24,18 @@ async function metaFetch(path) {
   return response.json();
 }
 
+// ─── Get Page Access Token ────────────────────────────────────────────────────
+async function getPageAccessToken(pageId) {
+  const data = await metaFetch(`/${pageId}?fields=access_token`);
+  if (!data.access_token) throw new Error("Could not get page access token");
+  return data.access_token;
+}
+
 // ─── Facebook Page Insights ───────────────────────────────────────────────────
 async function getFacebookData(pageId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
+  const pageToken = await getPageAccessToken(pageId);
 
-  // Use period=day with since/until and sum the values
   const metricsToFetch = [
     "page_impressions",
     "page_impressions_unique",
@@ -39,10 +45,10 @@ async function getFacebookData(pageId, year, month) {
   ].join(",");
 
   const insightsData = await metaFetch(
-    `/${pageId}/insights?metric=${metricsToFetch}&period=day&since=${startDate}&until=${endDate}`
+    `/${pageId}/insights?metric=${metricsToFetch}&period=day&since=${startDate}&until=${endDate}`,
+    pageToken
   );
 
-  // Sum up daily values for the month
   const metrics = {};
   for (const item of insightsData.data || []) {
     const total = (item.values || []).reduce((sum, v) => {
@@ -52,7 +58,7 @@ async function getFacebookData(pageId, year, month) {
     metrics[item.name] = total;
   }
 
-  const pageData = await metaFetch(`/${pageId}?fields=fan_count,name`);
+  const pageData = await metaFetch(`/${pageId}?fields=fan_count,name`, pageToken);
 
   return {
     name: pageData.name,
@@ -68,23 +74,25 @@ async function getFacebookData(pageId, year, month) {
 // ─── Instagram Insights ───────────────────────────────────────────────────────
 async function getInstagramData(pageId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
+  const pageToken = await getPageAccessToken(pageId);
 
   // Get Instagram account ID via the linked Facebook Page
   const pageData = await metaFetch(
-    `/${pageId}?fields=instagram_business_account`
+    `/${pageId}?fields=instagram_business_account`,
+    pageToken
   );
   const igId = pageData.instagram_business_account?.id;
   if (!igId) throw new Error("No Instagram business account linked to this Facebook Page");
 
-  // Account info
   const accountData = await metaFetch(
-    `/${igId}?fields=followers_count,username`
+    `/${igId}?fields=followers_count,username`,
+    pageToken
   );
 
-  // Instagram insights
   const metricsToFetch = ["impressions", "reach", "profile_views"].join(",");
   const insightsData = await metaFetch(
-    `/${igId}/insights?metric=${metricsToFetch}&period=day&since=${startDate}&until=${endDate}`
+    `/${igId}/insights?metric=${metricsToFetch}&period=day&since=${startDate}&until=${endDate}`,
+    pageToken
   );
 
   const metrics = {};
@@ -102,57 +110,58 @@ async function getInstagramData(pageId, year, month) {
   };
 }
 
-// ─── YouTube Analytics (OAuth via taggartadvertising@gmail.com) ───────────────
+// ─── YouTube Public Data API ──────────────────────────────────────────────────
 async function getYouTubeData(channelId, year, month) {
+  const apiKey = process.env.YOUTUBE_API_KEY;
   const { startDate, endDate } = getMonthRange(year, month);
 
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_OAUTH_CLIENT_ID,
-    process.env.GOOGLE_OAUTH_CLIENT_SECRET
+  // Channel stats (public)
+  const channelRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelId}&key=${apiKey}`
   );
-  oauth2Client.setCredentials({
-    refresh_token: process.env.GOOGLE_GBP_REFRESH_TOKEN,
-  });
-
-  const youtube = google.youtube({ version: "v3", auth: oauth2Client });
-  const youtubeAnalytics = google.youtubeAnalytics({ version: "v2", auth: oauth2Client });
-
-  // Channel stats
-  const channelResponse = await youtube.channels.list({
-    part: ["statistics", "snippet"],
-    id: [channelId],
-  });
-
-  const item = channelResponse.data.items?.[0];
+  if (!channelRes.ok) {
+    const err = await channelRes.json();
+    throw new Error(err.error?.message || `HTTP ${channelRes.status}`);
+  }
+  const channelData = await channelRes.json();
+  const item = channelData.items?.[0];
   if (!item) throw new Error("Channel not found");
 
   const stats = item.statistics || {};
   const channelName = item.snippet?.title || "";
 
-  // Analytics for the month
-  const analyticsResponse = await youtubeAnalytics.reports.query({
-    ids: `channel==${channelId}`,
-    startDate,
-    endDate,
-    metrics: "views,estimatedMinutesWatched,averageViewDuration,likes,comments,shares,subscribersGained,subscribersLost",
-  });
+  // Videos published this month
+  const searchRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${channelId}&type=video&publishedAfter=${startDate}T00:00:00Z&publishedBefore=${endDate}T23:59:59Z&maxResults=50&key=${apiKey}`
+  );
+  const searchData = await searchRes.json();
+  const videoIds = (searchData.items || []).map((v) => v.id.videoId).filter(Boolean);
 
-  const rows = analyticsResponse.data.rows?.[0] || [];
-  const [views, watchMinutes, avgViewDuration, likes, comments, shares, subsGained, subsLost] = rows;
+  let monthViews = 0;
+  let monthLikes = 0;
+  let monthComments = 0;
+
+  if (videoIds.length > 0) {
+    const videosRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(",")}&key=${apiKey}`
+    );
+    const videosData = await videosRes.json();
+    for (const video of videosData.items || []) {
+      monthViews    += parseInt(video.statistics?.viewCount || 0);
+      monthLikes    += parseInt(video.statistics?.likeCount || 0);
+      monthComments += parseInt(video.statistics?.commentCount || 0);
+    }
+  }
 
   return {
     channel_name: channelName,
     subscribers: parseInt(stats.subscriberCount || 0),
     total_views: parseInt(stats.viewCount || 0),
     total_videos: parseInt(stats.videoCount || 0),
-    views: views || 0,
-    watch_minutes: Math.round(watchMinutes || 0),
-    avg_view_duration: Math.round(avgViewDuration || 0),
-    likes: likes || 0,
-    comments: comments || 0,
-    shares: shares || 0,
-    subscribers_gained: subsGained || 0,
-    subscribers_lost: subsLost || 0,
+    month_videos_published: videoIds.length,
+    month_views: monthViews,
+    month_likes: monthLikes,
+    month_comments: monthComments,
   };
 }
 
@@ -195,14 +204,11 @@ export async function GET(request) {
       } catch (e) {
         errors.facebook = e.message;
       }
-    }
 
-    // Instagram is pulled via the Facebook Page link
-    if (config.facebook_page_id) {
+      // Instagram via Facebook Page link
       try {
         results.instagram = await getInstagramData(config.facebook_page_id, year, month);
       } catch (e) {
-        // Not all pages have Instagram linked - silently skip
         if (!e.message.includes("No Instagram business account")) {
           errors.instagram = e.message;
         }
