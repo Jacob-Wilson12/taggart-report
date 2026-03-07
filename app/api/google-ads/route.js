@@ -42,9 +42,9 @@ async function runGadsQuery(accessToken, customerId, mccId, query) {
   const text = await response.text();
   if (!response.ok) {
     let msg = `HTTP ${response.status}`;
-    try { 
+    try {
       const parsed = JSON.parse(text);
-      msg = parsed?.error?.message || parsed?.[0]?.error?.message || msg; 
+      msg = parsed?.error?.message || parsed?.[0]?.error?.message || msg;
     } catch {}
     throw new Error(msg);
   }
@@ -98,8 +98,8 @@ export async function GET(request) {
     try {
       summaryData = await runGadsQuery(accessToken, customerId, mccId, summaryQuery);
     } catch (e) {
-      return Response.json({ 
-        error: `Summary query failed: ${e.message}`, 
+      return Response.json({
+        error: `Summary query failed: ${e.message}`,
         query_used: summaryQuery.trim(),
         start_date: startDate,
         end_date: endDate,
@@ -111,14 +111,13 @@ export async function GET(request) {
         dev_token_present: !!process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
       });
     }
+
     const summaryRow = summaryData.results?.[0];
-
-    const impressions      = Number(summaryRow?.metrics?.impressions || 0);
-    const clicks           = Number(summaryRow?.metrics?.clicks || 0);
-    const costMicros       = Number(summaryRow?.metrics?.costMicros || 0);
-    const avgCpc           = Math.round(costMicros / (clicks || 1) / 10000) / 100;
-    const spend            = Math.round(costMicros / 1000000 * 100) / 100;
-
+    const impressions = Number(summaryRow?.metrics?.impressions || 0);
+    const clicks      = Number(summaryRow?.metrics?.clicks || 0);
+    const costMicros  = Number(summaryRow?.metrics?.costMicros || 0);
+    const avgCpc      = Math.round(costMicros / (clicks || 1) / 10000) / 100;
+    const spend       = Math.round(costMicros / 1000000 * 100) / 100;
 
     // ─── Query 2: Top campaigns ───
     const campaignQuery = `
@@ -166,7 +165,6 @@ export async function GET(request) {
         clicks: Number(row.metrics?.clicks || 0),
       }));
     } catch (e) {
-      // search terms may not be available on all accounts
       topSearchTerms = [];
     }
 
@@ -201,7 +199,11 @@ export async function GET(request) {
         .eq("department", "google_ads")
         .single();
 
-      const mergedAds = { ...(existingAds?.data || {}), ...adsData };
+      const manualOverrides = new Set(existingAds?.data?._manual_overrides || []);
+      const mergedAds = { ...(existingAds?.data || {}) };
+      for (const [key, val] of Object.entries(adsData)) {
+        if (!manualOverrides.has(key)) mergedAds[key] = val;
+      }
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
         {
