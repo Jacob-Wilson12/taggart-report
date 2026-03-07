@@ -98,7 +98,14 @@ export async function GET(request) {
     try {
       summaryData = await runGadsQuery(accessToken, customerId, mccId, summaryQuery);
     } catch (e) {
-      return Response.json({ error: `Summary query failed: ${e.message}`, customer_id: customerId, mcc_id: mccId });
+      return Response.json({ 
+        error: `Summary query failed: ${e.message}`, 
+        customer_id: customerId, 
+        customer_id_type: typeof customerId,
+        customer_id_length: String(customerId).length,
+        mcc_id: mccId,
+        url_used: `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:search`
+      });
     }
     const summaryRow = summaryData.results?.[0];
 
