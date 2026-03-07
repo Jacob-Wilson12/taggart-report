@@ -202,7 +202,6 @@ function Dashboard({ data, services, clientName, monthLabel }) {
               <KpiCard label="Website Sold" value={fmt(leads.website_sold)} />
               <KpiCard label="Third Party Sold" value={fmt(leads.third_party_sold)} />
               <KpiCard label="Facebook Sold" value={fmt(leads.facebook_sold)} />
-              <KpiCard label="Phone Sold" value={fmt(leads.phone_sold)} />
             </div>
           )}
         </>
