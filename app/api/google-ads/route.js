@@ -26,7 +26,7 @@ function getMonthRange(year, month) {
 }
 
 async function runGadsQuery(accessToken, customerId, mccId, query) {
-  const url = `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:search`;
+  const url = `https://googleads.googleapis.com/v19/customers/${customerId}/googleAds:searchStream`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -39,12 +39,24 @@ async function runGadsQuery(accessToken, customerId, mccId, query) {
     body: JSON.stringify({ query }),
   });
 
+  const text = await response.text();
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || `HTTP ${response.status}`);
+    let msg = `HTTP ${response.status}`;
+    try { msg = JSON.parse(text)?.error?.message || msg; } catch {}
+    throw new Error(msg);
   }
-
-  return response.json();
+  try {
+    // searchStream returns newline-delimited JSON objects, merge them
+    const lines = text.trim().split("\n").filter(Boolean);
+    const merged = { results: [] };
+    for (const line of lines) {
+      const obj = JSON.parse(line);
+      if (obj.results) merged.results.push(...obj.results);
+    }
+    return merged;
+  } catch {
+    return JSON.parse(text);
+  }
 }
 
 export async function GET(request) {
