@@ -117,14 +117,18 @@ export async function GET(request) {
       LIMIT 10
     `;
 
-    const campaignData = await runGadsQuery(accessToken, customerId, mccId, campaignQuery);
-    const topCampaigns = (campaignData.results || []).map(row => ({
-      name: row.campaign?.name,
-      impressions: Number(row.metrics?.impressions || 0),
-      clicks: Number(row.metrics?.clicks || 0),
-      spend: Math.round(Number(row.metrics?.costMicros || 0) / 1000000 * 100) / 100,
-
-    }));
+    let topCampaigns = [];
+    try {
+      const campaignData = await runGadsQuery(accessToken, customerId, mccId, campaignQuery);
+      topCampaigns = (campaignData.results || []).map(row => ({
+        name: row.campaign?.name,
+        impressions: Number(row.metrics?.impressions || 0),
+        clicks: Number(row.metrics?.clicks || 0),
+        spend: Math.round(Number(row.metrics?.costMicros || 0) / 1000000 * 100) / 100,
+      }));
+    } catch (e) {
+      topCampaigns = [];
+    }
 
     // ─── Query 3: Search terms performance ───
     const searchTermQuery = `
