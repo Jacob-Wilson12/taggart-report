@@ -152,43 +152,54 @@ export async function GET(request) {
     }
 
     const gbpData = {
-      website_clicks: aggregate.website_clicks,
-      call_clicks: aggregate.call_clicks,
+      website_clicks:     aggregate.website_clicks,
+      call_clicks:        aggregate.call_clicks,
       direction_requests: aggregate.direction_requests,
-      total_impressions: aggregate.total_impressions,
-      locations: locationResults,
-      _source: "gbp",
-      _pulled_at: new Date().toISOString(),
+      total_impressions:  aggregate.total_impressions,
+      locations:          locationResults,
+      _source:            "gbp",
+      _pulled_at:         new Date().toISOString(),
       _date_range: {
         startDate: `${startDate.year}-${String(startDate.month).padStart(2,"0")}-${String(startDate.day).padStart(2,"0")}`,
-        endDate: `${endDate.year}-${String(endDate.month).padStart(2,"0")}-${String(endDate.day).padStart(2,"0")}`,
+        endDate:   `${endDate.year}-${String(endDate.month).padStart(2,"0")}-${String(endDate.day).padStart(2,"0")}`,
       },
     };
 
+    // ─── Auto-save if ?save=true ───
     const autoSave = searchParams.get("save") === "true";
     if (autoSave) {
       const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
 
+      // ─── Merge direction_requests into SEO row (respects manual overrides) ───
       const { data: existingSeo } = await supabase
         .from("report_data").select("data")
         .eq("client_id", clientId).eq("month", monthStr).eq("department", "seo").single();
 
-      const mergedSeo = {
-        ...(existingSeo?.data || {}),
+      const seoOverrides = new Set(existingSeo?.data?._manual_overrides || []);
+      const mergedSeo = { ...(existingSeo?.data || {}) };
+      const seoFields = {
         direction_requests: gbpData.direction_requests,
         _gbp_pulled_at: gbpData._pulled_at,
       };
+      for (const [key, val] of Object.entries(seoFields)) {
+        if (!seoOverrides.has(key)) mergedSeo[key] = val;
+      }
 
       await supabase.from("report_data").upsert(
         { client_id: parseInt(clientId), month: monthStr, department: "seo", data: mergedSeo, last_updated_at: new Date().toISOString() },
         { onConflict: "client_id,month,department" }
       );
 
+      // ─── Save full GBP row (respects manual overrides) ───
       const { data: existingGbp } = await supabase
         .from("report_data").select("data")
         .eq("client_id", clientId).eq("month", monthStr).eq("department", "gbp").single();
 
-      const mergedGbp = { ...(existingGbp?.data || {}), ...gbpData };
+      const gbpOverrides = new Set(existingGbp?.data?._manual_overrides || []);
+      const mergedGbp = { ...(existingGbp?.data || {}) };
+      for (const [key, val] of Object.entries(gbpData)) {
+        if (!gbpOverrides.has(key)) mergedGbp[key] = val;
+      }
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
         { client_id: parseInt(clientId), month: monthStr, department: "gbp", data: mergedGbp, last_updated_at: new Date().toISOString() },
