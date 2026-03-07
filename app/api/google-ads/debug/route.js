@@ -17,37 +17,34 @@ export async function GET() {
     const auth = getOAuthClient();
     const { token: accessToken } = await auth.getAccessToken();
 
-    const customerId = "4785711849"; // Juneau Auto Mall
+    const customerId = "4785711849";
     const mccId = process.env.GOOGLE_ADS_MCC_ID;
     const devToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+    const query = `SELECT metrics.impressions, metrics.clicks, metrics.cost_micros FROM customer WHERE segments.date BETWEEN '2026-02-01' AND '2026-02-28'`;
 
-    // Test v17
-    const url = `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:search`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "developer-token": devToken,
-        "login-customer-id": mccId,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query: `SELECT metrics.impressions, metrics.clicks, metrics.cost_micros FROM customer WHERE segments.date BETWEEN '2026-02-01' AND '2026-02-28'`,
-      }),
-    });
+    const results = { token_length: accessToken?.length };
 
-    const rawText = await response.text();
+    for (const version of ["v16", "v17", "v18", "v19"]) {
+      const url = `https://googleads.googleapis.com/${version}/customers/${customerId}/googleAds:search`;
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "developer-token": devToken,
+            "login-customer-id": mccId,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query }),
+        });
+        const text = await res.text();
+        results[version] = `${res.status}: ${text.substring(0, 200)}`;
+      } catch (e) {
+        results[version] = `ERROR: ${e.message}`;
+      }
+    }
 
-    return Response.json({
-      status: response.status,
-      customer_id: customerId,
-      mcc_id: mccId,
-      dev_token_present: !!devToken,
-      access_token_present: !!accessToken,
-      token_length: accessToken?.length,
-      raw: rawText.substring(0, 800),
-    });
-
+    return Response.json(results);
   } catch (err) {
     return Response.json({ error: err.message });
   }
