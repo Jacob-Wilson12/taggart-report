@@ -140,7 +140,7 @@ const DEPT_FIELDS = {
     { key: "avg_position",          label: "Avg Position",                type: "decimal",  api: true },
     { key: "bounce_rate",           label: "Bounce Rate (%)",             type: "decimal",  api: true,    hint: "From GA4" },
     { key: "avg_session_duration",  label: "Avg Session Duration (sec)",  type: "number",   api: true,    hint: "From GA4, in seconds" },
-    { key: "organic_traffic_pct",   label: "Organic % of Traffic",        type: "decimal",  api: true,    hint: "From GA4 channel breakdown" },
+    { key: "total_sessions",        label: "Total Sessions",              type: "number",   api: true,    hint: "From GA4" },
     { key: "top_query",             label: "Top Performing Query",        type: "text",     api: true },
     { key: "tracked_keywords",      label: "Tracked Keywords",            type: "keywords", manual: true, optional: true, hint: "Enter keywords + target positions — positions auto-fill from Search Console" },
     { key: "page_links",            label: "Page Links (SEO)",            type: "links",    manual: true },
