@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../supabase";
 
 const C = {
@@ -24,13 +24,16 @@ const DEPARTMENTS = [
 ];
 
 const LIVE_APIS = {
-  seo: { label: "Search Console", endpoint: "/api/search-console" },
-  ga4: { label: "GA4", endpoint: "/api/ga4" },
-  google_ads: { label: "Google Ads", endpoint: "/api/google-ads" },
-  callrail: { label: "CallRail", endpoint: "/api/callrail" },
-  meta_ads: { label: "Meta Ads", endpoint: "/api/meta-ads" },
-  social: { label: "Social", endpoint: "/api/social" },
+  seo:       { label: "Search Console", endpoint: "/api/search-console" },
+  ga4:       { label: "GA4",            endpoint: "/api/ga4" },
+  google_ads:{ label: "Google Ads",     endpoint: "/api/google-ads" },
+  callrail:  { label: "CallRail",       endpoint: "/api/callrail" },
+  meta_ads:  { label: "Meta Ads",       endpoint: "/api/meta-ads" },
+  social:    { label: "Social",         endpoint: "/api/social" },
 };
+
+// Departments that support content uploads
+const UPLOAD_DEPTS = ["email", "creative", "social", "seo", "meta_ads", "google_ads"];
 
 const DEPT_FIELDS = {
   leads: [
@@ -43,14 +46,14 @@ const DEPT_FIELDS = {
     { key: "third_party_sold", label: "Third Party Sold",    type: "number" },
     { key: "facebook_sold",    label: "Facebook Sold",       type: "number" },
     { key: "phone_sold",       label: "Phone Sold",          type: "number" },
-    { key: "notes",            label: "Notes",               type: "textarea" },
+    { key: "notes",            label: "Notes",               type: "textarea", optional: true },
   ],
   callrail: [
     { key: "total_calls",   label: "Total Calls",        type: "number" },
     { key: "website_calls", label: "Calls from Website", type: "number" },
     { key: "ads_calls",     label: "Calls from Ads",     type: "number" },
     { key: "gbp_calls",     label: "Calls from GBP",     type: "number" },
-    { key: "notes",         label: "Notes",              type: "textarea" },
+    { key: "notes",         label: "Notes",              type: "textarea", optional: true },
   ],
   seo: [
     { key: "phone_calls",        label: "Phone Calls (SEO)",        type: "number",   manual: true },
@@ -64,9 +67,10 @@ const DEPT_FIELDS = {
     { key: "page1_keywords",     label: "Page 1 Keywords",          type: "number",   api: true },
     { key: "avg_position",       label: "Avg Position",             type: "decimal",  api: true },
     { key: "top_query",          label: "Top Performing Query",     type: "text",     api: true },
+    { key: "page_links",         label: "Page Links (SEO)",         type: "links",    manual: true },
     { key: "work_completed",     label: "Work Completed",           type: "textarea", manual: true },
-    { key: "wins",               label: "Wins",                     type: "textarea", manual: true, hint: "One per line" },
-    { key: "losses",             label: "Losses / Watch Items",     type: "textarea", manual: true, hint: "One per line" },
+    { key: "wins",               label: "Wins",                     type: "textarea", manual: true, optional: true, hint: "One per line" },
+    { key: "losses",             label: "Losses / Watch Items",     type: "textarea", manual: true, optional: true, hint: "One per line" },
     { key: "next_month",         label: "What's Coming Next Month", type: "textarea", manual: true, hint: "One per line" },
   ],
   gbp: [
@@ -82,8 +86,8 @@ const DEPT_FIELDS = {
     { key: "photo_count",        label: "Photos on Profile",      type: "number" },
     { key: "posts_published",    label: "Posts Published",        type: "number" },
     { key: "work_completed",     label: "Work Completed",         type: "textarea" },
-    { key: "wins",               label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",             label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
+    { key: "wins",               label: "Wins",                   type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",             label: "Losses / Watch Items",   type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",         label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   google_ads: [
@@ -96,8 +100,8 @@ const DEPT_FIELDS = {
     { key: "impression_share", label: "Impression Share (%)",    type: "decimal" },
     { key: "top_campaign",     label: "Top Performing Campaign", type: "text" },
     { key: "work_completed",   label: "Work Completed",          type: "textarea" },
-    { key: "wins",             label: "Wins",                    type: "textarea", hint: "One per line" },
-    { key: "losses",           label: "Losses / Watch Items",    type: "textarea", hint: "One per line" },
+    { key: "wins",             label: "Wins",                    type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",    type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   meta_ads: [
@@ -110,8 +114,8 @@ const DEPT_FIELDS = {
     { key: "lead_form_completion", label: "Lead Form Completion (%)", type: "decimal" },
     { key: "top_ad",               label: "Top Performing Ad",        type: "text" },
     { key: "work_completed",       label: "Work Completed",           type: "textarea" },
-    { key: "wins",                 label: "Wins",                     type: "textarea", hint: "One per line" },
-    { key: "losses",               label: "Losses / Watch Items",     type: "textarea", hint: "One per line" },
+    { key: "wins",                 label: "Wins",                     type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",               label: "Losses / Watch Items",     type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   social: [
@@ -128,8 +132,8 @@ const DEPT_FIELDS = {
     { key: "top_video",        label: "Top Performing Video",   type: "text" },
     { key: "top_video_views",  label: "Top Video Views",        type: "number" },
     { key: "work_completed",   label: "Work Completed",         type: "textarea" },
-    { key: "wins",             label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",           label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
+    { key: "wins",             label: "Wins",                   type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",   type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   email: [
@@ -138,8 +142,8 @@ const DEPT_FIELDS = {
     { key: "site_visits",      label: "Site Visits from Email", type: "number" },
     { key: "conversions",      label: "Conversions from Email", type: "number" },
     { key: "work_completed",   label: "Work Completed",         type: "textarea" },
-    { key: "wins",             label: "Wins",                   type: "textarea", hint: "One per line" },
-    { key: "losses",           label: "Losses / Watch Items",   type: "textarea", hint: "One per line" },
+    { key: "wins",             label: "Wins",                   type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",   type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   creative: [
@@ -170,7 +174,7 @@ const leadsFieldsJuneau = (oemLabel) => [
   { key: "oem_sold",       label: `${oemLabel} Sold`,  type: "number" },
   { key: "facebook_sold",  label: "Facebook Sold",     type: "number" },
   { key: "phone_sold",     label: "Phone Sold",        type: "number" },
-  { key: "notes",          label: "Notes",             type: "textarea" },
+  { key: "notes",          label: "Notes",             type: "textarea", optional: true },
 ];
 const LEADS_FIELDS_GOODE = [
   { key: "total_leads",  label: "Total Leads (All Brands)", type: "number" },
@@ -181,7 +185,7 @@ const LEADS_FIELDS_GOODE = [
   { key: "vw_leads",     label: "Volkswagen Leads",         type: "number" },
   { key: "vw_sold",      label: "Volkswagen Sold",          type: "number" },
   { key: "total_sold",   label: "Total Sold",               type: "number" },
-  { key: "notes",        label: "Notes",                    type: "textarea" },
+  { key: "notes",        label: "Notes",                    type: "textarea", optional: true },
 ];
 const MONTHS = ["January","February","March","April","May","June",
   "July","August","September","October","November","December"];
@@ -204,6 +208,7 @@ const canEdit = (role, department, deptId) => {
   return false;
 };
 const canPublish = (role) => role === "admin" || role === "account_manager";
+
 /* ─── UI HELPERS ─── */
 const Badge = ({ label, color = C.cyan }) => (
   <span style={{ background: color + "22", color, borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700, fontFamily: F }}>{label}</span>
@@ -225,6 +230,214 @@ const CompletionBar = ({ filled, total }) => {
     </div>
   );
 };
+
+/* ─── SERVICE TOGGLE ─── */
+function ServiceToggle({ clientId, deptId, onToggle }) {
+  const [enabled, setEnabled] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from("client_services")
+        .select("enabled").eq("client_id", clientId).eq("department", deptId).single();
+      setEnabled(data?.enabled !== false); // default true if no row
+      setLoading(false);
+    };
+    load();
+  }, [clientId, deptId]);
+
+  const handleToggle = async () => {
+    const newVal = !enabled;
+    setEnabled(newVal);
+    await supabase.from("client_services").upsert(
+      { client_id: clientId, department: deptId, enabled: newVal, updated_at: new Date().toISOString() },
+      { onConflict: "client_id,department" }
+    );
+    if (onToggle) onToggle(deptId, newVal);
+  };
+
+  if (loading) return null;
+
+  return (
+    <button onClick={handleToggle} title={enabled ? "Disable this service" : "Enable this service"}
+      style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 4px", fontSize: 13, opacity: 0.7 }}>
+      {enabled ? "✅" : "⭕"}
+    </button>
+  );
+}
+
+/* ─── LINKS FIELD ─── */
+function LinksField({ value, onChange, disabled }) {
+  const links = Array.isArray(value) ? value : [];
+  const [newUrl, setNewUrl] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+
+  const addLink = () => {
+    if (!newUrl) return;
+    const updated = [...links, { url: newUrl, label: newLabel || newUrl }];
+    onChange(updated);
+    setNewUrl(""); setNewLabel("");
+  };
+
+  const removeLink = (i) => onChange(links.filter((_, idx) => idx !== i));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {links.map((link, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.cyanL, borderRadius: 6, padding: "6px 10px", border: `1px solid ${C.cyan}33` }}>
+          <span style={{ fontSize: 12, color: C.cyanD, fontFamily: F, flex: 1 }}>
+            <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ color: C.cyanD, textDecoration: "none", fontWeight: 600 }}>{link.label}</a>
+          </span>
+          {!disabled && <button onClick={() => removeLink(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 14, padding: 0 }}>✕</button>}
+        </div>
+      ))}
+      {!disabled && (
+        <div style={{ display: "flex", gap: 6 }}>
+          <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="Label (optional)" style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." style={{ flex: 2, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} onKeyDown={e => e.key === "Enter" && addLink()} />
+          <button onClick={addLink} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 6, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Add</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── UPLOAD SECTION ─── */
+function UploadSection({ clientId, deptId, month }) {
+  const [uploads, setUploads] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkLabel, setLinkLabel] = useState("");
+  const [addingLink, setAddingLink] = useState(false);
+  const fileRef = useRef();
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from("report_uploads")
+      .select("*").eq("client_id", clientId).eq("department", deptId).eq("month", month)
+      .order("uploaded_at", { ascending: false });
+    setUploads(data || []);
+  }, [clientId, deptId, month]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleFileUpload = async (files) => {
+    if (!files?.length) return;
+    setUploading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    for (const file of Array.from(files)) {
+      const ext = file.name.split(".").pop();
+      const path = `${clientId}/${deptId}/${month}/${Date.now()}_${file.name}`;
+      const { error: uploadErr } = await supabase.storage.from("report-uploads").upload(path, file);
+      if (uploadErr) { console.error(uploadErr); continue; }
+      const { data: { publicUrl } } = supabase.storage.from("report-uploads").getPublicUrl(path);
+      await supabase.from("report_uploads").insert({
+        client_id: clientId, department: deptId, month,
+        file_name: file.name, file_url: publicUrl,
+        file_type: file.type || ext, label: file.name,
+        uploaded_by: user.id,
+      });
+    }
+    setUploading(false);
+    await load();
+  };
+
+  const handleLinkSave = async () => {
+    if (!linkUrl) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("report_uploads").insert({
+      client_id: clientId, department: deptId, month,
+      file_name: linkLabel || linkUrl, file_url: linkUrl,
+      file_type: "link", label: linkLabel || linkUrl,
+      uploaded_by: user.id,
+    });
+    setLinkUrl(""); setLinkLabel(""); setAddingLink(false);
+    await load();
+  };
+
+  const handleDelete = async (id, fileUrl, fileType) => {
+    if (fileType !== "link") {
+      const path = fileUrl.split("/report-uploads/")[1];
+      if (path) await supabase.storage.from("report-uploads").remove([path]);
+    }
+    await supabase.from("report_uploads").delete().eq("id", id);
+    await load();
+  };
+
+  const getFileIcon = (type) => {
+    if (!type) return "📄";
+    if (type === "link") return "🔗";
+    if (type.includes("image")) return "🖼️";
+    if (type.includes("video")) return "🎬";
+    if (type.includes("pdf")) return "📕";
+    if (type.includes("word") || type === "doc" || type === "docx") return "📝";
+    return "📄";
+  };
+
+  const isDragging = useRef(false);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    handleFileUpload(e.dataTransfer.files);
+  };
+
+  return (
+    <div style={{ marginTop: 28, borderTop: `1px solid ${C.bd}`, paddingTop: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.t, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F }}>📎 Content & Uploads</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setAddingLink(v => !v)} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}33`, borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F }}>+ Add Link</button>
+          <button onClick={() => fileRef.current?.click()} style={{ background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}33`, borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F }}>⬆ Upload File</button>
+        </div>
+      </div>
+
+      {addingLink && (
+        <div style={{ background: C.pL, border: `1px solid ${C.p}33`, borderRadius: 8, padding: 14, marginBottom: 12 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label (e.g. February Email Campaign)" style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://..." style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} onKeyDown={e => e.key === "Enter" && handleLinkSave()} />
+            <button onClick={handleLinkSave} style={{ background: C.p, color: "#fff", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Save</button>
+            <button onClick={() => setAddingLink(false)} style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 6, padding: "8px 12px", fontSize: 12, cursor: "pointer", fontFamily: F, color: C.tl }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <input ref={fileRef} type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
+
+      <div onDrop={handleDrop} onDragOver={e => e.preventDefault()}
+        style={{ border: `2px dashed ${C.bd}`, borderRadius: 10, padding: "20px", textAlign: "center", cursor: "pointer", background: "#fafafa", marginBottom: uploads.length ? 14 : 0 }}
+        onClick={() => fileRef.current?.click()}>
+        {uploading ? (
+          <div style={{ fontSize: 13, color: C.tl, fontFamily: F }}>⬆ Uploading...</div>
+        ) : (
+          <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>📁</div>
+            Drag & drop files here, or click to browse<br />
+            <span style={{ fontSize: 11, color: C.bd }}>Images, PDFs, Videos, Word docs · Auto-saves on upload</span>
+          </div>
+        )}
+      </div>
+
+      {uploads.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {uploads.map(u => (
+            <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.white, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 14px" }}>
+              <span style={{ fontSize: 18 }}>{getFileIcon(u.file_type)}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <a href={u.file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: C.t, fontFamily: F, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {u.label || u.file_name}
+                </a>
+                <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>{new Date(u.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+              </div>
+              <button onClick={() => handleDelete(u.id, u.file_url, u.file_type)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 16, padding: 4 }} title="Delete">🗑</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ─── BACKFILL MODAL ─── */
 function BackfillModal({ clients, onClose }) {
@@ -253,7 +466,7 @@ function BackfillModal({ clients, onClose }) {
             const json = await res.json();
             if (json.success && json.saved) {
               success++; addLog(`✓ ${label}`, "success");
-            } else if (json.error?.includes("No Search Console")) {
+            } else if (json.error?.includes("No ") && json.error?.includes("integration")) {
               skipped++; addLog(`— ${client.name} · No integration configured`, "skip");
             } else {
               error++; addLog(`⚠ ${label}: ${json.error || "failed"}`, "error");
@@ -281,7 +494,7 @@ function BackfillModal({ clients, onClose }) {
           <div>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.t, fontFamily: F }}>Historical Data Backfill</h3>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: C.tl, fontFamily: F }}>
-              {clients.length} clients × {backfillMonths.length} months × {apiDepts.length} API{apiDepts.length !== 1 ? "s" : ""} = <strong>{total} requests</strong> · Jan 2024 → last month
+              {clients.length} clients × {backfillMonths.length} months × {apiDepts.length} APIs = <strong>{total} requests</strong> · Jan 2024 → last month
             </p>
           </div>
           {!running && <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.tl, padding: 4 }}>✕</button>}
@@ -295,12 +508,11 @@ function BackfillModal({ clients, onClose }) {
                   <li>This will take approximately <strong>{Math.round(total * 0.2 / 60)} minutes</strong> to complete</li>
                   <li>Keep this browser tab open the entire time</li>
                   <li>It will not overwrite any manually entered data</li>
-                  <li>Clients without a Search Console integration will be skipped</li>
-                  <li>Goode Ford will be skipped until its domain is verified</li>
+                  <li>Clients without integrations configured will be skipped</li>
                 </ul>
               </div>
               <div style={{ background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>What will be pulled</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>APIs included in backfill</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {apiDepts.map(([deptId, api]) => (
                     <div key={deptId} style={{ background: C.cyanL, color: C.cyanD, borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 600, fontFamily: F }}>{api.label}</div>
@@ -389,14 +601,16 @@ const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
 
 /* ─── FIELD INPUT ─── */
 const FieldInput = ({ field, value, onChange, disabled }) => {
+  if (field.type === "links") return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
   const base = { width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box", background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t, cursor: disabled ? "not-allowed" : "text" };
   if (field.type === "textarea") return (
     <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`} style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
   );
   return <input type={field.type === "number" || field.type === "decimal" ? "number" : "text"} step={field.type === "decimal" ? "0.01" : "1"} value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} placeholder={field.hint || "0"} style={base} />;
 };
+
 /* ─── DEPT FORM ─── */
-function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole, userDept, onSaved, allClients, onApiPulled }) {
+function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole, userDept, onSaved, allClients, onApiPulled, serviceEnabled }) {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -412,6 +626,17 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   const editable = canEdit(userRole, userDept, dept.id);
   const apiFields = fields.filter(f => f.api);
   const manualFields = fields.filter(f => !f.api);
+
+  // If service is disabled, show a friendly message
+  if (serviceEnabled === false) {
+    return (
+      <div style={{ textAlign: "center", padding: "48px 24px", color: C.tl, fontFamily: F }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>⭕</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: C.t, marginBottom: 8 }}>This service is not active for this client</div>
+        <div style={{ fontSize: 13, color: C.tl }}>Toggle the service on using the ⭕ button next to the department name to enable it.</div>
+      </div>
+    );
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -455,7 +680,11 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     if (onSaved) onSaved(dept.id);
   };
 
-  const filledCount = fields.filter(f => data[f.key] && String(data[f.key]).trim() !== "").length;
+  const filledCount = fields.filter(f => {
+    if (f.optional) return false; // don't count optional fields
+    return data[f.key] && String(data[f.key]).trim() !== "";
+  }).length;
+  const requiredTotal = fields.filter(f => !f.optional).length;
   const pulledAt = data._pulled_at ? new Date(data._pulled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
 
   if (loading) return <div style={{ padding: 24, textAlign: "center", color: C.tl, fontFamily: F, fontSize: 13 }}>Loading...</div>;
@@ -474,8 +703,8 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       {isJuneauChild && <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>🔗 Total, Website, Facebook & Phone synced from Juneau Auto Mall. Enter {oemLabel} leads here.</div>}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 13, color: C.tl, fontFamily: F }}>{filledCount} of {fields.length} fields filled</div>
-          <CompletionBar filled={filledCount} total={fields.length} />
+          <div style={{ fontSize: 13, color: C.tl, fontFamily: F }}>{filledCount} of {requiredTotal} required fields filled</div>
+          <CompletionBar filled={filledCount} total={requiredTotal} />
         </div>
         {editable && (
           <button onClick={handleSave} disabled={saving} style={{ background: saved ? C.g : C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, minWidth: 100 }}>
@@ -502,18 +731,26 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {(apiFields.length > 0 ? manualFields : fields).map(field => {
           const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
+          const isFullWidth = field.type === "textarea" || field.type === "links";
           return (
-            <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto" }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
                 {field.label}
+                {field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>optional</span>}
                 {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>↔ synced</span>}
-                {field.hint && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
+                {field.hint && !field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
               </label>
               <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField} />
             </div>
           );
         })}
       </div>
+
+      {/* Content Uploads Section */}
+      {UPLOAD_DEPTS.includes(dept.id) && editable && (
+        <UploadSection clientId={clientId} deptId={dept.id} month={month} />
+      )}
+
       {isGoode && [data.ford_leads, data.mazda_leads, data.vw_leads].some(v => v) && (
         <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>Sold % by Brand (auto-calculated)</div>
@@ -534,6 +771,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     </div>
   );
 }
+
 /* ─── CLIENT REPORT ─── */
 function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const now = new Date();
@@ -546,8 +784,23 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const [deptCompletion, setDeptCompletion] = useState({});
   const [pullingAll, setPullingAll] = useState(false);
   const [pullAllResult, setPullAllResult] = useState("");
+  const [serviceStates, setServiceStates] = useState({});
 
   const month = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
+
+  // Load service states for this client
+  useEffect(() => {
+    const loadServices = async () => {
+      const { data } = await supabase.from("client_services")
+        .select("department, enabled").eq("client_id", client.id);
+      const map = {};
+      (data || []).forEach(r => { map[r.department] = r.enabled; });
+      setServiceStates(map);
+    };
+    loadServices();
+  }, [client.id]);
+
+  const getServiceEnabled = (deptId) => serviceStates[deptId] !== false; // default true
 
   useEffect(() => {
     setDeptCompletion({}); setPullAllResult("");
@@ -559,7 +812,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   }, [client.id, month]);
 
   const refreshCompletion = useCallback(async (deptId) => {
-    const fields = DEPT_FIELDS[deptId] || [];
+    const fields = (DEPT_FIELDS[deptId] || []).filter(f => !f.optional);
     const { data: row } = await supabase.from("report_data").select("data").eq("client_id", client.id).eq("month", month).eq("department", deptId).single();
     const filled = fields.filter(f => row?.data?.[f.key] && String(row.data[f.key]).trim() !== "").length;
     setDeptCompletion(prev => ({ ...prev, [deptId]: { filled, total: fields.length } }));
@@ -574,7 +827,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
 
   const handlePullAll = async () => {
     setPullingAll(true); setPullAllResult("");
-    const apiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id]);
+    const apiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id] && getServiceEnabled(d.id));
     const results = [];
     for (const dept of apiDepts) {
       const api = LIVE_APIS[dept.id];
@@ -613,7 +866,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   };
 
   const activeDeptObj = DEPARTMENTS.find(d => d.id === activeDept);
-  const apiDeptCount = DEPARTMENTS.filter(d => LIVE_APIS[d.id]).length;
+  const enabledApiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id] && getServiceEnabled(d.id));
 
   return (
     <div>
@@ -638,7 +891,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           <button onClick={handlePullAll} disabled={pullingAll} style={{ background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: pullingAll ? "not-allowed" : "pointer", fontFamily: F, opacity: pullingAll ? 0.7 : 1 }}>
-            {pullingAll ? "⬇ Pulling..." : `⬇ Pull All APIs (${apiDeptCount})`}
+            {pullingAll ? "⬇ Pulling..." : `⬇ Pull All APIs (${enabledApiDepts.length})`}
           </button>
           {userRole !== "viewer" && reportStatus !== "published" && (
             <button onClick={handleMarkReview} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F }}>Mark Ready for Review</button>
@@ -654,20 +907,27 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
       {publishError && <div style={{ background: C.rL, border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.r, fontFamily: F }}>⚠️ {publishError}</div>}
       {reportStatus === "published" && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166534", fontFamily: F }}>✓ This report is live. Clients can see it now.</div>}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-        <div style={{ width: 200, flexShrink: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ width: 210, flexShrink: 0, display: "flex", flexDirection: "column", gap: 4 }}>
           {DEPARTMENTS.map(dept => {
             const comp = deptCompletion[dept.id];
             const isActive = activeDept === dept.id;
+            const enabled = getServiceEnabled(dept.id);
             const pct = comp ? Math.round((comp.filled / comp.total) * 100) : null;
             const hasApi = !!LIVE_APIS[dept.id];
             return (
-              <button key={dept.id} onClick={() => setActiveDept(dept.id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer", background: isActive ? C.navy : C.white, color: isActive ? "#fff" : C.t, fontFamily: F, fontSize: 13, fontWeight: isActive ? 700 : 500, boxShadow: isActive ? "none" : C.sh, textAlign: "left" }}>
-                <span>{dept.icon} {dept.label}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {hasApi && <span style={{ fontSize: 9, color: C.cyan, fontWeight: 700, background: isActive ? "rgba(0,201,232,0.2)" : "transparent", padding: "1px 4px", borderRadius: 3 }}>API</span>}
-                  {pct !== null && <span style={{ fontSize: 10, fontWeight: 700, color: pct === 100 ? (isActive ? "#6ee7b7" : C.g) : (isActive ? "#fca5a5" : C.tl) }}>{pct}%</span>}
-                </div>
-              </button>
+              <div key={dept.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button onClick={() => setActiveDept(dept.id)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer", background: isActive ? C.navy : C.white, color: isActive ? "#fff" : enabled ? C.t : C.tl, fontFamily: F, fontSize: 13, fontWeight: isActive ? 700 : 500, boxShadow: isActive ? "none" : C.sh, textAlign: "left", opacity: enabled ? 1 : 0.5 }}>
+                  <span>{dept.icon} {dept.label}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {hasApi && enabled && <span style={{ fontSize: 9, color: C.cyan, fontWeight: 700, background: isActive ? "rgba(0,201,232,0.2)" : "transparent", padding: "1px 4px", borderRadius: 3 }}>API</span>}
+                    {!enabled && <span style={{ fontSize: 9, color: C.tl, fontWeight: 700 }}>OFF</span>}
+                    {pct !== null && enabled && <span style={{ fontSize: 10, fontWeight: 700, color: pct === 100 ? (isActive ? "#6ee7b7" : C.g) : (isActive ? "#fca5a5" : C.tl) }}>{pct}%</span>}
+                  </div>
+                </button>
+                {userRole === "admin" && (
+                  <ServiceToggle clientId={client.id} deptId={dept.id} onToggle={(id, val) => setServiceStates(prev => ({ ...prev, [id]: val }))} />
+                )}
+              </div>
             );
           })}
         </div>
@@ -676,12 +936,26 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>{activeDeptObj?.icon} {activeDeptObj?.label}</h3>
             <p style={{ fontSize: 12, color: C.tl, margin: 0, fontFamily: F }}>{MONTHS[monthIdx]} {year} — {client.name}</p>
           </div>
-          <DeptForm dept={activeDeptObj} clientId={client.id} clientName={client.name} month={month} monthIdx={monthIdx} year={year} userRole={userRole} userDept={userDept} onSaved={handleSaved} allClients={allClients} onApiPulled={refreshCompletion} />
+          <DeptForm
+            dept={activeDeptObj}
+            clientId={client.id}
+            clientName={client.name}
+            month={month}
+            monthIdx={monthIdx}
+            year={year}
+            userRole={userRole}
+            userDept={userDept}
+            onSaved={handleSaved}
+            allClients={allClients}
+            onApiPulled={refreshCompletion}
+            serviceEnabled={getServiceEnabled(activeDept)}
+          />
         </div>
       </div>
     </div>
   );
 }
+
 /* ─── OVERVIEW ─── */
 function Overview({ clients, userRole, onSelectClient, onBackfill }) {
   const now = new Date();
@@ -724,7 +998,7 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4, fontFamily: F }}>📥 Historical Data Backfill</div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>
-              Pull all Search Console data for all clients from Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min
+              Pull all API data for all clients from Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min
             </div>
           </div>
           <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>
@@ -851,6 +1125,7 @@ function TeamPage({ currentUserId }) {
     </div>
   );
 }
+
 /* ─── ROOT ─── */
 export default function AdminApp() {
   const [session, setSession] = useState(null);
