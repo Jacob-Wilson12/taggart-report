@@ -277,7 +277,19 @@ export async function GET(request) {
         .eq("department", "social")
         .single();
 
-      const merged = { ...(existing?.data || {}), ...socialData };
+      const existing2 = existing?.data || {};
+      const merged = {
+        ...existing2,
+        ...socialData,
+        // Preserve manually entered TikTok fields — never overwrite with 0
+        tiktok_followers: socialData.tiktok_followers || existing2.tiktok_followers || 0,
+        tiktok_reach:     socialData.tiktok_reach     || existing2.tiktok_reach     || 0,
+        tiktok_views:     socialData.tiktok_views     || existing2.tiktok_views     || 0,
+        tiktok_likes:     socialData.tiktok_likes     || existing2.tiktok_likes     || 0,
+        // Preserve manually entered text fields too
+        top_video:        existing2.top_video     || socialData.top_video     || "",
+        posts_published:  existing2.posts_published ?? socialData.posts_published ?? 0,
+      };
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
         {
