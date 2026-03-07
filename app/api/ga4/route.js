@@ -209,9 +209,15 @@ export async function GET(request) {
 
       const mergedSeo = {
         ...(existingSeo?.data || {}),
+        total_sessions: ga4Data.total_sessions,
         organic_sessions: ga4Data.organic_sessions,
+        organic_traffic_pct: ga4Data.total_sessions > 0
+          ? Math.round((ga4Data.organic_sessions / ga4Data.total_sessions) * 1000) / 10
+          : null,
         vdp_views: ga4Data.vdp_views,
         form_submissions: ga4Data.form_submissions,
+        bounce_rate: ga4Data.bounce_rate,
+        avg_session_duration: ga4Data.avg_session_duration,
         _ga4_pulled_at: ga4Data._pulled_at,
       };
 
