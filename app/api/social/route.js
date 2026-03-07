@@ -223,25 +223,45 @@ export async function GET(request) {
 
     // Flat keys that match DEPT_FIELDS social form fields in the admin panel
     const socialData = {
-      // Flat display fields
+      // ── Aggregate totals ──
       total_reach:      (fb.reach || 0) + (ig.reach || 0),
-      total_engagement: (fb.post_engagements || 0),
+      total_engagement: (fb.post_engagements || 0) + (ig.engagement || 0),
       new_followers:    (fb.new_followers || 0) + (ig.new_followers || 0),
-      fb_followers:     fb.followers || 0,
-      ig_followers:     ig.followers || 0,
-      yt_followers:     yt.subscribers || 0,
-      website_clicks:   fb.page_views || 0,
-      posts_published:  0,   // manual — API doesn't provide this reliably
       videos_published: yt.month_videos_published || 0,
-      top_video:        "",  // manual
       top_video_views:  yt.month_views || 0,
 
-      // Raw nested data preserved for reference / future use
-      _facebook:  fb,
-      _instagram: ig,
-      _youtube:   yt,
-      _errors: Object.keys(errors).length > 0 ? errors : undefined,
-      _source: "social",
+      // ── Per-platform flat keys (auto-populated) ──
+      fb_followers:       fb.followers || 0,
+      fb_reach:           fb.reach || 0,
+      fb_engagement:      fb.post_engagements || 0,
+      fb_new_followers:   fb.new_followers || 0,
+      fb_page_views:      fb.page_views || 0,
+
+      ig_followers:       ig.followers || 0,
+      ig_reach:           ig.reach || 0,
+      ig_impressions:     ig.impressions || 0,
+      ig_profile_views:   ig.profile_views || 0,
+      ig_new_followers:   ig.new_followers || 0,
+
+      yt_followers:       yt.subscribers || 0,
+      yt_total_views:     yt.total_views || 0,
+      yt_month_views:     yt.month_views || 0,
+      yt_month_videos:    yt.month_videos_published || 0,
+      yt_month_likes:     yt.month_likes || 0,
+      yt_month_comments:  yt.month_comments || 0,
+
+      // ── Manual fields (not auto-populated) ──
+      posts_published:    0,
+      website_clicks:     fb.page_views || 0,
+      tiktok_followers:   0,
+      top_video:          "",
+
+      // ── Raw nested data preserved for reference ──
+      _facebook:  Object.keys(fb).length ? fb : undefined,
+      _instagram: Object.keys(ig).length ? ig : undefined,
+      _youtube:   Object.keys(yt).length ? yt : undefined,
+      _errors:    Object.keys(errors).length > 0 ? errors : undefined,
+      _source:    "social",
       _pulled_at: new Date().toISOString(),
     };
 
