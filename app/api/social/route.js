@@ -217,8 +217,29 @@ export async function GET(request) {
       }
     }
 
+    const fb  = results.facebook  || {};
+    const ig  = results.instagram || {};
+    const yt  = results.youtube   || {};
+
+    // Flat keys that match DEPT_FIELDS social form fields in the admin panel
     const socialData = {
-      ...results,
+      // Flat display fields
+      total_reach:      (fb.reach || 0) + (ig.reach || 0),
+      total_engagement: (fb.post_engagements || 0),
+      new_followers:    (fb.new_followers || 0) + (ig.new_followers || 0),
+      fb_followers:     fb.followers || 0,
+      ig_followers:     ig.followers || 0,
+      yt_followers:     yt.subscribers || 0,
+      website_clicks:   fb.page_views || 0,
+      posts_published:  0,   // manual — API doesn't provide this reliably
+      videos_published: yt.month_videos_published || 0,
+      top_video:        "",  // manual
+      top_video_views:  yt.month_views || 0,
+
+      // Raw nested data preserved for reference / future use
+      _facebook:  fb,
+      _instagram: ig,
+      _youtube:   yt,
       _errors: Object.keys(errors).length > 0 ? errors : undefined,
       _source: "social",
       _pulled_at: new Date().toISOString(),
