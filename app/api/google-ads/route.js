@@ -94,7 +94,12 @@ export async function GET(request) {
       WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
     `;
 
-    const summaryData = await runGadsQuery(accessToken, customerId, mccId, summaryQuery);
+    let summaryData;
+    try {
+      summaryData = await runGadsQuery(accessToken, customerId, mccId, summaryQuery);
+    } catch (e) {
+      return Response.json({ error: `Summary query failed: ${e.message}`, customer_id: customerId, mcc_id: mccId });
+    }
     const summaryRow = summaryData.results?.[0];
 
     const impressions      = Number(summaryRow?.metrics?.impressions || 0);
