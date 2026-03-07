@@ -118,7 +118,6 @@ const DEPT_FIELDS = {
     { key: "website_sold",     label: "Website Sold",        type: "number" },
     { key: "third_party_sold", label: "Third Party Sold",    type: "number" },
     { key: "facebook_sold",    label: "Facebook Sold",       type: "number" },
-    { key: "phone_sold",       label: "Phone Sold",          type: "number" },
     { key: "notes",            label: "Notes",               type: "textarea", optional: true },
   ],
   callrail: [
@@ -267,7 +266,7 @@ const JUNEAU_OEM_LABEL = {
   "Juneau Chevrolet": "Chevrolet", "Juneau Honda": "Honda",
 };
 const JUNEAU_LEAD_SOURCE = "Juneau Auto Mall";
-const SHARED_KEYS = ["total_leads","total_sold","website_leads","website_sold","facebook_leads","facebook_sold","phone_sold","notes"];
+const SHARED_KEYS = ["total_leads","total_sold","website_leads","website_sold","facebook_leads","facebook_sold","notes"];
 const leadsFieldsJuneau = (oemLabel) => [
   { key: "total_leads",    label: "Total Leads",       type: "number" },
   { key: "website_leads",  label: "Website Leads",     type: "number" },
@@ -277,7 +276,6 @@ const leadsFieldsJuneau = (oemLabel) => [
   { key: "website_sold",   label: "Website Sold",      type: "number" },
   { key: "oem_sold",       label: `${oemLabel} Sold`,  type: "number" },
   { key: "facebook_sold",  label: "Facebook Sold",     type: "number" },
-  { key: "phone_sold",     label: "Phone Sold",        type: "number" },
   { key: "notes",          label: "Notes",             type: "textarea", optional: true },
 ];
 const LEADS_FIELDS_GOODE = [
