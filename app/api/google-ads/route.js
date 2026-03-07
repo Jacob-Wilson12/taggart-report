@@ -41,8 +41,11 @@ async function runGadsQuery(accessToken, customerId, mccId, query) {
 
   const text = await response.text();
   if (!response.ok) {
-    let msg = `HTTP ${response.status}`;
-    try { msg = JSON.parse(text)?.error?.message || msg; } catch {}
+    let msg = `HTTP ${response.status}: ${text.substring(0, 500)}`;
+    try { 
+      const parsed = JSON.parse(text);
+      msg = parsed?.error?.message || parsed?.[0]?.error?.message || msg; 
+    } catch {}
     throw new Error(msg);
   }
   try {
