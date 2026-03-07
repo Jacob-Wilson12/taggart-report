@@ -29,7 +29,6 @@ async function metaFetch(path) {
 async function getFacebookData(pageId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
 
-  // Page-level metrics
   const metricsToFetch = [
     "page_impressions",
     "page_impressions_unique",
@@ -48,7 +47,6 @@ async function getFacebookData(pageId, year, month) {
     metrics[item.name] = typeof val === "object" ? Object.values(val).reduce((a, b) => a + b, 0) : val;
   }
 
-  // Page fan count (total followers)
   const pageData = await metaFetch(`/${pageId}?fields=fan_count,name`);
 
   return {
@@ -66,7 +64,6 @@ async function getFacebookData(pageId, year, month) {
 async function getInstagramData(instagramAccountId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
 
-  // Account-level insights
   const metricsToFetch = [
     "impressions",
     "reach",
@@ -84,7 +81,6 @@ async function getInstagramData(instagramAccountId, year, month) {
     metrics[item.name] = val;
   }
 
-  // Account info
   const accountData = await metaFetch(
     `/${instagramAccountId}?fields=followers_count,username`
   );
@@ -99,21 +95,20 @@ async function getInstagramData(instagramAccountId, year, month) {
   };
 }
 
-// ─── YouTube Analytics ────────────────────────────────────────────────────────
+// ─── YouTube Analytics (OAuth via taggartadvertising@gmail.com) ───────────────
 async function getYouTubeData(channelId, year, month) {
   const { startDate, endDate } = getMonthRange(year, month);
 
-  const serviceAccountKey = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-  const auth = new google.auth.GoogleAuth({
-    credentials: serviceAccountKey,
-    scopes: [
-      "https://www.googleapis.com/auth/youtube.readonly",
-      "https://www.googleapis.com/auth/yt-analytics.readonly",
-    ],
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_OAUTH_CLIENT_ID,
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET
+  );
+  oauth2Client.setCredentials({
+    refresh_token: process.env.GOOGLE_GBP_REFRESH_TOKEN,
   });
 
-  const youtubeAnalytics = google.youtubeAnalytics({ version: "v2", auth });
-  const youtube = google.youtube({ version: "v3", auth });
+  const youtube = google.youtube({ version: "v3", auth: oauth2Client });
+  const youtubeAnalytics = google.youtubeAnalytics({ version: "v2", auth: oauth2Client });
 
   // Channel stats
   const channelResponse = await youtube.channels.list({
@@ -121,8 +116,11 @@ async function getYouTubeData(channelId, year, month) {
     id: [channelId],
   });
 
-  const channelStats = channelResponse.data.items?.[0]?.statistics || {};
-  const channelName = channelResponse.data.items?.[0]?.snippet?.title || "";
+  const item = channelResponse.data.items?.[0];
+  if (!item) throw new Error("Channel not found");
+
+  const stats = item.statistics || {};
+  const channelName = item.snippet?.title || "";
 
   // Analytics for the month
   const analyticsResponse = await youtubeAnalytics.reports.query({
@@ -137,11 +135,12 @@ async function getYouTubeData(channelId, year, month) {
 
   return {
     channel_name: channelName,
-    subscribers: parseInt(channelStats.subscriberCount || 0),
-    total_videos: parseInt(channelStats.videoCount || 0),
+    subscribers: parseInt(stats.subscriberCount || 0),
+    total_views: parseInt(stats.viewCount || 0),
+    total_videos: parseInt(stats.videoCount || 0),
     views: views || 0,
-    watch_minutes: watchMinutes || 0,
-    avg_view_duration: avgViewDuration || 0,
+    watch_minutes: Math.round(watchMinutes || 0),
+    avg_view_duration: Math.round(avgViewDuration || 0),
     likes: likes || 0,
     comments: comments || 0,
     shares: shares || 0,
@@ -165,7 +164,6 @@ export async function GET(request) {
       );
     }
 
-    // ─── Look up social integration config ───
     const { data: integration, error: intErr } = await supabase
       .from("client_integrations")
       .select("config")
@@ -184,7 +182,6 @@ export async function GET(request) {
     const results = {};
     const errors = {};
 
-    // ─── Facebook ───
     if (config.facebook_page_id) {
       try {
         results.facebook = await getFacebookData(config.facebook_page_id, year, month);
@@ -193,7 +190,6 @@ export async function GET(request) {
       }
     }
 
-    // ─── Instagram ───
     if (config.instagram_account_id) {
       try {
         results.instagram = await getInstagramData(config.instagram_account_id, year, month);
@@ -202,7 +198,6 @@ export async function GET(request) {
       }
     }
 
-    // ─── YouTube ───
     if (config.youtube_channel_id) {
       try {
         results.youtube = await getYouTubeData(config.youtube_channel_id, year, month);
@@ -218,7 +213,6 @@ export async function GET(request) {
       _pulled_at: new Date().toISOString(),
     };
 
-    // ─── Auto-save if ?save=true ───
     const autoSave = searchParams.get("save") === "true";
     if (autoSave) {
       const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
