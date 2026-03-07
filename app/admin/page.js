@@ -121,9 +121,9 @@ const DEPT_FIELDS = {
   ],
   social: [
     // ── Aggregate ──
-    { key: "total_reach",       label: "Total Reach",             type: "number",   api: true },
-    { key: "total_engagement",  label: "Total Engagement",        type: "number",   api: true },
-    { key: "new_followers",     label: "New Followers (All)",     type: "number",   api: true },
+    { key: "total_reach",       label: "Total Reach (FB+IG+YT+TT)",      type: "number",   api: true },
+    { key: "total_engagement",  label: "Total Engagement (FB+IG+YT+TT)", type: "number",   api: true },
+    { key: "new_followers",     label: "New Followers (FB+IG+TT)",        type: "number",   api: true },
     // ── Facebook ──
     { key: "fb_followers",      label: "FB Followers",            type: "number",   api: true },
     { key: "fb_reach",          label: "FB Reach",                type: "number",   api: true },
