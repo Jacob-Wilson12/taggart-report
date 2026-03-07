@@ -149,20 +149,11 @@ export async function GET(request) {
         .eq("department", "seo")
         .single();
 
-      // API fills its fields; manual fields are preserved if already entered
-      const merged = {
-        ...(existing?.data || {}),
-        impressions: seoData.impressions,
-        ctr: seoData.ctr,
-        avg_position: seoData.avg_position,
-        page1_keywords: seoData.page1_keywords,
-        top_query: seoData.top_query,
-        top_queries: seoData.top_queries,
-        top_page: seoData.top_page,
-        _source: seoData._source,
-        _pulled_at: seoData._pulled_at,
-        _date_range: seoData._date_range,
-      };
+      const manualOverrides = new Set(existing?.data?._manual_overrides || []);
+      const merged = { ...(existing?.data || {}) };
+      for (const [key, val] of Object.entries(seoData)) {
+        if (!manualOverrides.has(key)) merged[key] = val;
+      }
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
         {
