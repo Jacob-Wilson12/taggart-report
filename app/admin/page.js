@@ -1513,6 +1513,38 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
   const lastMonth = now.getMonth() === 0 ? `${now.getFullYear() - 1}-12-01` : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}-01`;
   const [statuses, setStatuses] = useState({});
   const [search, setSearch] = useState("");
+  const [pullingLastMonth, setPullingLastMonth] = useState(false);
+  const [pullLastMonthResult, setPullLastMonthResult] = useState("");
+  const [pullLastMonthProgress, setPullLastMonthProgress] = useState({ done: 0, total: 0 });
+
+  const lmDate = now.getMonth() === 0
+    ? { year: now.getFullYear() - 1, month: 12 }
+    : { year: now.getFullYear(), month: now.getMonth() };
+  const lmLabel = `${MONTHS[lmDate.month - 1]} ${lmDate.year}`;
+
+  const handlePullAllLastMonth = async () => {
+    setPullingLastMonth(true); setPullLastMonthResult("");
+    const apiDepts = Object.entries(LIVE_APIS);
+    const total = clients.length * apiDepts.length;
+    setPullLastMonthProgress({ done: 0, total });
+    let success = 0, skipped = 0, error = 0, done = 0;
+    for (const client of clients) {
+      for (const [deptId, api] of apiDepts) {
+        try {
+          const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${lmDate.year}&month=${lmDate.month}&save=true`);
+          const json = await res.json();
+          if (json.success && json.saved) success++;
+          else if (json.error?.includes("No ") && json.error?.includes("integration")) skipped++;
+          else error++;
+        } catch { error++; }
+        done++;
+        setPullLastMonthProgress({ done, total });
+        await sleep(150);
+      }
+    }
+    setPullingLastMonth(false);
+    setPullLastMonthResult(`${lmLabel} — ${success} saved · ${skipped} skipped · ${error} errors`);
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -1544,13 +1576,32 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
         ))}
       </div>
       {userRole === "admin" && (
-        <div style={{ background: C.navy, borderRadius: 12, padding: "18px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4, fontFamily: F }}>📥 Historical Data Backfill</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>Pull all API data for all clients from Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min</div>
+        <>
+          <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+            <div style={{ background: C.navy, borderRadius: 12, padding: "18px 24px", flex: 1, minWidth: 280, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4, fontFamily: F }}>📥 Historical Data Backfill</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>All clients · Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min</div>
+              </div>
+              <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>⬇ Run Backfill</button>
+            </div>
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "18px 24px", flex: 1, minWidth: 280, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#166534", marginBottom: 4, fontFamily: F }}>⬇ Pull Last Month — All Clients</div>
+                <div style={{ fontSize: 12, color: "#4ade80", fontFamily: F }}>
+                  {pullingLastMonth
+                    ? `Pulling ${lmLabel}... ${pullLastMonthProgress.done} / ${pullLastMonthProgress.total}`
+                    : pullLastMonthResult
+                    ? pullLastMonthResult
+                    : `${lmLabel} · ${clients.length} clients · ${Object.keys(LIVE_APIS).length} APIs each`}
+                </div>
+              </div>
+              <button onClick={handlePullAllLastMonth} disabled={pullingLastMonth} style={{ background: pullingLastMonth ? "#bbf7d0" : "#166534", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: pullingLastMonth ? "not-allowed" : "pointer", fontFamily: F, whiteSpace: "nowrap", opacity: pullingLastMonth ? 0.7 : 1 }}>
+                {pullingLastMonth ? `↻ ${pullLastMonthProgress.done}/${pullLastMonthProgress.total}` : "⬇ Pull Last Month"}
+              </button>
+            </div>
           </div>
-          <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>⬇ Run Backfill</button>
-        </div>
+        </>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <input type="text" placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)}
