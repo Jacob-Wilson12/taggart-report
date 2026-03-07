@@ -50,7 +50,7 @@ const BULK_DEPTS = [
       { key: "chat_conversations",   label: "Chats",       type: "number"  },
       { key: "bounce_rate",          label: "Bounce%",     type: "decimal" },
       { key: "avg_session_duration", label: "Sess. Dur",   type: "number"  },
-      { key: "organic_traffic_pct",  label: "Org% Traffic",type: "decimal" },
+      { key: "total_sessions",       label: "Total Sessions",  type: "number" },
     ]
   },
   {
