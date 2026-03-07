@@ -30,6 +30,7 @@ const LIVE_APIS = {
   callrail:  { label: "CallRail",       endpoint: "/api/callrail" },
   meta_ads:  { label: "Meta Ads",       endpoint: "/api/meta-ads" },
   social:    { label: "Social",         endpoint: "/api/social" },
+  gbp:       { label: "GBP",            endpoint: "/api/gbp" },
 };
 
 // Departments that support content uploads
@@ -74,18 +75,18 @@ const DEPT_FIELDS = {
     { key: "next_month",         label: "What's Coming Next Month", type: "textarea", manual: true, hint: "One per line" },
   ],
   gbp: [
-    { key: "profile_views",      label: "Profile Views",          type: "number" },
-    { key: "search_appearances", label: "Search Appearances",     type: "number" },
-    { key: "map_views",          label: "Map Views",              type: "number" },
-    { key: "website_clicks",     label: "Website Clicks",         type: "number" },
-    { key: "phone_calls",        label: "Phone Calls",            type: "number" },
-    { key: "direction_requests", label: "Direction Requests",     type: "number" },
-    { key: "review_count",       label: "Total Reviews",          type: "number" },
-    { key: "avg_rating",         label: "Average Rating",         type: "decimal" },
-    { key: "new_reviews",        label: "New Reviews This Month", type: "number" },
-    { key: "photo_count",        label: "Photos on Profile",      type: "number" },
-    { key: "posts_published",    label: "Posts Published",        type: "number" },
-    { key: "work_completed",     label: "Work Completed",         type: "textarea" },
+    { key: "profile_views",      label: "Profile Views",          type: "number",   api: true },
+    { key: "search_appearances", label: "Search Appearances",     type: "number",   api: true },
+    { key: "map_views",          label: "Map Views",              type: "number",   api: true },
+    { key: "website_clicks",     label: "Website Clicks",         type: "number",   api: true },
+    { key: "phone_calls",        label: "Phone Calls",            type: "number",   api: true },
+    { key: "direction_requests", label: "Direction Requests",     type: "number",   api: true },
+    { key: "review_count",       label: "Total Reviews",          type: "number",   manual: true },
+    { key: "avg_rating",         label: "Average Rating",         type: "decimal",  manual: true },
+    { key: "new_reviews",        label: "New Reviews This Month", type: "number",   manual: true },
+    { key: "photo_count",        label: "Photos on Profile",      type: "number",   manual: true },
+    { key: "posts_published",    label: "Posts Published",        type: "number",   manual: true },
+    { key: "work_completed",     label: "Work Completed",         type: "textarea", manual: true },
     { key: "wins",               label: "Wins",                   type: "textarea", optional: true, hint: "One per line" },
     { key: "losses",             label: "Losses / Watch Items",   type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",         label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
@@ -849,6 +850,51 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       {/* Content Uploads Section */}
       {UPLOAD_DEPTS.includes(dept.id) && editable && (
         <UploadSection clientId={clientId} deptId={dept.id} month={month} />
+      )}
+
+      {/* GBP Per-Location Breakdown */}
+      {dept.id === "gbp" && Array.isArray(data.locations) && data.locations.length > 1 && (
+        <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14, fontFamily: F }}>
+            📍 Per-Location Breakdown
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {data.locations.map((loc, i) => {
+              const m = loc.metrics || {};
+              const hasError = !!loc.error;
+              return (
+                <div key={i} style={{ background: hasError ? C.rL : "#f8fafc", border: `1px solid ${hasError ? "#fecaca" : C.bd}`, borderRadius: 10, padding: "14px 18px" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: hasError ? C.r : C.t, fontFamily: F, marginBottom: hasError ? 4 : 12 }}>
+                    📍 {loc.label}
+                  </div>
+                  {hasError ? (
+                    <div style={{ fontSize: 12, color: C.r, fontFamily: F }}>⚠ {loc.error}</div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+                      {[
+                        { label: "Website Clicks",    value: m.website_clicks },
+                        { label: "Call Clicks",        value: m.call_clicks },
+                        { label: "Direction Requests", value: m.direction_requests },
+                        { label: "Total Impressions",  value: m.total_impressions },
+                        { label: "Desktop Maps",       value: m.impressions_desktop_maps },
+                        { label: "Desktop Search",     value: m.impressions_desktop_search },
+                        { label: "Mobile Maps",        value: m.impressions_mobile_maps },
+                        { label: "Mobile Search",      value: m.impressions_mobile_search },
+                      ].map(stat => (
+                        <div key={stat.label} style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, fontFamily: F }}>
+                            {stat.value != null ? stat.value.toLocaleString() : "—"}
+                          </div>
+                          <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {isGoode && [data.ford_leads, data.mazda_leads, data.vw_leads].some(v => v) && (
