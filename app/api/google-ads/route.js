@@ -100,8 +100,7 @@ export async function GET(request) {
       SELECT
         metrics.impressions,
         metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions
+        metrics.cost_micros
       FROM customer
       WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
     `;
@@ -112,12 +111,9 @@ export async function GET(request) {
     const impressions      = Number(summaryRow?.metrics?.impressions || 0);
     const clicks           = Number(summaryRow?.metrics?.clicks || 0);
     const costMicros       = Number(summaryRow?.metrics?.costMicros || 0);
-    const conversions      = Math.round(Number(summaryRow?.metrics?.conversions || 0) * 10) / 10;
-    const ctr              = Math.round(Number(summaryRow?.metrics?.ctr || 0) * 10000) / 100;
     const avgCpc           = Math.round(costMicros / (clicks || 1) / 10000) / 100;
     const spend            = Math.round(costMicros / 1000000 * 100) / 100;
-    const costPerConversion = conversions > 0 ? Math.round(spend / conversions * 100) / 100 : 0;
-    const conversionRate   = clicks > 0 ? Math.round((conversions / clicks) * 10000) / 100 : 0;
+
 
     // ─── Query 2: Top campaigns ───
     const campaignQuery = `
@@ -126,9 +122,7 @@ export async function GET(request) {
         campaign.status,
         metrics.impressions,
         metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.ctr
+        metrics.cost_micros
       FROM campaign
       WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
         AND campaign.status = 'ENABLED'
@@ -142,8 +136,7 @@ export async function GET(request) {
       impressions: Number(row.metrics?.impressions || 0),
       clicks: Number(row.metrics?.clicks || 0),
       spend: Math.round(Number(row.metrics?.costMicros || 0) / 1000000 * 100) / 100,
-      conversions: Math.round(Number(row.metrics?.conversions || 0) * 10) / 10,
-      ctr: Math.round(Number(row.metrics?.ctr || 0) * 10000) / 100,
+
     }));
 
     // ─── Query 3: Search terms performance ───
@@ -151,8 +144,7 @@ export async function GET(request) {
       SELECT
         search_term_view.search_term,
         metrics.impressions,
-        metrics.clicks,
-        metrics.conversions
+        metrics.clicks
       FROM search_term_view
       WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
       ORDER BY metrics.clicks DESC
@@ -166,7 +158,6 @@ export async function GET(request) {
         term: row.searchTermView?.searchTerm,
         impressions: Number(row.metrics?.impressions || 0),
         clicks: Number(row.metrics?.clicks || 0),
-        conversions: Math.round(Number(row.metrics?.conversions || 0) * 10) / 10,
       }));
     } catch (e) {
       // search terms may not be available on all accounts
@@ -178,11 +169,8 @@ export async function GET(request) {
       impressions,
       clicks,
       spend,
-      conversions,
-      ctr,
+      ctr: clicks > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0,
       avg_cpc: avgCpc,
-      cost_per_conversion: costPerConversion,
-      conversion_rate: conversionRate,
 
       // Breakdowns
       top_campaigns: topCampaigns,
