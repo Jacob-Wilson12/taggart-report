@@ -114,18 +114,13 @@ export async function GET(request) {
     );
 
     // ─── Query 4: Conversion events (per-client config) ───
-    // Reads conversion_events array from client_integrations config.
-    // Falls back to generic automotive events if not configured.
-    // To update a client's events: set config.conversion_events in Supabase client_integrations.
     const configuredEvents = integration.config.conversion_events;
     const conversionEvents = Array.isArray(configuredEvents) && configuredEvents.length > 0
       ? configuredEvents
       : [
-          // ASC standard events (Dealer Inspire, Dealer Alchemist, etc.)
           "asc_form_submission",
           "asc_call",
           "asc_chat",
-          // Google / generic fallbacks
           "generate_lead",
           "form_submit",
           "contact_form",
@@ -149,7 +144,6 @@ export async function GET(request) {
       },
     });
 
-    // Build per-event breakdown so you can see exactly which events are firing
     const conversionBreakdown = (formReport.rows || []).map(row => ({
       event: row.dimensionValues[0]?.value,
       count: Math.round(Number(row.metricValues[0]?.value || 0)),
@@ -184,8 +178,8 @@ export async function GET(request) {
       avg_session_duration: avgSessionDuration,
       vdp_views: vdpViews,
       form_submissions: formSubmissions,
-      conversion_breakdown: conversionBreakdown,   // per-event counts
-      conversion_events_used: conversionEvents,    // which events were queried
+      conversion_breakdown: conversionBreakdown,
+      conversion_events_used: conversionEvents,
       top_pages: topPages,
       channel_breakdown: channelBreakdown,
       _source: "ga4",
@@ -198,7 +192,7 @@ export async function GET(request) {
     if (autoSave) {
       const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
 
-      // Merge organic sessions, VDP views, form submissions into SEO row
+      // ─── Merge into SEO row (respects manual overrides) ───
       const { data: existingSeo } = await supabase
         .from("report_data")
         .select("data")
@@ -207,8 +201,9 @@ export async function GET(request) {
         .eq("department", "seo")
         .single();
 
-      const mergedSeo = {
-        ...(existingSeo?.data || {}),
+      const seoOverrides = new Set(existingSeo?.data?._manual_overrides || []);
+      const mergedSeo = { ...(existingSeo?.data || {}) };
+      const seoFields = {
         total_sessions: ga4Data.total_sessions,
         organic_sessions: ga4Data.organic_sessions,
         organic_traffic_pct: ga4Data.total_sessions > 0
@@ -220,6 +215,9 @@ export async function GET(request) {
         avg_session_duration: ga4Data.avg_session_duration,
         _ga4_pulled_at: ga4Data._pulled_at,
       };
+      for (const [key, val] of Object.entries(seoFields)) {
+        if (!seoOverrides.has(key)) mergedSeo[key] = val;
+      }
 
       await supabase.from("report_data").upsert(
         {
@@ -232,7 +230,7 @@ export async function GET(request) {
         { onConflict: "client_id,month,department" }
       );
 
-      // Save full GA4 data to ga4 department row
+      // ─── Save full GA4 row (respects manual overrides) ───
       const { data: existingGa4 } = await supabase
         .from("report_data")
         .select("data")
@@ -241,7 +239,11 @@ export async function GET(request) {
         .eq("department", "ga4")
         .single();
 
-      const mergedGa4 = { ...(existingGa4?.data || {}), ...ga4Data };
+      const ga4Overrides = new Set(existingGa4?.data?._manual_overrides || []);
+      const mergedGa4 = { ...(existingGa4?.data || {}) };
+      for (const [key, val] of Object.entries(ga4Data)) {
+        if (!ga4Overrides.has(key)) mergedGa4[key] = val;
+      }
 
       const { error: saveErr } = await supabase.from("report_data").upsert(
         {
