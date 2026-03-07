@@ -100,11 +100,11 @@ export async function GET(request) {
     } catch (e) {
       return Response.json({ 
         error: `Summary query failed: ${e.message}`, 
+        query_used: summaryQuery.trim(),
+        start_date: startDate,
+        end_date: endDate,
         customer_id: customerId, 
-        customer_id_type: typeof customerId,
-        customer_id_length: String(customerId).length,
         mcc_id: mccId,
-        url_used: `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:search`
       });
     }
     const summaryRow = summaryData.results?.[0];
