@@ -37,11 +37,10 @@ async function getFacebookData(pageId, year, month) {
   const pageToken = await getPageAccessToken(pageId);
 
   const metricsToFetch = [
-    "page_impressions",
     "page_impressions_unique",
-    "page_engaged_users",
     "page_post_engagements",
     "page_daily_follows_unique",
+    "page_views_total",
   ].join(",");
 
   const insightsData = await metaFetch(
@@ -63,11 +62,10 @@ async function getFacebookData(pageId, year, month) {
   return {
     name: pageData.name,
     followers: pageData.fan_count || 0,
-    impressions: metrics["page_impressions"] || 0,
     reach: metrics["page_impressions_unique"] || 0,
-    engaged_users: metrics["page_engaged_users"] || 0,
     post_engagements: metrics["page_post_engagements"] || 0,
     new_followers: metrics["page_daily_follows_unique"] || 0,
+    page_views: metrics["page_views_total"] || 0,
   };
 }
 
