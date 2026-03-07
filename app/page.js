@@ -329,7 +329,10 @@ function SeoPage({ d }) {
     <div>
       <SecWrap title="Key Metrics">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Organic Sessions" value={fmt(d.organic_sessions)} color={C.cyan} tip="Website visits from organic (unpaid) Google search." sub={d.organic_traffic_pct != null ? `${parseFloat(d.organic_traffic_pct).toFixed(1)}% of total traffic` : null} />
+          <KpiCard label="Organic Sessions" value={fmt(d.organic_sessions)} color={C.cyan} tip="Website visits from organic (unpaid) Google search."
+            sub={d.total_sessions > 0
+              ? `${Math.round((Number(d.organic_sessions) / Number(d.total_sessions)) * 1000) / 10}% of ${Number(d.total_sessions).toLocaleString()} total sessions`
+              : null} />
           <KpiCard label="Impressions" value={fmt(d.impressions)} tip="Times your site appeared in Google Search results." />
           <KpiCard label="CTR" value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"} tip="Click-through rate from Google Search. Higher = stronger title tags and meta descriptions." sub="Industry avg 2–4%" />
           <KpiCard label="Avg Position" value={d.avg_position != null ? parseFloat(d.avg_position).toFixed(1) : "—"} tip="Average ranking position across all tracked keywords." />
