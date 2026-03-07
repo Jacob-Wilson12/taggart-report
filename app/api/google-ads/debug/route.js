@@ -17,34 +17,16 @@ export async function GET() {
     const auth = getOAuthClient();
     const { token: accessToken } = await auth.getAccessToken();
 
-    const customerId = "4785711849";
-    const mccId = process.env.GOOGLE_ADS_MCC_ID;
-    const devToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
-    const query = `SELECT metrics.impressions, metrics.clicks, metrics.cost_micros FROM customer WHERE segments.date BETWEEN '2026-02-01' AND '2026-02-28'`;
+    // Check token info to see what scopes it has
+    const tokenInfoRes = await fetch(
+      `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`
+    );
+    const tokenInfo = await tokenInfoRes.json();
 
-    const results = { token_length: accessToken?.length };
-
-    for (const version of ["v16", "v17", "v18", "v19"]) {
-      const url = `https://googleads.googleapis.com/${version}/customers/${customerId}/googleAds:search`;
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "developer-token": devToken,
-            "login-customer-id": mccId,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ query }),
-        });
-        const text = await res.text();
-        results[version] = `${res.status}: ${text.substring(0, 200)}`;
-      } catch (e) {
-        results[version] = `ERROR: ${e.message}`;
-      }
-    }
-
-    return Response.json(results);
+    return Response.json({
+      token_length: accessToken?.length,
+      token_info: tokenInfo,
+    });
   } catch (err) {
     return Response.json({ error: err.message });
   }
