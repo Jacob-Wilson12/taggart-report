@@ -23,9 +23,6 @@ const DEPARTMENTS = [
   { id: "creative",   label: "Creative",        icon: "🎨" },
 ];
 
-// ── INDUSTRY BENCHMARKS (admin-only, auto-calculated from stored data) ──
-// Values: [min, max] = "within range". Below min = below. Above max = above.
-// For cost metrics (lower=better), flipped: below min = above benchmark.
 const BENCHMARKS = {
   seo: [
     { key: "organic_sessions",    label: "Organic Sessions / mo",    range: [5000, 8000],  unit: "",     lowerBetter: false, note: "Single-point dealership avg" },
@@ -77,7 +74,7 @@ function getBenchmarkStatus(value, range, lowerBetter) {
   const v = Number(value);
   const [min, max] = range;
   if (lowerBetter) {
-    if (v < min) return "above";    // below cost benchmark = good
+    if (v < min) return "above";
     if (v <= max) return "within";
     return "below";
   } else {
@@ -109,7 +106,6 @@ const LIVE_APIS = {
   gbp:       { label: "GBP",            endpoint: "/api/gbp" },
 };
 
-// Departments that support content uploads
 const UPLOAD_DEPTS = ["email", "creative", "social", "seo", "meta_ads", "google_ads"];
 
 const DEPT_FIELDS = {
@@ -147,7 +143,7 @@ const DEPT_FIELDS = {
     { key: "avg_session_duration",  label: "Avg Session Duration (sec)",  type: "number",   api: true,    hint: "From GA4, in seconds" },
     { key: "organic_traffic_pct",   label: "Organic % of Traffic",        type: "decimal",  api: true,    hint: "From GA4 channel breakdown" },
     { key: "top_query",             label: "Top Performing Query",        type: "text",     api: true },
-    { key: "tracked_keywords",       label: "Tracked Keywords",            type: "keywords", manual: true, optional: true, hint: "Enter keywords + target positions — positions auto-fill from Search Console" },
+    { key: "tracked_keywords",      label: "Tracked Keywords",            type: "keywords", manual: true, optional: true, hint: "Enter keywords + target positions — positions auto-fill from Search Console" },
     { key: "page_links",            label: "Page Links (SEO)",            type: "links",    manual: true },
     { key: "work_completed",        label: "Work Completed",              type: "textarea", manual: true },
     { key: "wins",                  label: "Wins",                        type: "textarea", manual: true, optional: true, hint: "One per line" },
@@ -207,31 +203,26 @@ const DEPT_FIELDS = {
     { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   social: [
-    // ── Facebook (API) ──
     { key: "fb_followers",      label: "FB Followers",            type: "number",   api: true },
     { key: "fb_reach",          label: "FB Reach",                type: "number",   api: true },
     { key: "fb_engagement",     label: "FB Engagement",           type: "number",   api: true },
     { key: "fb_new_followers",  label: "FB New Followers",        type: "number",   api: true },
     { key: "fb_page_views",     label: "FB Page Views",           type: "number",   api: true },
-    // ── Instagram (API) ──
     { key: "ig_followers",      label: "IG Followers",            type: "number",   api: true },
     { key: "ig_reach",          label: "IG Reach",                type: "number",   api: true },
     { key: "ig_impressions",    label: "IG Impressions",          type: "number",   api: true },
     { key: "ig_profile_views",  label: "IG Profile Views",        type: "number",   api: true },
     { key: "ig_new_followers",  label: "IG New Followers",        type: "number",   api: true },
-    // ── YouTube (API) ──
     { key: "yt_followers",      label: "YT Subscribers",          type: "number",   api: true },
     { key: "yt_month_views",    label: "YT Views (Month)",        type: "number",   api: true },
     { key: "yt_month_videos",   label: "YT Videos Published",     type: "number",   api: true },
     { key: "yt_month_likes",    label: "YT Likes (Month)",        type: "number",   api: true },
     { key: "yt_month_comments", label: "YT Comments (Month)",     type: "number",   api: true },
     { key: "yt_total_views",    label: "YT Total Views",          type: "number",   api: true },
-    // ── TikTok (manual) ──
     { key: "tiktok_followers",  label: "TikTok Followers",        type: "number",   manual: true },
     { key: "tiktok_reach",      label: "TikTok Reach",            type: "number",   manual: true },
     { key: "tiktok_views",      label: "TikTok Video Views",      type: "number",   manual: true },
     { key: "tiktok_likes",      label: "TikTok Likes",            type: "number",   manual: true },
-    // ── Other manual ──
     { key: "posts_published",   label: "Posts Published",         type: "number",   manual: true },
     { key: "videos_published",  label: "Videos Published",        type: "number",   api: true },
     { key: "web_clicks",        label: "Social → Website Clicks", type: "number",   api: true, hint: "From GA4 Social channel sessions" },
@@ -265,7 +256,7 @@ const DEPT_FIELDS = {
     { key: "ad_creative",     label: "Ad Creative Sets",          type: "number", hint: "Display, search, and social ad graphics" },
     { key: "email_headers",   label: "Email Headers / Templates", type: "number" },
     { key: "work_completed",  label: "Work Completed",            type: "textarea" },
-    { key: "next_month",      label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "next_month",      label: "What's Coming Next Month",  type: "textarea", hint: "One per line" },
   ],
 };
 
@@ -353,7 +344,7 @@ function ServiceToggle({ clientId, deptId, onToggle }) {
     const load = async () => {
       const { data } = await supabase.from("client_services")
         .select("enabled").eq("client_id", clientId).eq("department", deptId).single();
-      setEnabled(data?.enabled !== false); // default true if no row
+      setEnabled(data?.enabled !== false);
       setLoading(false);
     };
     load();
@@ -417,15 +408,10 @@ function LinksField({ value, onChange, disabled }) {
 
 /* ─── TRACKED KEYWORDS FIELD ─── */
 function TrackedKeywordsField({ value, onChange, disabled, scData }) {
-  // value = array of { keyword, target_position }
-  // scData = the SEO row's data object (has top_query, page1_keywords etc. from Search Console)
   const rows = Array.isArray(value) ? value : [];
   const [newKw, setNewKw] = useState("");
   const [newTarget, setNewTarget] = useState("");
 
-  // Build a lookup map from Search Console row data if available
-  // SC data stores query-level data under _sc_queries key (if we add it), otherwise we use top_query
-  // For now, we check the stored _sc_queries array that the search-console route can optionally save
   const scQueries = scData?._sc_queries || [];
   const queryMap = {};
   scQueries.forEach(q => { if (q.query) queryMap[q.query.toLowerCase()] = q; });
@@ -462,7 +448,6 @@ function TrackedKeywordsField({ value, onChange, disabled, scData }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {/* Table header */}
       {rows.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px 70px 80px 80px", gap: 6, padding: "6px 8px", background: "#f8fafc", borderRadius: "8px 8px 0 0", border: `1px solid ${C.bd}`, borderBottom: "none" }}>
           {["Keyword", "Target", "Position", "Clicks", "Impr.", "CTR", "Status"].map(h => (
@@ -470,8 +455,6 @@ function TrackedKeywordsField({ value, onChange, disabled, scData }) {
           ))}
         </div>
       )}
-
-      {/* Rows */}
       {rows.map((row, i) => {
         const sc = queryMap[row.keyword?.toLowerCase()];
         const current = sc?.position != null ? Math.round(sc.position) : null;
@@ -479,12 +462,10 @@ function TrackedKeywordsField({ value, onChange, disabled, scData }) {
         const st = status ? STATUS_STYLE[status] : null;
         return (
           <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 80px 70px 80px 80px", gap: 6, padding: "8px 8px", border: `1px solid ${C.bd}`, borderTop: i === 0 && rows.length > 0 ? `1px solid ${C.bd}` : "none", background: i % 2 === 0 ? C.white : "#fafafa", borderRadius: i === rows.length - 1 && disabled ? "0 0 8px 8px" : 0 }}>
-            {/* Keyword */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {!disabled && <button onClick={() => removeRow(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 12, padding: 0, lineHeight: 1, flexShrink: 0 }}>✕</button>}
               <span style={{ fontSize: 12, fontFamily: F, color: C.t, fontWeight: 500 }}>{row.keyword}</span>
             </div>
-            {/* Target */}
             <div style={{ display: "flex", alignItems: "center" }}>
               {disabled ? (
                 <span style={{ fontSize: 12, fontFamily: F, color: C.tl }}>{row.target_position ?? "—"}</span>
@@ -493,23 +474,18 @@ function TrackedKeywordsField({ value, onChange, disabled, scData }) {
                   style={{ width: "100%", padding: "4px 6px", borderRadius: 5, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
               )}
             </div>
-            {/* Current position from SC */}
             <div style={{ display: "flex", alignItems: "center" }}>
               <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F, color: current != null ? C.navy : C.tl }}>{current != null ? `#${current}` : "—"}</span>
             </div>
-            {/* Clicks */}
             <div style={{ display: "flex", alignItems: "center" }}>
               <span style={{ fontSize: 12, fontFamily: F, color: C.t }}>{sc?.clicks != null ? sc.clicks.toLocaleString() : "—"}</span>
             </div>
-            {/* Impressions */}
             <div style={{ display: "flex", alignItems: "center" }}>
               <span style={{ fontSize: 12, fontFamily: F, color: C.t }}>{sc?.impressions != null ? (sc.impressions >= 1000 ? (sc.impressions / 1000).toFixed(1) + "k" : sc.impressions) : "—"}</span>
             </div>
-            {/* CTR */}
             <div style={{ display: "flex", alignItems: "center" }}>
               <span style={{ fontSize: 12, fontFamily: F, color: C.t }}>{sc?.ctr != null ? (sc.ctr * 100).toFixed(1) + "%" : "—"}</span>
             </div>
-            {/* Status */}
             <div style={{ display: "flex", alignItems: "center" }}>
               {st ? (
                 <span style={{ background: st.bg, color: st.color, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 700, fontFamily: F, whiteSpace: "nowrap" }}>{st.label}</span>
@@ -518,8 +494,6 @@ function TrackedKeywordsField({ value, onChange, disabled, scData }) {
           </div>
         );
       })}
-
-      {/* Add row */}
       {!disabled && (
         <div style={{ display: "flex", gap: 6, marginTop: rows.length > 0 ? 10 : 0 }}>
           <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === "Enter" && addRow()} placeholder='e.g. "ford dealer twin falls"'
@@ -614,8 +588,6 @@ function UploadSection({ clientId, deptId, month }) {
     return "📄";
   };
 
-  const isDragging = useRef(false);
-
   const handleDrop = (e) => {
     e.preventDefault();
     handleFileUpload(e.dataTransfer.files);
@@ -630,7 +602,6 @@ function UploadSection({ clientId, deptId, month }) {
           <button onClick={() => fileRef.current?.click()} style={{ background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}33`, borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F }}>⬆ Upload File</button>
         </div>
       </div>
-
       {addingLink && (
         <div style={{ background: C.pL, border: `1px solid ${C.p}33`, borderRadius: 8, padding: 14, marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -643,9 +614,7 @@ function UploadSection({ clientId, deptId, month }) {
           </div>
         </div>
       )}
-
       <input ref={fileRef} type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
-
       <div onDrop={handleDrop} onDragOver={e => e.preventDefault()}
         style={{ border: `2px dashed ${C.bd}`, borderRadius: 10, padding: "20px", textAlign: "center", cursor: "pointer", background: "#fafafa", marginBottom: uploads.length ? 14 : 0 }}
         onClick={() => fileRef.current?.click()}>
@@ -659,7 +628,6 @@ function UploadSection({ clientId, deptId, month }) {
           </div>
         )}
       </div>
-
       {uploads.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {uploads.map(u => (
@@ -686,7 +654,6 @@ function BackfillModal({ clients, onClose }) {
   const apiDepts = Object.entries(LIVE_APIS);
   const total = clients.length * backfillMonths.length * apiDepts.length;
 
-  // mode: "missing" = skip existing rows | "full" = re-pull everything
   const [mode, setMode] = useState("missing");
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
@@ -706,7 +673,6 @@ function BackfillModal({ clients, onClose }) {
     setRunning(true); setLog([]); setProgress(0); setCounts({ success: 0, skipped: 0, error: 0 });
     let completed = 0, success = 0, skipped = 0, error = 0;
 
-    // For "missing" mode only: pre-load existing rows so we can skip them
     let existingSet = new Set();
     if (mode === "missing") {
       const allClientIds = clients.map(c => c.id);
@@ -728,7 +694,6 @@ function BackfillModal({ clients, onClose }) {
           const deptKey = DEPT_MAP[deptId] || deptId;
           const key = `${client.id}_${monthStr}_${deptKey}`;
 
-          // In "missing" mode, skip rows that already have data
           if (mode === "missing" && existingSet.has(key)) {
             skipped++; addLog(`— ${label} · already exists`, "skip");
             completed++; setProgress(completed); setCounts({ success, skipped, error });
@@ -763,31 +728,13 @@ function BackfillModal({ clients, onClose }) {
   const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
 
   const MODES = [
-    {
-      id: "missing",
-      icon: "⚡",
-      label: "Fill Missing Only",
-      desc: "Skips months that already have data. Fast — only pulls what's empty.",
-      color: C.g,
-      bg: C.gL,
-      border: "#bbf7d0",
-    },
-    {
-      id: "full",
-      icon: "🔄",
-      label: "Full Refresh",
-      desc: "Re-pulls every client, every month, every API. Use to fix bad data or after fixing an integration.",
-      color: C.o,
-      bg: C.oL,
-      border: `${C.o}44`,
-    },
+    { id: "missing", icon: "⚡", label: "Fill Missing Only", desc: "Skips months that already have data. Fast — only pulls what's empty.", color: C.g, bg: C.gL, border: "#bbf7d0" },
+    { id: "full",    icon: "🔄", label: "Full Refresh",      desc: "Re-pulls every client, every month, every API. Use to fix bad data or after fixing an integration.", color: C.o, bg: C.oL, border: `${C.o}44` },
   ];
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ background: C.white, borderRadius: 16, width: "100%", maxWidth: 680, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-
-        {/* Header */}
         <div style={{ padding: "20px 24px", borderBottom: `1px solid ${C.bd}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.t, fontFamily: F }}>Historical Data Backfill</h3>
@@ -797,13 +744,9 @@ function BackfillModal({ clients, onClose }) {
           </div>
           {!running && <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.tl, padding: 4 }}>✕</button>}
         </div>
-
         <div style={{ padding: 24, flex: 1, overflow: "auto" }}>
-
-          {/* Mode selector — only show before running */}
           {!running && !done && (
             <div>
-              {/* Mode toggle */}
               <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
                 {MODES.map(m => (
                   <button key={m.id} onClick={() => setMode(m.id)}
@@ -814,8 +757,6 @@ function BackfillModal({ clients, onClose }) {
                   </button>
                 ))}
               </div>
-
-              {/* Warning box — different per mode */}
               <div style={{ background: mode === "full" ? C.oL : C.gL, border: `1px solid ${mode === "full" ? `${C.o}44` : "#bbf7d0"}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: mode === "full" ? C.o : "#166534", marginBottom: 6, fontFamily: F }}>
                   {mode === "full" ? "⚠ Full Refresh — heads up" : "✓ Fill Missing — safe to run anytime"}
@@ -832,14 +773,12 @@ function BackfillModal({ clients, onClose }) {
                     <>
                       <li>Re-pulls <strong>all</strong> {total} combinations regardless of existing data</li>
                       <li>Will overwrite previously pulled API data</li>
-                      <li>Manually entered fields are <strong>not</strong> affected</li>
+                      <li>Manually entered fields are <strong>protected</strong> — they will not be overwritten</li>
                       <li>Estimated time: <strong>~{Math.round(total * 0.2 / 60)} minutes</strong> — keep this tab open</li>
                     </>
                   )}
                 </ul>
               </div>
-
-              {/* APIs included */}
               <div style={{ background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>APIs included</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -853,8 +792,6 @@ function BackfillModal({ clients, onClose }) {
               </div>
             </div>
           )}
-
-          {/* Progress */}
           {(running || done) && (
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -877,8 +814,6 @@ function BackfillModal({ clients, onClose }) {
               </div>
             </div>
           )}
-
-          {/* Log */}
           {log.length > 0 && (
             <div style={{ background: "#0c1a2e", borderRadius: 10, padding: 14, maxHeight: 240, overflow: "auto", fontFamily: "monospace", fontSize: 11, lineHeight: 1.8 }}>
               {log.map((entry, i) => (
@@ -889,14 +824,11 @@ function BackfillModal({ clients, onClose }) {
             </div>
           )}
         </div>
-
-        {/* Footer */}
         <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10 }}>
           {!running && !done && (
             <>
               <button onClick={onClose} style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, color: C.t }}>Cancel</button>
-              <button onClick={handleRun}
-                style={{ background: mode === "full" ? C.o : C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
+              <button onClick={handleRun} style={{ background: mode === "full" ? C.o : C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
                 {mode === "missing" ? "⚡ Fill Missing Data" : "🔄 Run Full Refresh"}
               </button>
             </>
@@ -1001,12 +933,35 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     const ts = { last_updated_by: user.id, last_updated_at: new Date().toISOString() };
+
+    // ── Build _manual_overrides ──
+    // Any field that is NOT api-sourced and has a value gets locked.
+    // This prevents future API pulls from overwriting data you manually entered.
+    const existingOverrides = new Set(data._manual_overrides || []);
+    manualFields.forEach(f => {
+      const val = data[f.key];
+      if (val !== undefined && val !== null && String(val).trim() !== "") {
+        existingOverrides.add(f.key);
+      } else {
+        // If a manual field was cleared, remove the lock so API can fill it
+        existingOverrides.delete(f.key);
+      }
+    });
+
+    const savePayload = {
+      ...data,
+      _manual_overrides: Array.from(existingOverrides),
+    };
+
     await supabase.from("report_data").upsert(
-      { client_id: clientId, month, department: dept.id, data, ...ts },
+      { client_id: clientId, month, department: dept.id, data: savePayload, ...ts },
       { onConflict: "client_id,month,department" }
     );
+
+    setData(savePayload); // keep local state in sync with what was saved
+
     if (isJuneauSource && allClients) {
-      const sharedPayload = Object.fromEntries(SHARED_KEYS.map(k => [k, data[k] ?? null]));
+      const sharedPayload = Object.fromEntries(SHARED_KEYS.map(k => [k, savePayload[k] ?? null]));
       const siblings = allClients.filter(c => JUNEAU_OEM_LABEL[c.name] && c.name !== JUNEAU_LEAD_SOURCE);
       await Promise.all(siblings.map(async (sibling) => {
         const { data: existing } = await supabase.from("report_data").select("data")
@@ -1023,11 +978,14 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   };
 
   const filledCount = fields.filter(f => {
-    if (f.optional) return false; // don't count optional fields
+    if (f.optional) return false;
     return data[f.key] && String(data[f.key]).trim() !== "";
   }).length;
   const requiredTotal = fields.filter(f => !f.optional).length;
   const pulledAt = data._pulled_at ? new Date(data._pulled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
+
+  // Show which fields are manually locked (for UI indicator)
+  const manualOverrides = new Set(data._manual_overrides || []);
 
   if (loading) return <div style={{ padding: 24, textAlign: "center", color: C.tl, fontFamily: F, fontSize: 13 }}>Loading...</div>;
 
@@ -1039,6 +997,11 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
             {pulledAt ? `✓ Last pulled: ${pulledAt}` : "⬇ No API data yet — click Pull to fetch automatically"}
           </div>
           <ApiPullButton deptId={dept.id} clientId={clientId} year={year} monthIdx={monthIdx} onPulled={handleApiPulled} />
+        </div>
+      )}
+      {manualOverrides.size > 0 && (
+        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: "#92400e", fontFamily: F }}>
+          🔒 {manualOverrides.size} field{manualOverrides.size !== 1 ? "s are" : " is"} manually locked — API pulls will not overwrite them. Clear a field and save to unlock it.
         </div>
       )}
       {isJuneauSource && <div style={{ background: C.gL, border: `1px solid ${C.g}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>📡 Saving here syncs Total, Website, Facebook & Phone leads to all Juneau stores.</div>}
@@ -1074,12 +1037,14 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
         {(apiFields.length > 0 ? manualFields : fields).map(field => {
           const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
           const isFullWidth = field.type === "textarea" || field.type === "links" || field.type === "keywords";
+          const isLocked = manualOverrides.has(field.key);
           return (
             <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto" }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
                 {field.label}
                 {field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>optional</span>}
                 {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>↔ synced</span>}
+                {isLocked && <span style={{ color: "#92400e", fontWeight: 600, marginLeft: 6, fontSize: 10 }}>🔒 locked</span>}
                 {field.hint && !field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
               </label>
               <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField} scData={data} />
@@ -1088,33 +1053,19 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
         })}
       </div>
 
-      {/* Content Uploads Section */}
       {UPLOAD_DEPTS.includes(dept.id) && editable && (
         <UploadSection clientId={clientId} deptId={dept.id} month={month} />
       )}
 
-      {/* Social Per-Channel Breakdown */}
       {dept.id === "social" && (data.fb_followers || data.ig_followers || data.yt_followers) && (
         <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14, fontFamily: F }}>
-            📊 Per-Channel Breakdown
-          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14, fontFamily: F }}>📊 Per-Channel Breakdown</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-            {/* Facebook */}
             {data.fb_followers > 0 && (
               <div style={{ background: "#f0f4ff", border: "1px solid #c7d2fe", borderRadius: 10, padding: "14px 18px" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#3730a3", fontFamily: F, marginBottom: 12 }}>
-                  📘 Facebook
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#3730a3", fontFamily: F, marginBottom: 12 }}>📘 Facebook</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
-                  {[
-                    { label: "Followers",    value: data.fb_followers },
-                    { label: "Reach",        value: data.fb_reach },
-                    { label: "Engagement",   value: data.fb_engagement },
-                    { label: "New Followers",value: data.fb_new_followers },
-                    { label: "Page Views",   value: data.fb_page_views },
-                  ].map(stat => (
+                  {[{ label: "Followers", value: data.fb_followers }, { label: "Reach", value: data.fb_reach }, { label: "Engagement", value: data.fb_engagement }, { label: "New Followers", value: data.fb_new_followers }, { label: "Page Views", value: data.fb_page_views }].map(stat => (
                     <div key={stat.label} style={{ background: C.white, border: "1px solid #c7d2fe", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "#3730a3", fontFamily: F }}>{stat.value != null ? stat.value.toLocaleString() : "—"}</div>
                       <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
@@ -1123,21 +1074,11 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                 </div>
               </div>
             )}
-
-            {/* Instagram */}
             {data.ig_followers > 0 && (
               <div style={{ background: "#fdf2f8", border: "1px solid #f9a8d4", borderRadius: 10, padding: "14px 18px" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#9d174d", fontFamily: F, marginBottom: 12 }}>
-                  📸 Instagram
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#9d174d", fontFamily: F, marginBottom: 12 }}>📸 Instagram</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
-                  {[
-                    { label: "Followers",     value: data.ig_followers },
-                    { label: "Reach",         value: data.ig_reach },
-                    { label: "Impressions",   value: data.ig_impressions },
-                    { label: "Profile Views", value: data.ig_profile_views },
-                    { label: "New Followers", value: data.ig_new_followers },
-                  ].map(stat => (
+                  {[{ label: "Followers", value: data.ig_followers }, { label: "Reach", value: data.ig_reach }, { label: "Impressions", value: data.ig_impressions }, { label: "Profile Views", value: data.ig_profile_views }, { label: "New Followers", value: data.ig_new_followers }].map(stat => (
                     <div key={stat.label} style={{ background: C.white, border: "1px solid #f9a8d4", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "#9d174d", fontFamily: F }}>{stat.value != null ? stat.value.toLocaleString() : "—"}</div>
                       <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
@@ -1146,22 +1087,11 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                 </div>
               </div>
             )}
-
-            {/* YouTube */}
             {data.yt_followers > 0 && (
               <div style={{ background: "#fff7f0", border: "1px solid #fed7aa", borderRadius: 10, padding: "14px 18px" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#9a3412", fontFamily: F, marginBottom: 12 }}>
-                  ▶️ YouTube
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#9a3412", fontFamily: F, marginBottom: 12 }}>▶️ YouTube</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
-                  {[
-                    { label: "Subscribers",    value: data.yt_followers },
-                    { label: "Month Views",     value: data.yt_month_views },
-                    { label: "Month Videos",    value: data.yt_month_videos },
-                    { label: "Month Likes",     value: data.yt_month_likes },
-                    { label: "Month Comments",  value: data.yt_month_comments },
-                    { label: "Total Views",     value: data.yt_total_views },
-                  ].map(stat => (
+                  {[{ label: "Subscribers", value: data.yt_followers }, { label: "Month Views", value: data.yt_month_views }, { label: "Month Videos", value: data.yt_month_videos }, { label: "Month Likes", value: data.yt_month_likes }, { label: "Month Comments", value: data.yt_month_comments }, { label: "Total Views", value: data.yt_total_views }].map(stat => (
                     <div key={stat.label} style={{ background: C.white, border: "1px solid #fed7aa", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "#9a3412", fontFamily: F }}>{stat.value != null ? stat.value.toLocaleString() : "—"}</div>
                       <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
@@ -1170,20 +1100,11 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                 </div>
               </div>
             )}
-
-            {/* TikTok — manual entry */}
             {(data.tiktok_followers > 0 || data.tiktok_reach > 0 || data.tiktok_views > 0) && (
               <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "14px 18px" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", fontFamily: F, marginBottom: 12 }}>
-                  🎵 TikTok <span style={{ fontSize: 11, fontWeight: 400, color: C.tl, marginLeft: 6 }}>manually entered</span>
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", fontFamily: F, marginBottom: 12 }}>🎵 TikTok <span style={{ fontSize: 11, fontWeight: 400, color: C.tl, marginLeft: 6 }}>manually entered</span></div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
-                  {[
-                    { label: "Followers",    value: data.tiktok_followers },
-                    { label: "Reach",        value: data.tiktok_reach },
-                    { label: "Video Views",  value: data.tiktok_views },
-                    { label: "Likes",        value: data.tiktok_likes },
-                  ].map(stat => (
+                  {[{ label: "Followers", value: data.tiktok_followers }, { label: "Reach", value: data.tiktok_reach }, { label: "Video Views", value: data.tiktok_views }, { label: "Likes", value: data.tiktok_likes }].map(stat => (
                     <div key={stat.label} style={{ background: C.white, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
                       <div style={{ fontSize: 18, fontWeight: 700, color: "#166534", fontFamily: F }}>{stat.value ? stat.value.toLocaleString() : "—"}</div>
                       <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
@@ -1192,44 +1113,27 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                 </div>
               </div>
             )}
-
           </div>
         </div>
       )}
 
-      {/* GBP Per-Location Breakdown */}
       {dept.id === "gbp" && Array.isArray(data.locations) && data.locations.length > 1 && (
         <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14, fontFamily: F }}>
-            📍 Per-Location Breakdown
-          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14, fontFamily: F }}>📍 Per-Location Breakdown</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {data.locations.map((loc, i) => {
               const m = loc.metrics || {};
               const hasError = !!loc.error;
               return (
                 <div key={i} style={{ background: hasError ? C.rL : "#f8fafc", border: `1px solid ${hasError ? "#fecaca" : C.bd}`, borderRadius: 10, padding: "14px 18px" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: hasError ? C.r : C.t, fontFamily: F, marginBottom: hasError ? 4 : 12 }}>
-                    📍 {loc.label}
-                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: hasError ? C.r : C.t, fontFamily: F, marginBottom: hasError ? 4 : 12 }}>📍 {loc.label}</div>
                   {hasError ? (
                     <div style={{ fontSize: 12, color: C.r, fontFamily: F }}>⚠ {loc.error}</div>
                   ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
-                      {[
-                        { label: "Website Clicks",    value: m.website_clicks },
-                        { label: "Call Clicks",        value: m.call_clicks },
-                        { label: "Direction Requests", value: m.direction_requests },
-                        { label: "Total Impressions",  value: m.total_impressions },
-                        { label: "Desktop Maps",       value: m.impressions_desktop_maps },
-                        { label: "Desktop Search",     value: m.impressions_desktop_search },
-                        { label: "Mobile Maps",        value: m.impressions_mobile_maps },
-                        { label: "Mobile Search",      value: m.impressions_mobile_search },
-                      ].map(stat => (
+                      {[{ label: "Website Clicks", value: m.website_clicks }, { label: "Call Clicks", value: m.call_clicks }, { label: "Direction Requests", value: m.direction_requests }, { label: "Total Impressions", value: m.total_impressions }, { label: "Desktop Maps", value: m.impressions_desktop_maps }, { label: "Desktop Search", value: m.impressions_desktop_search }, { label: "Mobile Maps", value: m.impressions_mobile_maps }, { label: "Mobile Search", value: m.impressions_mobile_search }].map(stat => (
                         <div key={stat.label} style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, fontFamily: F }}>
-                            {stat.value != null ? stat.value.toLocaleString() : "—"}
-                          </div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, fontFamily: F }}>{stat.value != null ? stat.value.toLocaleString() : "—"}</div>
                           <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
                         </div>
                       ))}
@@ -1274,13 +1178,7 @@ function BenchmarkPanel({ clientId, clientName, month, year, monthIdx }) {
       const depts = Object.keys(BENCHMARKS);
       const results = {};
       for (const dept of depts) {
-        const { data } = await supabase
-          .from("report_data")
-          .select("data")
-          .eq("client_id", clientId)
-          .eq("month", month)
-          .eq("department", dept)
-          .single();
+        const { data } = await supabase.from("report_data").select("data").eq("client_id", clientId).eq("month", month).eq("department", dept).single();
         results[dept] = data?.data || {};
       }
       setAllData(results);
@@ -1291,7 +1189,6 @@ function BenchmarkPanel({ clientId, clientName, month, year, monthIdx }) {
 
   if (loading) return <div style={{ padding: 40, textAlign: "center", color: C.tl, fontFamily: F }}>Loading benchmark data…</div>;
 
-  // Count totals
   let aboveCount = 0, withinCount = 0, belowCount = 0, unknownCount = 0;
   Object.entries(BENCHMARKS).forEach(([dept, metrics]) => {
     metrics.forEach(m => {
@@ -1303,7 +1200,6 @@ function BenchmarkPanel({ clientId, clientName, month, year, monthIdx }) {
       else unknownCount++;
     });
   });
-
   const totalMetrics = aboveCount + withinCount + belowCount + unknownCount;
 
   return (
@@ -1312,15 +1208,8 @@ function BenchmarkPanel({ clientId, clientName, month, year, monthIdx }) {
         <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>🎯 Industry Benchmarks</h3>
         <p style={{ fontSize: 12, color: C.tl, margin: 0, fontFamily: F }}>{MONTHS[monthIdx]} {year} — {clientName} — Admin only</p>
       </div>
-
-      {/* Score summary */}
       <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
-        {[
-          { count: aboveCount,   label: "Above Benchmark", bg: "#ecfdf5", color: "#10b981", border: "#d1fae5" },
-          { count: withinCount,  label: "Within Range",    bg: "#e6f9fc", color: "#00a5bf", border: "#a5f3fc" },
-          { count: belowCount,   label: "Below Benchmark", bg: "#fef2f2", color: "#ef4444", border: "#fecaca" },
-          { count: unknownCount, label: "No Data Yet",     bg: "#f0f2f5", color: "#8892a4", border: "#d0d5dd" },
-        ].map((s, i) => (
+        {[{ count: aboveCount, label: "Above Benchmark", bg: "#ecfdf5", color: "#10b981", border: "#d1fae5" }, { count: withinCount, label: "Within Range", bg: "#e6f9fc", color: "#00a5bf", border: "#a5f3fc" }, { count: belowCount, label: "Below Benchmark", bg: "#fef2f2", color: "#ef4444", border: "#fecaca" }, { count: unknownCount, label: "No Data Yet", bg: "#f0f2f5", color: "#8892a4", border: "#d0d5dd" }].map((s, i) => (
           <div key={i} style={{ flex: 1, minWidth: 110, textAlign: "center", background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: "14px 10px" }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: s.color, fontFamily: "Georgia, serif", lineHeight: 1 }}>{s.count}</div>
             <div style={{ fontSize: 10, fontWeight: 700, color: s.color, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F }}>{s.label}</div>
@@ -1331,16 +1220,10 @@ function BenchmarkPanel({ clientId, clientName, month, year, monthIdx }) {
           <div style={{ fontSize: 10, fontWeight: 700, color: C.tl, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F }}>Total Tracked</div>
         </div>
       </div>
-
-      {/* Per-section tables */}
       {Object.entries(BENCHMARKS).map(([dept, metrics]) => {
         const deptData = allData[dept] || {};
         const deptCounts = { above: 0, within: 0, below: 0 };
-        metrics.forEach(m => {
-          const s = getBenchmarkStatus(deptData[m.key], m.range, m.lowerBetter);
-          if (s !== "unknown") deptCounts[s]++;
-        });
-
+        metrics.forEach(m => { const s = getBenchmarkStatus(deptData[m.key], m.range, m.lowerBetter); if (s !== "unknown") deptCounts[s]++; });
         return (
           <div key={dept} style={{ marginBottom: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -1371,18 +1254,14 @@ function BenchmarkPanel({ clientId, clientName, month, year, monthIdx }) {
                       ? (m.unit === "$" ? "$" + Number(raw).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
                         : Number(raw).toLocaleString(undefined, { maximumFractionDigits: 2 }) + (m.unit === "$" ? "" : m.unit))
                       : "—";
-                    const rangeDisplay = m.unit === "$"
-                      ? `$${m.range[0]}–$${m.range[1]}`
-                      : `${m.range[0]}–${m.range[1]}${m.unit}`;
+                    const rangeDisplay = m.unit === "$" ? `$${m.range[0]}–$${m.range[1]}` : `${m.range[0]}–${m.range[1]}${m.unit}`;
                     return (
                       <tr key={mi} style={{ borderBottom: mi < metrics.length - 1 ? `1px solid ${C.bl2}` : "none" }}>
                         <td style={{ padding: "10px 12px", fontSize: 12, color: C.t, fontWeight: 600 }}>{m.label}</td>
                         <td style={{ padding: "10px 12px", fontSize: 15, color: status === "unknown" ? C.tl : C.t, fontWeight: 700, fontFamily: "Georgia, serif" }}>{displayVal}</td>
                         <td style={{ padding: "10px 12px", fontSize: 12, color: C.tl }}>{rangeDisplay}</td>
                         <td style={{ padding: "10px 12px" }}>
-                          <span style={{ padding: "3px 10px", borderRadius: 4, background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                            {cfg.icon} {cfg.label}
-                          </span>
+                          <span style={{ padding: "3px 10px", borderRadius: 4, background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>{cfg.icon} {cfg.label}</span>
                         </td>
                         <td style={{ padding: "10px 12px", fontSize: 11, color: C.tl }}>{m.note}</td>
                       </tr>
@@ -1394,15 +1273,11 @@ function BenchmarkPanel({ clientId, clientName, month, year, monthIdx }) {
           </div>
         );
       })}
-
-      {/* Sources note */}
       <div style={{ background: C.cyanL, border: "1px solid #a5f3fc", borderRadius: 10, padding: "14px 16px", display: "flex", gap: 10, marginTop: 4 }}>
         <span style={{ fontSize: 16 }}>📚</span>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 3, fontFamily: F }}>Benchmark Sources</div>
-          <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.6, fontFamily: F }}>
-            Sources: Google/LocalIQ 2025 Automotive Benchmarks, Meta Business Suite Insights, BrightLocal Local Consumer Review Survey, Dealer Inspire Performance Reports, SEMRush Industry Data. Represents single-point US automotive dealership averages. Updated quarterly.
-          </div>
+          <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.6, fontFamily: F }}>Sources: Google/LocalIQ 2025 Automotive Benchmarks, Meta Business Suite Insights, BrightLocal Local Consumer Review Survey, Dealer Inspire Performance Reports, SEMRush Industry Data. Represents single-point US automotive dealership averages. Updated quarterly.</div>
         </div>
       </div>
     </div>
@@ -1427,11 +1302,9 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
 
   const month = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
 
-  // Load service states for this client
   useEffect(() => {
     const loadServices = async () => {
-      const { data } = await supabase.from("client_services")
-        .select("department, enabled").eq("client_id", client.id);
+      const { data } = await supabase.from("client_services").select("department, enabled").eq("client_id", client.id);
       const map = {};
       (data || []).forEach(r => { map[r.department] = r.enabled; });
       setServiceStates(map);
@@ -1439,7 +1312,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
     loadServices();
   }, [client.id]);
 
-  const getServiceEnabled = (deptId) => serviceStates[deptId] !== false; // default true
+  const getServiceEnabled = (deptId) => serviceStates[deptId] !== false;
 
   useEffect(() => {
     setDeptCompletion({}); setPullAllResult("");
@@ -1480,9 +1353,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
     setPullAllResult(results.join(" · ")); setPullingAll(false);
   };
 
-  // Pull Last Month: same as Pull All but fires for the currently selected month only
   const handlePullLastMonth = async () => {
-    // Calculate last calendar month
     const now = new Date();
     const lmDate = now.getMonth() === 0
       ? { year: now.getFullYear() - 1, month: 12 }
@@ -1499,7 +1370,6 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
         else results.push(`⚠ ${dept.label}: ${json.error || "failed"}`);
       } catch (e) { results.push(`✗ ${dept.label}: ${e.message}`); }
     }
-    // Also refresh completion for the currently displayed month
     for (const dept of apiDepts) { await refreshCompletion(dept.id); }
     const lmLabel = `${MONTHS[lmDate.month - 1]} ${lmDate.year}`;
     setPullLastMonthResult(`${lmLabel}: ${results.join(" · ")}`);
@@ -1599,12 +1469,8 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
               </div>
             );
           })}
-          {/* ── Benchmarks tab (admin-only) ── */}
           {userRole === "admin" && (
-            <button
-              onClick={() => setActiveDept("benchmarks")}
-              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer", marginTop: 8, background: activeDept === "benchmarks" ? "#f59e0b" : C.white, color: activeDept === "benchmarks" ? "#fff" : C.o, fontFamily: F, fontSize: 13, fontWeight: 700, boxShadow: C.sh }}
-            >
+            <button onClick={() => setActiveDept("benchmarks")} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer", marginTop: 8, background: activeDept === "benchmarks" ? "#f59e0b" : C.white, color: activeDept === "benchmarks" ? "#fff" : C.o, fontFamily: F, fontSize: 13, fontWeight: 700, boxShadow: C.sh }}>
               <span>🎯 Benchmarks</span>
               <span style={{ fontSize: 9, background: activeDept === "benchmarks" ? "rgba(255,255,255,0.3)" : C.oL, color: activeDept === "benchmarks" ? "#fff" : C.o, padding: "1px 6px", borderRadius: 3, fontWeight: 700 }}>ADMIN</span>
             </button>
@@ -1677,26 +1543,19 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
           </div>
         ))}
       </div>
-
       {userRole === "admin" && (
         <div style={{ background: C.navy, borderRadius: 12, padding: "18px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4, fontFamily: F }}>📥 Historical Data Backfill</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>
-              Pull all API data for all clients from Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min
-            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>Pull all API data for all clients from Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min</div>
           </div>
-          <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>
-            ⬇ Run Backfill
-          </button>
+          <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>⬇ Run Backfill</button>
         </div>
       )}
-
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <input type="text" placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)}
           style={{ width: "100%", maxWidth: 320, padding: "10px 14px", borderRadius: 8, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box" }} />
       </div>
-
       {groups.map(group => {
         const groupClients = filtered.filter(c => c.group_name === group);
         if (!groupClients.length) return null;
