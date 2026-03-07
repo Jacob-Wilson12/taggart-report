@@ -23,6 +23,82 @@ const DEPARTMENTS = [
   { id: "creative",   label: "Creative",        icon: "🎨" },
 ];
 
+// ── INDUSTRY BENCHMARKS (admin-only, auto-calculated from stored data) ──
+// Values: [min, max] = "within range". Below min = below. Above max = above.
+// For cost metrics (lower=better), flipped: below min = above benchmark.
+const BENCHMARKS = {
+  seo: [
+    { key: "organic_sessions",    label: "Organic Sessions / mo",    range: [5000, 8000],  unit: "",     lowerBetter: false, note: "Single-point dealership avg" },
+    { key: "ctr",                 label: "Organic CTR",              range: [3.5, 5.0],    unit: "%",    lowerBetter: false, note: "Search Console avg CTR" },
+    { key: "page1_keywords",      label: "Page 1 Keywords",          range: [25, 40],      unit: "",     lowerBetter: false, note: "Well above avg = 40+" },
+    { key: "organic_traffic_pct", label: "Organic % of Traffic",     range: [40, 55],      unit: "%",    lowerBetter: false, note: "From GA4 channel breakdown" },
+    { key: "bounce_rate",         label: "Bounce Rate",              range: [40, 55],      unit: "%",    lowerBetter: true,  note: "Lower is better" },
+    { key: "avg_session_duration",label: "Avg Session Duration",     range: [120, 180],    unit: " sec", lowerBetter: false, note: "2–3 min is healthy" },
+  ],
+  google_ads: [
+    { key: "ctr",              label: "Click-Through Rate",     range: [7, 10],    unit: "%",  lowerBetter: false, note: "Automotive search avg ~8.29%" },
+    { key: "cpc",              label: "Cost Per Click",         range: [1.5, 3.0], unit: "$",  lowerBetter: true,  note: "Automotive avg ~$2.41" },
+    { key: "cost_per_lead",    label: "Cost Per Lead",          range: [25, 45],   unit: "$",  lowerBetter: true,  note: "Automotive avg $25–45" },
+    { key: "impression_share", label: "Impression Share",       range: [60, 80],   unit: "%",  lowerBetter: false, note: "60–80% is healthy coverage" },
+    { key: "quality_score",    label: "Avg Quality Score",      range: [6, 8],     unit: "",   lowerBetter: false, note: "Above 6 is industry standard" },
+  ],
+  meta_ads: [
+    { key: "cpc",              label: "Cost Per Click",         range: [0.5, 1.0], unit: "$",  lowerBetter: true,  note: "Automotive avg ~$0.79" },
+    { key: "ctr",              label: "CTR",                    range: [1.5, 2.5], unit: "%",  lowerBetter: false, note: "Healthy for auto" },
+    { key: "cost_per_lead",    label: "Cost Per Lead",          range: [25, 40],   unit: "$",  lowerBetter: true,  note: "Industry avg $25–40" },
+    { key: "engagement_rate",  label: "Engagement Rate",        range: [2, 4],     unit: "%",  lowerBetter: false, note: "Above 4% is excellent" },
+    { key: "frequency",        label: "Ad Frequency",           range: [1.5, 3.0], unit: "",   lowerBetter: false, note: "Watch for fatigue above 3.5" },
+    { key: "video_view_rate",  label: "Video View Rate",        range: [25, 35],   unit: "%",  lowerBetter: false, note: "Completion rate for video ads" },
+  ],
+  gbp: [
+    { key: "avg_rating",       label: "Average Rating",         range: [4.2, 4.5], unit: "★",  lowerBetter: false, note: "Above 4.5 is excellent" },
+    { key: "new_reviews",      label: "New Reviews / mo",       range: [3, 6],     unit: "",   lowerBetter: false, note: "6+ is strong" },
+    { key: "profile_views",    label: "Profile Views / mo",     range: [2000, 4000],unit: "",  lowerBetter: false, note: "Single-point dealer avg" },
+    { key: "website_clicks",   label: "Website Clicks / mo",    range: [200, 400], unit: "",   lowerBetter: false, note: "Above 400 is excellent" },
+    { key: "posts_published",  label: "Posts / mo",             range: [4, 8],     unit: "",   lowerBetter: false, note: "Consistent posting schedule" },
+  ],
+  social: [
+    { key: "fb_reach",         label: "FB Monthly Reach",       range: [5000, 20000], unit: "", lowerBetter: false, note: "Varies by audience size" },
+    { key: "ig_reach",         label: "IG Monthly Reach",       range: [3000, 15000], unit: "", lowerBetter: false, note: "Organic IG reach" },
+    { key: "posts_published",  label: "Posts / mo (total)",     range: [15, 25],   unit: "",   lowerBetter: false, note: "Across all platforms" },
+    { key: "web_clicks",       label: "Social → Web Clicks",    range: [100, 250], unit: "",   lowerBetter: false, note: "From GA4 Social channel" },
+  ],
+  email: [
+    { key: "avg_open_rate",    label: "Open Rate",              range: [20, 25],   unit: "%",  lowerBetter: false, note: "Automotive avg 20–25%" },
+    { key: "avg_click_rate",   label: "Click Rate",             range: [2, 4],     unit: "%",  lowerBetter: false, note: "Strong CTA performance" },
+    { key: "unsubscribe_rate", label: "Unsubscribe Rate",       range: [0.2, 0.5], unit: "%",  lowerBetter: true,  note: "Healthy list retention" },
+    { key: "campaigns_sent",   label: "Campaigns / mo",         range: [2, 4],     unit: "",   lowerBetter: false, note: "Right frequency for auto" },
+    { key: "list_size",        label: "List Size",              range: [2000, 5000],unit: "",  lowerBetter: false, note: "Single-point dealer avg" },
+  ],
+};
+
+function getBenchmarkStatus(value, range, lowerBetter) {
+  if (value === null || value === undefined || value === "" || isNaN(Number(value))) return "unknown";
+  const v = Number(value);
+  const [min, max] = range;
+  if (lowerBetter) {
+    if (v < min) return "above";    // below cost benchmark = good
+    if (v <= max) return "within";
+    return "below";
+  } else {
+    if (v > max) return "above";
+    if (v >= min) return "within";
+    return "below";
+  }
+}
+
+const BENCH_STATUS = {
+  above:   { label: "Above Benchmark", bg: "#ecfdf5", color: "#10b981", icon: "▲" },
+  within:  { label: "Within Range",    bg: "#e6f9fc", color: "#00a5bf", icon: "•" },
+  below:   { label: "Below Benchmark", bg: "#fef2f2", color: "#ef4444", icon: "▼" },
+  unknown: { label: "No Data",         bg: "#f0f2f5", color: "#8892a4", icon: "—" },
+};
+
+const DEPT_BENCH_LABELS = {
+  seo: "🔍 SEO", google_ads: "📢 Google Ads", meta_ads: "📱 Meta Ads",
+  gbp: "📍 Google Business Profile", social: "🎬 Organic Social", email: "✉️ Email",
+};
+
 const LIVE_APIS = {
   seo:       { label: "Search Console", endpoint: "/api/search-console" },
   ga4:       { label: "GA4",            endpoint: "/api/ga4" },
@@ -57,22 +133,25 @@ const DEPT_FIELDS = {
     { key: "notes",         label: "Notes",              type: "textarea", optional: true },
   ],
   seo: [
-    { key: "phone_calls",        label: "Phone Calls (SEO)",        type: "number",   manual: true },
-    { key: "form_submissions",   label: "Form Submissions",         type: "number",   api: true },
-    { key: "organic_sessions",   label: "Organic Sessions",         type: "number",   api: true },
-    { key: "vdp_views",          label: "VDP Views",                type: "number",   api: true },
-    { key: "direction_requests", label: "Direction Requests",       type: "number",   manual: true },
-    { key: "chat_conversations", label: "Chat Conversations",       type: "number",   manual: true },
-    { key: "ctr",                label: "CTR (%)",                  type: "decimal",  api: true },
-    { key: "impressions",        label: "Impressions",              type: "number",   api: true },
-    { key: "page1_keywords",     label: "Page 1 Keywords",          type: "number",   api: true },
-    { key: "avg_position",       label: "Avg Position",             type: "decimal",  api: true },
-    { key: "top_query",          label: "Top Performing Query",     type: "text",     api: true },
-    { key: "page_links",         label: "Page Links (SEO)",         type: "links",    manual: true },
-    { key: "work_completed",     label: "Work Completed",           type: "textarea", manual: true },
-    { key: "wins",               label: "Wins",                     type: "textarea", manual: true, optional: true, hint: "One per line" },
-    { key: "losses",             label: "Losses / Watch Items",     type: "textarea", manual: true, optional: true, hint: "One per line" },
-    { key: "next_month",         label: "What's Coming Next Month", type: "textarea", manual: true, hint: "One per line" },
+    { key: "phone_calls",           label: "Phone Calls (SEO)",          type: "number",   manual: true },
+    { key: "form_submissions",      label: "Form Submissions",            type: "number",   api: true },
+    { key: "organic_sessions",      label: "Organic Sessions",            type: "number",   api: true },
+    { key: "vdp_views",             label: "VDP Views",                   type: "number",   api: true },
+    { key: "direction_requests",    label: "Direction Requests",          type: "number",   manual: true },
+    { key: "chat_conversations",    label: "Chat Conversations",          type: "number",   manual: true },
+    { key: "ctr",                   label: "CTR (%)",                     type: "decimal",  api: true },
+    { key: "impressions",           label: "Impressions",                 type: "number",   api: true },
+    { key: "page1_keywords",        label: "Page 1 Keywords",             type: "number",   api: true },
+    { key: "avg_position",          label: "Avg Position",                type: "decimal",  api: true },
+    { key: "bounce_rate",           label: "Bounce Rate (%)",             type: "decimal",  api: true,    hint: "From GA4" },
+    { key: "avg_session_duration",  label: "Avg Session Duration (sec)",  type: "number",   api: true,    hint: "From GA4, in seconds" },
+    { key: "organic_traffic_pct",   label: "Organic % of Traffic",        type: "decimal",  api: true,    hint: "From GA4 channel breakdown" },
+    { key: "top_query",             label: "Top Performing Query",        type: "text",     api: true },
+    { key: "page_links",            label: "Page Links (SEO)",            type: "links",    manual: true },
+    { key: "work_completed",        label: "Work Completed",              type: "textarea", manual: true },
+    { key: "wins",                  label: "Wins",                        type: "textarea", manual: true, optional: true, hint: "One per line" },
+    { key: "losses",                label: "Losses / Watch Items",        type: "textarea", manual: true, optional: true, hint: "One per line" },
+    { key: "next_month",            label: "What's Coming Next Month",    type: "textarea", manual: true, hint: "One per line" },
   ],
   gbp: [
     { key: "profile_views",      label: "Profile Views",          type: "number",   api: true },
@@ -92,26 +171,33 @@ const DEPT_FIELDS = {
     { key: "next_month",         label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   google_ads: [
-    { key: "conversions",      label: "Total Conversions",       type: "number" },
-    { key: "cost_per_lead",    label: "Cost Per Lead ($)",       type: "decimal" },
-    { key: "total_spend",      label: "Total Spend ($)",         type: "decimal" },
-    { key: "budget",           label: "Monthly Budget ($)",      type: "decimal" },
-    { key: "ctr",              label: "CTR (%)",                 type: "decimal" },
-    { key: "cpc",              label: "Avg CPC ($)",             type: "decimal" },
-    { key: "impression_share", label: "Impression Share (%)",    type: "decimal" },
-    { key: "top_campaign",     label: "Top Performing Campaign", type: "text" },
-    { key: "work_completed",   label: "Work Completed",          type: "textarea" },
-    { key: "wins",             label: "Wins",                    type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",           label: "Losses / Watch Items",    type: "textarea", optional: true, hint: "One per line" },
+    { key: "conversions",      label: "Total Conversions",        type: "number" },
+    { key: "impressions",      label: "Impressions",              type: "number" },
+    { key: "clicks",           label: "Total Clicks",             type: "number" },
+    { key: "cost_per_lead",    label: "Cost Per Lead ($)",        type: "decimal" },
+    { key: "total_spend",      label: "Total Spend ($)",          type: "decimal" },
+    { key: "budget",           label: "Monthly Budget ($)",       type: "decimal" },
+    { key: "ctr",              label: "CTR (%)",                  type: "decimal" },
+    { key: "cpc",              label: "Avg CPC ($)",              type: "decimal" },
+    { key: "impression_share", label: "Impression Share (%)",     type: "decimal" },
+    { key: "quality_score",    label: "Avg Quality Score",        type: "decimal", hint: "1–10 scale, avg across active campaigns" },
+    { key: "top_campaign",     label: "Top Performing Campaign",  type: "text" },
+    { key: "work_completed",   label: "Work Completed",           type: "textarea" },
+    { key: "wins",             label: "Wins",                     type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",     type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   meta_ads: [
     { key: "conversions",          label: "Total Conversions",        type: "number" },
+    { key: "impressions",          label: "Impressions",              type: "number" },
     { key: "cost_per_lead",        label: "Cost Per Lead ($)",        type: "decimal" },
+    { key: "total_spend",          label: "Total Spend ($)",          type: "decimal" },
     { key: "reach",                label: "Reach",                    type: "number" },
     { key: "cpc",                  label: "Avg CPC ($)",              type: "decimal" },
+    { key: "ctr",                  label: "CTR (%)",                  type: "decimal" },
     { key: "frequency",            label: "Frequency",                type: "decimal" },
     { key: "engagement_rate",      label: "Engagement Rate (%)",      type: "decimal" },
+    { key: "video_view_rate",      label: "Video View Rate (%)",      type: "decimal", hint: "% of video ads watched to completion" },
     { key: "lead_form_completion", label: "Lead Form Completion (%)", type: "decimal" },
     { key: "top_ad",               label: "Top Performing Ad",        type: "text" },
     { key: "work_completed",       label: "Work Completed",           type: "textarea" },
@@ -147,6 +233,7 @@ const DEPT_FIELDS = {
     // ── Other manual ──
     { key: "posts_published",   label: "Posts Published",         type: "number",   manual: true },
     { key: "videos_published",  label: "Videos Published",        type: "number",   api: true },
+    { key: "web_clicks",        label: "Social → Website Clicks", type: "number",   api: true, hint: "From GA4 Social channel sessions" },
     { key: "top_video",         label: "Top Performing Video",    type: "text",     manual: true },
     { key: "top_video_views",   label: "Top Video Views (Month)", type: "number",   api: true },
     { key: "work_completed",    label: "Work Completed",          type: "textarea", manual: true },
@@ -155,22 +242,29 @@ const DEPT_FIELDS = {
     { key: "next_month",        label: "What's Coming Next Month",type: "textarea", hint: "One per line" },
   ],
   email: [
-    { key: "campaigns_sent",   label: "Campaigns Sent",         type: "number" },
-    { key: "total_recipients", label: "Total Recipients",       type: "number" },
-    { key: "site_visits",      label: "Site Visits from Email", type: "number" },
-    { key: "conversions",      label: "Conversions from Email", type: "number" },
-    { key: "work_completed",   label: "Work Completed",         type: "textarea" },
-    { key: "wins",             label: "Wins",                   type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",           label: "Losses / Watch Items",   type: "textarea", optional: true, hint: "One per line" },
+    { key: "campaigns_sent",   label: "Campaigns Sent",          type: "number" },
+    { key: "total_recipients", label: "Total Recipients",        type: "number" },
+    { key: "avg_open_rate",    label: "Avg Open Rate (%)",       type: "decimal", hint: "Avg across all campaigns sent this month" },
+    { key: "avg_click_rate",   label: "Avg Click Rate (%)",      type: "decimal", hint: "Avg across all campaigns sent this month" },
+    { key: "site_visits",      label: "Site Visits from Email",  type: "number" },
+    { key: "conversions",      label: "Conversions from Email",  type: "number" },
+    { key: "unsubscribe_rate", label: "Unsubscribe Rate (%)",    type: "decimal", hint: "Avg unsubscribe rate across campaigns" },
+    { key: "list_size",        label: "Total List Size",         type: "number" },
+    { key: "work_completed",   label: "Work Completed",          type: "textarea" },
+    { key: "wins",             label: "Wins",                    type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",    type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   creative: [
-    { key: "total_assets", label: "Total Assets Delivered",   type: "number" },
-    { key: "videos",       label: "Videos",                   type: "number" },
-    { key: "graphics",     label: "Graphics / Statics",       type: "number" },
-    { key: "banners",      label: "Banners",                  type: "number" },
-    { key: "print",        label: "Print Pieces",             type: "number" },
-    { key: "next_month",   label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "total_assets",    label: "Total Assets Delivered",    type: "number" },
+    { key: "videos",          label: "Videos",                    type: "number" },
+    { key: "graphics",        label: "Graphics / Statics",        type: "number" },
+    { key: "banners",         label: "Banners",                   type: "number" },
+    { key: "print",           label: "Print Pieces",              type: "number" },
+    { key: "ad_creative",     label: "Ad Creative Sets",          type: "number", hint: "Display, search, and social ad graphics" },
+    { key: "email_headers",   label: "Email Headers / Templates", type: "number" },
+    { key: "work_completed",  label: "Work Completed",            type: "textarea" },
+    { key: "next_month",      label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
 };
 
@@ -1039,6 +1133,152 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   );
 }
 
+/* ─── BENCHMARK PANEL ─── */
+function BenchmarkPanel({ clientId, clientName, month, year, monthIdx }) {
+  const [allData, setAllData] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const depts = Object.keys(BENCHMARKS);
+      const results = {};
+      for (const dept of depts) {
+        const { data } = await supabase
+          .from("report_data")
+          .select("data")
+          .eq("client_id", clientId)
+          .eq("month", month)
+          .eq("department", dept)
+          .single();
+        results[dept] = data?.data || {};
+      }
+      setAllData(results);
+      setLoading(false);
+    }
+    load();
+  }, [clientId, month]);
+
+  if (loading) return <div style={{ padding: 40, textAlign: "center", color: C.tl, fontFamily: F }}>Loading benchmark data…</div>;
+
+  // Count totals
+  let aboveCount = 0, withinCount = 0, belowCount = 0, unknownCount = 0;
+  Object.entries(BENCHMARKS).forEach(([dept, metrics]) => {
+    metrics.forEach(m => {
+      const val = allData[dept]?.[m.key];
+      const status = getBenchmarkStatus(val, m.range, m.lowerBetter);
+      if (status === "above") aboveCount++;
+      else if (status === "within") withinCount++;
+      else if (status === "below") belowCount++;
+      else unknownCount++;
+    });
+  });
+
+  const totalMetrics = aboveCount + withinCount + belowCount + unknownCount;
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>🎯 Industry Benchmarks</h3>
+        <p style={{ fontSize: 12, color: C.tl, margin: 0, fontFamily: F }}>{MONTHS[monthIdx]} {year} — {clientName} — Admin only</p>
+      </div>
+
+      {/* Score summary */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
+        {[
+          { count: aboveCount,   label: "Above Benchmark", bg: "#ecfdf5", color: "#10b981", border: "#d1fae5" },
+          { count: withinCount,  label: "Within Range",    bg: "#e6f9fc", color: "#00a5bf", border: "#a5f3fc" },
+          { count: belowCount,   label: "Below Benchmark", bg: "#fef2f2", color: "#ef4444", border: "#fecaca" },
+          { count: unknownCount, label: "No Data Yet",     bg: "#f0f2f5", color: "#8892a4", border: "#d0d5dd" },
+        ].map((s, i) => (
+          <div key={i} style={{ flex: 1, minWidth: 110, textAlign: "center", background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: "14px 10px" }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: s.color, fontFamily: "Georgia, serif", lineHeight: 1 }}>{s.count}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: s.color, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F }}>{s.label}</div>
+          </div>
+        ))}
+        <div style={{ flex: 1, minWidth: 110, textAlign: "center", background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 10px" }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: C.t, fontFamily: "Georgia, serif", lineHeight: 1 }}>{totalMetrics}</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.tl, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F }}>Total Tracked</div>
+        </div>
+      </div>
+
+      {/* Per-section tables */}
+      {Object.entries(BENCHMARKS).map(([dept, metrics]) => {
+        const deptData = allData[dept] || {};
+        const deptCounts = { above: 0, within: 0, below: 0 };
+        metrics.forEach(m => {
+          const s = getBenchmarkStatus(deptData[m.key], m.range, m.lowerBetter);
+          if (s !== "unknown") deptCounts[s]++;
+        });
+
+        return (
+          <div key={dept} style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: C.t, fontFamily: F }}>{DEPT_BENCH_LABELS[dept]}</span>
+              <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                {Object.entries(deptCounts).map(([s, n]) => n > 0 && (
+                  <span key={s} style={{ padding: "2px 8px", borderRadius: 4, background: BENCH_STATUS[s].bg, color: BENCH_STATUS[s].color, fontSize: 10, fontWeight: 700 }}>
+                    {n} {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.bd}`, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F }}>
+                <thead>
+                  <tr style={{ background: "#f8f9fa" }}>
+                    {["Metric", "Your Number", "Industry Range", "Status", "Note"].map(h => (
+                      <th key={h} style={{ textAlign: "left", padding: "8px 12px", fontSize: 10, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `2px solid ${C.bd}` }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.map((m, mi) => {
+                    const raw = deptData[m.key];
+                    const status = getBenchmarkStatus(raw, m.range, m.lowerBetter);
+                    const cfg = BENCH_STATUS[status];
+                    const displayVal = raw !== undefined && raw !== null && raw !== ""
+                      ? (m.unit === "$" ? "$" + Number(raw).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                        : Number(raw).toLocaleString(undefined, { maximumFractionDigits: 2 }) + (m.unit === "$" ? "" : m.unit))
+                      : "—";
+                    const rangeDisplay = m.unit === "$"
+                      ? `$${m.range[0]}–$${m.range[1]}`
+                      : `${m.range[0]}–${m.range[1]}${m.unit}`;
+                    return (
+                      <tr key={mi} style={{ borderBottom: mi < metrics.length - 1 ? `1px solid ${C.bl2}` : "none" }}>
+                        <td style={{ padding: "10px 12px", fontSize: 12, color: C.t, fontWeight: 600 }}>{m.label}</td>
+                        <td style={{ padding: "10px 12px", fontSize: 15, color: status === "unknown" ? C.tl : C.t, fontWeight: 700, fontFamily: "Georgia, serif" }}>{displayVal}</td>
+                        <td style={{ padding: "10px 12px", fontSize: 12, color: C.tl }}>{rangeDisplay}</td>
+                        <td style={{ padding: "10px 12px" }}>
+                          <span style={{ padding: "3px 10px", borderRadius: 4, background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            {cfg.icon} {cfg.label}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px 12px", fontSize: 11, color: C.tl }}>{m.note}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Sources note */}
+      <div style={{ background: C.cyanL, border: "1px solid #a5f3fc", borderRadius: 10, padding: "14px 16px", display: "flex", gap: 10, marginTop: 4 }}>
+        <span style={{ fontSize: 16 }}>📚</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.t, marginBottom: 3, fontFamily: F }}>Benchmark Sources</div>
+          <div style={{ fontSize: 11, color: C.tl, lineHeight: 1.6, fontFamily: F }}>
+            Sources: Google/LocalIQ 2025 Automotive Benchmarks, Meta Business Suite Insights, BrightLocal Local Consumer Review Survey, Dealer Inspire Performance Reports, SEMRush Industry Data. Represents single-point US automotive dealership averages. Updated quarterly.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── CLIENT REPORT ─── */
 function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const now = new Date();
@@ -1197,26 +1437,42 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
               </div>
             );
           })}
+          {/* ── Benchmarks tab (admin-only) ── */}
+          {userRole === "admin" && (
+            <button
+              onClick={() => setActiveDept("benchmarks")}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer", marginTop: 8, background: activeDept === "benchmarks" ? "#f59e0b" : C.white, color: activeDept === "benchmarks" ? "#fff" : C.o, fontFamily: F, fontSize: 13, fontWeight: 700, boxShadow: C.sh }}
+            >
+              <span>🎯 Benchmarks</span>
+              <span style={{ fontSize: 9, background: activeDept === "benchmarks" ? "rgba(255,255,255,0.3)" : C.oL, color: activeDept === "benchmarks" ? "#fff" : C.o, padding: "1px 6px", borderRadius: 3, fontWeight: 700 }}>ADMIN</span>
+            </button>
+          )}
         </div>
         <div style={{ flex: 1, background: C.white, borderRadius: 12, padding: 24, border: `1px solid ${C.bd}`, boxShadow: C.sh }}>
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>{activeDeptObj?.icon} {activeDeptObj?.label}</h3>
-            <p style={{ fontSize: 12, color: C.tl, margin: 0, fontFamily: F }}>{MONTHS[monthIdx]} {year} — {client.name}</p>
-          </div>
-          <DeptForm
-            dept={activeDeptObj}
-            clientId={client.id}
-            clientName={client.name}
-            month={month}
-            monthIdx={monthIdx}
-            year={year}
-            userRole={userRole}
-            userDept={userDept}
-            onSaved={handleSaved}
-            allClients={allClients}
-            onApiPulled={refreshCompletion}
-            serviceEnabled={getServiceEnabled(activeDept)}
-          />
+          {activeDept === "benchmarks" ? (
+            <BenchmarkPanel clientId={client.id} clientName={client.name} month={month} year={year} monthIdx={monthIdx} />
+          ) : (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>{activeDeptObj?.icon} {activeDeptObj?.label}</h3>
+                <p style={{ fontSize: 12, color: C.tl, margin: 0, fontFamily: F }}>{MONTHS[monthIdx]} {year} — {client.name}</p>
+              </div>
+              <DeptForm
+                dept={activeDeptObj}
+                clientId={client.id}
+                clientName={client.name}
+                month={month}
+                monthIdx={monthIdx}
+                year={year}
+                userRole={userRole}
+                userDept={userDept}
+                onSaved={handleSaved}
+                allClients={allClients}
+                onApiPulled={refreshCompletion}
+                serviceEnabled={getServiceEnabled(activeDept)}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>
