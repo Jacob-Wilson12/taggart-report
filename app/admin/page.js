@@ -120,21 +120,43 @@ const DEPT_FIELDS = {
     { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   social: [
-    // ── Aggregate (API) ──
-    { key: "total_reach",      label: "Total Reach",            type: "number",   api: true },
-    { key: "total_engagement", label: "Total Engagement",       type: "number",   api: true },
-    { key: "new_followers",    label: "New Followers",          type: "number",   api: true },
-    { key: "videos_published", label: "Videos Published",       type: "number",   api: true },
-    { key: "top_video_views",  label: "Top Video Views (Month)",type: "number",   api: true },
-    // ── Manual ──
-    { key: "posts_published",  label: "Posts Published",        type: "number",   manual: true },
-    { key: "website_clicks",   label: "Website Clicks",         type: "number",   manual: true },
-    { key: "tiktok_followers", label: "TikTok Followers",       type: "number",   manual: true },
-    { key: "top_video",        label: "Top Performing Video",   type: "text",     manual: true },
-    { key: "work_completed",   label: "Work Completed",         type: "textarea", manual: true },
-    { key: "wins",             label: "Wins",                   type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",           label: "Losses / Watch Items",   type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    // ── Aggregate ──
+    { key: "total_reach",       label: "Total Reach",             type: "number",   api: true },
+    { key: "total_engagement",  label: "Total Engagement",        type: "number",   api: true },
+    { key: "new_followers",     label: "New Followers (All)",     type: "number",   api: true },
+    // ── Facebook ──
+    { key: "fb_followers",      label: "FB Followers",            type: "number",   api: true },
+    { key: "fb_reach",          label: "FB Reach",                type: "number",   api: true },
+    { key: "fb_engagement",     label: "FB Engagement",           type: "number",   api: true },
+    { key: "fb_new_followers",  label: "FB New Followers",        type: "number",   api: true },
+    { key: "fb_page_views",     label: "FB Page Views",           type: "number",   api: true },
+    // ── Instagram ──
+    { key: "ig_followers",      label: "IG Followers",            type: "number",   api: true },
+    { key: "ig_reach",          label: "IG Reach",                type: "number",   api: true },
+    { key: "ig_impressions",    label: "IG Impressions",          type: "number",   api: true },
+    { key: "ig_profile_views",  label: "IG Profile Views",        type: "number",   api: true },
+    { key: "ig_new_followers",  label: "IG New Followers",        type: "number",   api: true },
+    // ── YouTube ──
+    { key: "yt_followers",      label: "YT Subscribers",          type: "number",   api: true },
+    { key: "yt_month_views",    label: "YT Views (Month)",        type: "number",   api: true },
+    { key: "yt_month_videos",   label: "YT Videos Published",     type: "number",   api: true },
+    { key: "yt_month_likes",    label: "YT Likes (Month)",        type: "number",   api: true },
+    { key: "yt_month_comments", label: "YT Comments (Month)",     type: "number",   api: true },
+    { key: "yt_total_views",    label: "YT Total Views",          type: "number",   api: true },
+    // ── TikTok (manual only) ──
+    { key: "tiktok_followers",  label: "TikTok Followers",        type: "number",   manual: true },
+    { key: "tiktok_reach",      label: "TikTok Reach",            type: "number",   manual: true },
+    { key: "tiktok_views",      label: "TikTok Video Views",      type: "number",   manual: true },
+    { key: "tiktok_likes",      label: "TikTok Likes",            type: "number",   manual: true },
+    // ── Other manual ──
+    { key: "posts_published",   label: "Posts Published",         type: "number",   manual: true },
+    { key: "videos_published",  label: "Videos Published",        type: "number",   api: true },
+    { key: "top_video",         label: "Top Performing Video",    type: "text",     manual: true },
+    { key: "top_video_views",   label: "Top Video Views (Month)", type: "number",   api: true },
+    { key: "work_completed",    label: "Work Completed",          type: "textarea", manual: true },
+    { key: "wins",              label: "Wins",                    type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",            label: "Losses / Watch Items",    type: "textarea", optional: true, hint: "One per line" },
+    { key: "next_month",        label: "What's Coming Next Month",type: "textarea", hint: "One per line" },
   ],
   email: [
     { key: "campaigns_sent",   label: "Campaigns Sent",         type: "number" },
@@ -929,17 +951,24 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
               </div>
             )}
 
-            {/* TikTok — manual entry note */}
-            {data.tiktok_followers > 0 && (
+            {/* TikTok — manual entry */}
+            {(data.tiktok_followers > 0 || data.tiktok_reach > 0 || data.tiktok_views > 0) && (
               <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "14px 18px" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", fontFamily: F, marginBottom: 12 }}>
                   🎵 TikTok <span style={{ fontSize: 11, fontWeight: 400, color: C.tl, marginLeft: 6 }}>manually entered</span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
-                  <div style={{ background: C.white, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "#166534", fontFamily: F }}>{data.tiktok_followers.toLocaleString()}</div>
-                    <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>Followers</div>
-                  </div>
+                  {[
+                    { label: "Followers",    value: data.tiktok_followers },
+                    { label: "Reach",        value: data.tiktok_reach },
+                    { label: "Video Views",  value: data.tiktok_views },
+                    { label: "Likes",        value: data.tiktok_likes },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ background: C.white, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#166534", fontFamily: F }}>{stat.value ? stat.value.toLocaleString() : "—"}</div>
+                      <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
