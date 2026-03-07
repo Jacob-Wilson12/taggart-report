@@ -41,7 +41,7 @@ async function getFacebookData(pageId, year, month) {
     "page_impressions_unique",
     "page_engaged_users",
     "page_post_engagements",
-    "page_fan_adds_unique",
+    "page_daily_follows_unique",
   ].join(",");
 
   const insightsData = await metaFetch(
@@ -67,7 +67,7 @@ async function getFacebookData(pageId, year, month) {
     reach: metrics["page_impressions_unique"] || 0,
     engaged_users: metrics["page_engaged_users"] || 0,
     post_engagements: metrics["page_post_engagements"] || 0,
-    new_followers: metrics["page_fan_adds_unique"] || 0,
+    new_followers: metrics["page_daily_follows_unique"] || 0,
   };
 }
 
