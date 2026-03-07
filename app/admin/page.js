@@ -250,7 +250,7 @@ function ServiceToggle({ clientId, deptId, onToggle }) {
     const newVal = !enabled;
     setEnabled(newVal);
     await supabase.from("client_services").upsert(
-      { client_id: clientId, department: deptId, enabled: newVal, updated_at: new Date().toISOString() },
+      { client_id: clientId, department: deptId, enabled: newVal },
       { onConflict: "client_id,department" }
     );
     if (onToggle) onToggle(deptId, newVal);
@@ -444,6 +444,9 @@ function BackfillModal({ clients, onClose }) {
   const backfillMonths = getBackfillMonths();
   const apiDepts = Object.entries(LIVE_APIS);
   const total = clients.length * backfillMonths.length * apiDepts.length;
+
+  // mode: "missing" = skip existing rows | "full" = re-pull everything
+  const [mode, setMode] = useState("missing");
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -453,19 +456,50 @@ function BackfillModal({ clients, onClose }) {
 
   const addLog = (msg, type = "info") => setLog(prev => [...prev.slice(-49), { msg, type, ts: new Date().toLocaleTimeString() }]);
 
+  const DEPT_MAP = {
+    seo: "seo", ga4: "ga4", google_ads: "google_ads",
+    callrail: "callrail", meta_ads: "meta_ads", social: "social"
+  };
+
   const handleRun = async () => {
     setRunning(true); setLog([]); setProgress(0); setCounts({ success: 0, skipped: 0, error: 0 });
     let completed = 0, success = 0, skipped = 0, error = 0;
+
+    // For "missing" mode only: pre-load existing rows so we can skip them
+    let existingSet = new Set();
+    if (mode === "missing") {
+      const allClientIds = clients.map(c => c.id);
+      const { data: existingRows } = await supabase
+        .from("report_data")
+        .select("client_id, month, department")
+        .in("client_id", allClientIds);
+      existingSet = new Set(
+        (existingRows || []).map(r => `${r.client_id}_${r.month}_${r.department}`)
+      );
+    }
+
     for (const client of clients) {
       for (const { year, month } of backfillMonths) {
+        const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
         for (const [deptId, api] of apiDepts) {
           const label = `${client.name} · ${MONTHS[month - 1]} ${year} · ${api.label}`;
           setCurrentLabel(label);
+          const deptKey = DEPT_MAP[deptId] || deptId;
+          const key = `${client.id}_${monthStr}_${deptKey}`;
+
+          // In "missing" mode, skip rows that already have data
+          if (mode === "missing" && existingSet.has(key)) {
+            skipped++; addLog(`— ${label} · already exists`, "skip");
+            completed++; setProgress(completed); setCounts({ success, skipped, error });
+            continue;
+          }
+
           try {
             const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${year}&month=${month}&save=true`);
             const json = await res.json();
             if (json.success && json.saved) {
               success++; addLog(`✓ ${label}`, "success");
+              existingSet.add(key);
             } else if (json.error?.includes("No ") && json.error?.includes("integration")) {
               skipped++; addLog(`— ${client.name} · No integration configured`, "skip");
             } else {
@@ -487,32 +521,86 @@ function BackfillModal({ clients, onClose }) {
 
   const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
 
+  const MODES = [
+    {
+      id: "missing",
+      icon: "⚡",
+      label: "Fill Missing Only",
+      desc: "Skips months that already have data. Fast — only pulls what's empty.",
+      color: C.g,
+      bg: C.gL,
+      border: "#bbf7d0",
+    },
+    {
+      id: "full",
+      icon: "🔄",
+      label: "Full Refresh",
+      desc: "Re-pulls every client, every month, every API. Use to fix bad data or after fixing an integration.",
+      color: C.o,
+      bg: C.oL,
+      border: `${C.o}44`,
+    },
+  ];
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ background: C.white, borderRadius: 16, width: "100%", maxWidth: 680, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+
+        {/* Header */}
         <div style={{ padding: "20px 24px", borderBottom: `1px solid ${C.bd}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.t, fontFamily: F }}>Historical Data Backfill</h3>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: C.tl, fontFamily: F }}>
-              {clients.length} clients × {backfillMonths.length} months × {apiDepts.length} APIs = <strong>{total} requests</strong> · Jan 2024 → last month
+              {clients.length} clients × {backfillMonths.length} months × {apiDepts.length} APIs = <strong>{total} max requests</strong> · Jan 2024 → last month
             </p>
           </div>
           {!running && <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.tl, padding: 4 }}>✕</button>}
         </div>
+
         <div style={{ padding: 24, flex: 1, overflow: "auto" }}>
+
+          {/* Mode selector — only show before running */}
           {!running && !done && (
             <div>
-              <div style={{ background: C.oL, border: `1px solid ${C.o}44`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.o, marginBottom: 6, fontFamily: F }}>⚠ Before you run this</div>
+              {/* Mode toggle */}
+              <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+                {MODES.map(m => (
+                  <button key={m.id} onClick={() => setMode(m.id)}
+                    style={{ flex: 1, background: mode === m.id ? m.bg : C.white, border: `2px solid ${mode === m.id ? m.color : C.bd}`, borderRadius: 10, padding: "14px 16px", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+                    <div style={{ fontSize: 18, marginBottom: 6 }}>{m.icon}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: mode === m.id ? m.color : C.t, fontFamily: F, marginBottom: 4 }}>{m.label}</div>
+                    <div style={{ fontSize: 11, color: C.tl, fontFamily: F, lineHeight: 1.5 }}>{m.desc}</div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Warning box — different per mode */}
+              <div style={{ background: mode === "full" ? C.oL : C.gL, border: `1px solid ${mode === "full" ? `${C.o}44` : "#bbf7d0"}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: mode === "full" ? C.o : "#166534", marginBottom: 6, fontFamily: F }}>
+                  {mode === "full" ? "⚠ Full Refresh — heads up" : "✓ Fill Missing — safe to run anytime"}
+                </div>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: C.t, fontFamily: F, lineHeight: 1.8 }}>
-                  <li>This will take approximately <strong>{Math.round(total * 0.2 / 60)} minutes</strong> to complete</li>
-                  <li>Keep this browser tab open the entire time</li>
-                  <li>It will not overwrite any manually entered data</li>
-                  <li>Clients without integrations configured will be skipped</li>
+                  {mode === "missing" ? (
+                    <>
+                      <li>Skips any month that already has data — no overwrites</li>
+                      <li>Only hits the API for genuinely empty months</li>
+                      <li>Much faster than a full refresh</li>
+                      <li>Keep this browser tab open until complete</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Re-pulls <strong>all</strong> {total} combinations regardless of existing data</li>
+                      <li>Will overwrite previously pulled API data</li>
+                      <li>Manually entered fields are <strong>not</strong> affected</li>
+                      <li>Estimated time: <strong>~{Math.round(total * 0.2 / 60)} minutes</strong> — keep this tab open</li>
+                    </>
+                  )}
                 </ul>
               </div>
+
+              {/* APIs included */}
               <div style={{ background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>APIs included in backfill</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>APIs included</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {apiDepts.map(([deptId, api]) => (
                     <div key={deptId} style={{ background: C.cyanL, color: C.cyanD, borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 600, fontFamily: F }}>{api.label}</div>
@@ -524,10 +612,14 @@ function BackfillModal({ clients, onClose }) {
               </div>
             </div>
           )}
+
+          {/* Progress */}
           {(running || done) && (
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.t, fontFamily: F }}>{done ? "Complete" : "Running..."}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.t, fontFamily: F }}>
+                  {done ? "Complete" : `Running ${mode === "missing" ? "Fill Missing" : "Full Refresh"}...`}
+                </span>
                 <span style={{ fontSize: 13, color: C.tl, fontFamily: F }}>{progress} / {total} ({pct}%)</span>
               </div>
               <div style={{ background: C.bl2, borderRadius: 6, height: 10, marginBottom: 12 }}>
@@ -544,6 +636,8 @@ function BackfillModal({ clients, onClose }) {
               </div>
             </div>
           )}
+
+          {/* Log */}
           {log.length > 0 && (
             <div style={{ background: "#0c1a2e", borderRadius: 10, padding: 14, maxHeight: 240, overflow: "auto", fontFamily: "monospace", fontSize: 11, lineHeight: 1.8 }}>
               {log.map((entry, i) => (
@@ -554,11 +648,16 @@ function BackfillModal({ clients, onClose }) {
             </div>
           )}
         </div>
+
+        {/* Footer */}
         <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10 }}>
           {!running && !done && (
             <>
               <button onClick={onClose} style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, color: C.t }}>Cancel</button>
-              <button onClick={handleRun} style={{ background: C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>⬇ Start Backfill</button>
+              <button onClick={handleRun}
+                style={{ background: mode === "full" ? C.o : C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
+                {mode === "missing" ? "⚡ Fill Missing Data" : "🔄 Run Full Refresh"}
+              </button>
             </>
           )}
           {done && <button onClick={onClose} style={{ background: C.g, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Done</button>}
@@ -627,17 +726,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   const apiFields = fields.filter(f => f.api);
   const manualFields = fields.filter(f => !f.api);
 
-  // If service is disabled, show a friendly message
-  if (serviceEnabled === false) {
-    return (
-      <div style={{ textAlign: "center", padding: "48px 24px", color: C.tl, fontFamily: F }}>
-        <div style={{ fontSize: 36, marginBottom: 12 }}>⭕</div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: C.t, marginBottom: 8 }}>This service is not active for this client</div>
-        <div style={{ fontSize: 13, color: C.tl }}>Toggle the service on using the ⭕ button next to the department name to enable it.</div>
-      </div>
-    );
-  }
-
+  // ALL hooks must come before any conditional return (Rules of Hooks)
   const load = useCallback(async () => {
     setLoading(true);
     const { data: row } = await supabase.from("report_data").select("data")
@@ -654,6 +743,17 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   }, [dept.id, load, onApiPulled]);
 
   const handleChange = (key, val) => { setData(prev => ({ ...prev, [key]: val })); setSaved(false); };
+
+  // Service disabled check — AFTER all hooks so React Rules of Hooks are satisfied
+  if (serviceEnabled === false) {
+    return (
+      <div style={{ textAlign: "center", padding: "48px 24px", color: C.tl, fontFamily: F }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>⭕</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: C.t, marginBottom: 8 }}>This service is not active for this client</div>
+        <div style={{ fontSize: 13, color: C.tl }}>Toggle the ⭕ button next to the department name in the sidebar to enable it.</div>
+      </div>
+    );
+  }
 
   const handleSave = async () => {
     setSaving(true);
