@@ -120,18 +120,17 @@ const DEPT_FIELDS = {
     { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   social: [
-    { key: "total_reach",      label: "Total Reach",            type: "number",  api: true },
-    { key: "total_engagement", label: "Total Engagement",       type: "number",  api: true },
-    { key: "new_followers",    label: "New Followers",          type: "number",  api: true },
-    { key: "fb_followers",     label: "Facebook Followers",     type: "number",  api: true },
-    { key: "ig_followers",     label: "Instagram Followers",    type: "number",  api: true },
-    { key: "yt_followers",     label: "YouTube Subscribers",    type: "number",  api: true },
-    { key: "videos_published", label: "Videos Published",       type: "number",  api: true },
-    { key: "top_video_views",  label: "Top Video Views",        type: "number",  api: true },
-    { key: "posts_published",  label: "Posts Published",        type: "number",  manual: true },
-    { key: "website_clicks",   label: "Website Clicks",         type: "number",  manual: true },
-    { key: "tiktok_followers", label: "TikTok Followers",       type: "number",  manual: true },
-    { key: "top_video",        label: "Top Performing Video",   type: "text",    manual: true },
+    // ── Aggregate (API) ──
+    { key: "total_reach",      label: "Total Reach",            type: "number",   api: true },
+    { key: "total_engagement", label: "Total Engagement",       type: "number",   api: true },
+    { key: "new_followers",    label: "New Followers",          type: "number",   api: true },
+    { key: "videos_published", label: "Videos Published",       type: "number",   api: true },
+    { key: "top_video_views",  label: "Top Video Views (Month)",type: "number",   api: true },
+    // ── Manual ──
+    { key: "posts_published",  label: "Posts Published",        type: "number",   manual: true },
+    { key: "website_clicks",   label: "Website Clicks",         type: "number",   manual: true },
+    { key: "tiktok_followers", label: "TikTok Followers",       type: "number",   manual: true },
+    { key: "top_video",        label: "Top Performing Video",   type: "text",     manual: true },
     { key: "work_completed",   label: "Work Completed",         type: "textarea", manual: true },
     { key: "wins",             label: "Wins",                   type: "textarea", optional: true, hint: "One per line" },
     { key: "losses",           label: "Losses / Watch Items",   type: "textarea", optional: true, hint: "One per line" },
@@ -850,6 +849,103 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       {/* Content Uploads Section */}
       {UPLOAD_DEPTS.includes(dept.id) && editable && (
         <UploadSection clientId={clientId} deptId={dept.id} month={month} />
+      )}
+
+      {/* Social Per-Channel Breakdown */}
+      {dept.id === "social" && (data.fb_followers || data.ig_followers || data.yt_followers) && (
+        <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14, fontFamily: F }}>
+            📊 Per-Channel Breakdown
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+            {/* Facebook */}
+            {data.fb_followers > 0 && (
+              <div style={{ background: "#f0f4ff", border: "1px solid #c7d2fe", borderRadius: 10, padding: "14px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#3730a3", fontFamily: F, marginBottom: 12 }}>
+                  📘 Facebook
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+                  {[
+                    { label: "Followers",    value: data.fb_followers },
+                    { label: "Reach",        value: data.fb_reach },
+                    { label: "Engagement",   value: data.fb_engagement },
+                    { label: "New Followers",value: data.fb_new_followers },
+                    { label: "Page Views",   value: data.fb_page_views },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ background: C.white, border: "1px solid #c7d2fe", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#3730a3", fontFamily: F }}>{stat.value != null ? stat.value.toLocaleString() : "—"}</div>
+                      <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Instagram */}
+            {data.ig_followers > 0 && (
+              <div style={{ background: "#fdf2f8", border: "1px solid #f9a8d4", borderRadius: 10, padding: "14px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#9d174d", fontFamily: F, marginBottom: 12 }}>
+                  📸 Instagram
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+                  {[
+                    { label: "Followers",     value: data.ig_followers },
+                    { label: "Reach",         value: data.ig_reach },
+                    { label: "Impressions",   value: data.ig_impressions },
+                    { label: "Profile Views", value: data.ig_profile_views },
+                    { label: "New Followers", value: data.ig_new_followers },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ background: C.white, border: "1px solid #f9a8d4", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#9d174d", fontFamily: F }}>{stat.value != null ? stat.value.toLocaleString() : "—"}</div>
+                      <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* YouTube */}
+            {data.yt_followers > 0 && (
+              <div style={{ background: "#fff7f0", border: "1px solid #fed7aa", borderRadius: 10, padding: "14px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#9a3412", fontFamily: F, marginBottom: 12 }}>
+                  ▶️ YouTube
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+                  {[
+                    { label: "Subscribers",    value: data.yt_followers },
+                    { label: "Month Views",     value: data.yt_month_views },
+                    { label: "Month Videos",    value: data.yt_month_videos },
+                    { label: "Month Likes",     value: data.yt_month_likes },
+                    { label: "Month Comments",  value: data.yt_month_comments },
+                    { label: "Total Views",     value: data.yt_total_views },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ background: C.white, border: "1px solid #fed7aa", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#9a3412", fontFamily: F }}>{stat.value != null ? stat.value.toLocaleString() : "—"}</div>
+                      <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TikTok — manual entry note */}
+            {data.tiktok_followers > 0 && (
+              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "14px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", fontFamily: F, marginBottom: 12 }}>
+                  🎵 TikTok <span style={{ fontSize: 11, fontWeight: 400, color: C.tl, marginLeft: 6 }}>manually entered</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+                  <div style={{ background: C.white, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#166534", fontFamily: F }}>{data.tiktok_followers.toLocaleString()}</div>
+                    <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>Followers</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
       )}
 
       {/* GBP Per-Location Breakdown */}
