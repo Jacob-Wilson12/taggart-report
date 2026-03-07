@@ -21,8 +21,8 @@ export async function GET() {
     const mccId = process.env.GOOGLE_ADS_MCC_ID;
     const devToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
-    // Test v23
-    const url = `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`;
+    // Test v17
+    const url = `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:search`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -44,11 +44,11 @@ export async function GET() {
       mcc_id: mccId,
       dev_token_present: !!devToken,
       access_token_present: !!accessToken,
+      token_length: accessToken?.length,
       raw: rawText.substring(0, 800),
     });
 
   } catch (err) {
     return Response.json({ error: err.message });
   }
-  // debug route
 }
