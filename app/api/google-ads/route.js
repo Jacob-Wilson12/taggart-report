@@ -77,8 +77,8 @@ export async function GET(request) {
       return Response.json({ error: "No Google Ads integration found for this client." }, { status: 404 });
     }
 
-    const customerId = integration.config.customer_id;
-    const mccId = process.env.GOOGLE_ADS_MCC_ID;
+    const customerId = String(integration.config.customer_id).trim();
+    const mccId = String(process.env.GOOGLE_ADS_MCC_ID).trim();
     const { startDate, endDate } = getMonthRange(year, month);
 
     const auth = getOAuthClient();
@@ -103,8 +103,12 @@ export async function GET(request) {
         query_used: summaryQuery.trim(),
         start_date: startDate,
         end_date: endDate,
-        customer_id: customerId, 
+        customer_id: customerId,
+        customer_id_trimmed: customerId.trim(),
         mcc_id: mccId,
+        mcc_id_trimmed: mccId.trim(),
+        token_length: accessToken?.length,
+        dev_token_present: !!process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
       });
     }
     const summaryRow = summaryData.results?.[0];
