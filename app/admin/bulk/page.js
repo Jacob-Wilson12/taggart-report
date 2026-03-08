@@ -13,28 +13,26 @@ const F = "Inter,system-ui,sans-serif";
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // ── Per-client lead field config ──────────────────────────────────────────────
-// Keys must match the master leads fields below.
-// Any key not listed for a client renders as a disabled (grayed) cell.
 const CLIENT_LEADS_CONFIG = {
-  // Goode Motor Group stores — OEM leads only, no website/3rd party/facebook
-  "Goode Motor Ford":       { active: ["total_leads","oem_leads","total_sold","oem_sold"],           oemLabel: "Ford"   },
-  "Goode Motor Mazda":      { active: ["total_leads","oem_leads","total_sold","oem_sold"],           oemLabel: "Mazda"  },
-  "Twin Falls Volkswagen":  { active: ["total_leads","oem_leads","total_sold","oem_sold"],           oemLabel: "VW"     },
-  // Juneau stores — OEM replaces 3rd party
-  "Juneau Auto Mall":       { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "OEM"     },
-  "Juneau Subaru":          { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "Subaru"  },
-  "Juneau CDJR":            { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "CDJR"    },
-  "Juneau Toyota":          { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "Toyota"  },
-  "Juneau Chevrolet":       { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "Chevy"   },
-  "Juneau Honda":           { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "Honda"   },
-  "Juneau Powersports":     { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "OEM"     },
-  // Default (website/3rd party/facebook) used for all others
+  "Goode Motor Group":     { active: ["total_leads","ford_leads","mazda_leads","vw_leads","total_sold","ford_sold","mazda_sold","vw_sold"] },
+  "Goode Motor Ford":      { active: ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"] },
+  "Goode Motor Mazda":     { active: ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"] },
+  "Twin Falls Volkswagen": { active: ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"] },
+  "Juneau Auto Mall":      { active: ["total_leads","website_leads","oem_leads","facebook_leads","total_sold","website_sold","oem_sold","facebook_sold"], oemLabel: "OEM"    },
+  "Juneau Subaru":         { active: ["total_leads","website_leads","oem_leads","facebook_leads","total_sold","website_sold","oem_sold","facebook_sold"], oemLabel: "Subaru" },
+  "Juneau CDJR":           { active: ["total_leads","website_leads","oem_leads","facebook_leads","total_sold","website_sold","oem_sold","facebook_sold"], oemLabel: "CDJR"   },
+  "Juneau Toyota":         { active: ["total_leads","website_leads","oem_leads","facebook_leads","total_sold","website_sold","oem_sold","facebook_sold"], oemLabel: "Toyota" },
+  "Juneau Chevrolet":      { active: ["total_leads","website_leads","oem_leads","facebook_leads","total_sold","website_sold","oem_sold","facebook_sold"], oemLabel: "Chevy"  },
+  "Juneau Honda":          { active: ["total_leads","website_leads","oem_leads","facebook_leads","total_sold","website_sold","oem_sold","facebook_sold"], oemLabel: "Honda"  },
+  "Juneau Powersports":    { active: ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"] },
+  "Cassia Car Rental":     { active: ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"] },
+  "Explore Juneau":        { active: ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"] },
 };
 
 const DEFAULT_LEADS_ACTIVE = ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"];
 
 function getLeadsConfig(clientName) {
-  return CLIENT_LEADS_CONFIG[clientName] || { active: DEFAULT_LEADS_ACTIVE, oemLabel: null };
+  return CLIENT_LEADS_CONFIG[clientName] || { active: DEFAULT_LEADS_ACTIVE };
 }
 
 // ── Master leads fields (union of all possible columns) ───────────────────────
@@ -42,12 +40,18 @@ const LEADS_MASTER_FIELDS = [
   { key: "total_leads",      label: "Total Leads",  type: "number" },
   { key: "website_leads",    label: "Web Leads",    type: "number" },
   { key: "third_party",      label: "3rd Party",    type: "number" },
-  { key: "oem_leads",        label: "OEM Leads",    type: "number" }, // label overridden per client
+  { key: "ford_leads",       label: "Ford Leads",   type: "number" },
+  { key: "mazda_leads",      label: "Mazda Leads",  type: "number" },
+  { key: "vw_leads",         label: "VW Leads",     type: "number" },
+  { key: "oem_leads",        label: "OEM Leads",    type: "number" },
   { key: "facebook_leads",   label: "FB Leads",     type: "number" },
   { key: "total_sold",       label: "Total Sold",   type: "number" },
   { key: "website_sold",     label: "Web Sold",     type: "number" },
   { key: "third_party_sold", label: "3P Sold",      type: "number" },
-  { key: "oem_sold",         label: "OEM Sold",     type: "number" }, // label overridden per client
+  { key: "ford_sold",        label: "Ford Sold",    type: "number" },
+  { key: "mazda_sold",       label: "Mazda Sold",   type: "number" },
+  { key: "vw_sold",          label: "VW Sold",      type: "number" },
+  { key: "oem_sold",         label: "OEM Sold",     type: "number" },
   { key: "facebook_sold",    label: "FB Sold",      type: "number" },
 ];
 
@@ -86,77 +90,77 @@ const BULK_DEPTS = [
   {
     id: "gbp", label: "Google Business", color: "#d97706",
     fields: [
-      { key: "profile_views",      label: "Views",        type: "number"  },
-      { key: "search_appearances", label: "Searches",     type: "number"  },
-      { key: "map_views",          label: "Map Views",    type: "number"  },
-      { key: "website_clicks",     label: "Web Clicks",   type: "number"  },
-      { key: "phone_calls",        label: "Calls",        type: "number"  },
-      { key: "direction_requests", label: "Directions",   type: "number"  },
-      { key: "review_count",       label: "Total Reviews",type: "number"  },
-      { key: "avg_rating",         label: "Avg Rating",   type: "decimal" },
-      { key: "new_reviews",        label: "New Reviews",  type: "number"  },
-      { key: "photo_count",        label: "Photos",       type: "number"  },
-      { key: "posts_published",    label: "Posts",        type: "number"  },
+      { key: "profile_views",      label: "Views",         type: "number"  },
+      { key: "search_appearances", label: "Searches",      type: "number"  },
+      { key: "map_views",          label: "Map Views",     type: "number"  },
+      { key: "website_clicks",     label: "Web Clicks",    type: "number"  },
+      { key: "phone_calls",        label: "Calls",         type: "number"  },
+      { key: "direction_requests", label: "Directions",    type: "number"  },
+      { key: "review_count",       label: "Total Reviews", type: "number"  },
+      { key: "avg_rating",         label: "Avg Rating",    type: "decimal" },
+      { key: "new_reviews",        label: "New Reviews",   type: "number"  },
+      { key: "photo_count",        label: "Photos",        type: "number"  },
+      { key: "posts_published",    label: "Posts",         type: "number"  },
     ]
   },
   {
     id: "google_ads", label: "Google Ads", color: "#1d4ed8",
     fields: [
-      { key: "conversions",      label: "Conv.",         type: "number"  },
-      { key: "impressions",      label: "Impr.",         type: "number"  },
-      { key: "clicks",           label: "Clicks",        type: "number"  },
-      { key: "total_spend",      label: "Spend $",       type: "decimal" },
-      { key: "budget",           label: "Budget $",      type: "decimal" },
-      { key: "ctr",              label: "CTR%",          type: "decimal" },
-      { key: "cpc",              label: "CPC $",         type: "decimal" },
-      { key: "cost_per_lead",    label: "CPL $",         type: "decimal" },
-      { key: "impression_share", label: "Impr. Share%",  type: "decimal" },
-      { key: "quality_score",    label: "Qual. Score",   type: "decimal" },
+      { key: "conversions",      label: "Conv.",        type: "number"  },
+      { key: "impressions",      label: "Impr.",        type: "number"  },
+      { key: "clicks",           label: "Clicks",       type: "number"  },
+      { key: "total_spend",      label: "Spend $",      type: "decimal" },
+      { key: "budget",           label: "Budget $",     type: "decimal" },
+      { key: "ctr",              label: "CTR%",         type: "decimal" },
+      { key: "cpc",              label: "CPC $",        type: "decimal" },
+      { key: "cost_per_lead",    label: "CPL $",        type: "decimal" },
+      { key: "impression_share", label: "Impr. Share%", type: "decimal" },
+      { key: "quality_score",    label: "Qual. Score",  type: "decimal" },
     ]
   },
   {
     id: "meta_ads", label: "Meta Ads", color: "#1877f2",
     fields: [
-      { key: "conversions",          label: "Conv.",        type: "number"  },
-      { key: "impressions",          label: "Impr.",        type: "number"  },
-      { key: "reach",                label: "Reach",        type: "number"  },
-      { key: "total_spend",          label: "Spend $",      type: "decimal" },
-      { key: "cpc",                  label: "CPC $",        type: "decimal" },
-      { key: "ctr",                  label: "CTR%",         type: "decimal" },
-      { key: "cost_per_lead",        label: "CPL $",        type: "decimal" },
-      { key: "frequency",            label: "Frequency",    type: "decimal" },
-      { key: "engagement_rate",      label: "Engage%",      type: "decimal" },
-      { key: "video_view_rate",      label: "Video View%",  type: "decimal" },
-      { key: "lead_form_completion", label: "Lead Form%",   type: "decimal" },
+      { key: "conversions",          label: "Conv.",       type: "number"  },
+      { key: "impressions",          label: "Impr.",       type: "number"  },
+      { key: "reach",                label: "Reach",       type: "number"  },
+      { key: "total_spend",          label: "Spend $",     type: "decimal" },
+      { key: "cpc",                  label: "CPC $",       type: "decimal" },
+      { key: "ctr",                  label: "CTR%",        type: "decimal" },
+      { key: "cost_per_lead",        label: "CPL $",       type: "decimal" },
+      { key: "frequency",            label: "Frequency",   type: "decimal" },
+      { key: "engagement_rate",      label: "Engage%",     type: "decimal" },
+      { key: "video_view_rate",      label: "Video View%", type: "decimal" },
+      { key: "lead_form_completion", label: "Lead Form%",  type: "decimal" },
     ]
   },
   {
     id: "social", label: "Organic Social", color: "#c026d3",
     fields: [
-      { key: "fb_followers",      label: "FB Follow",     type: "number" },
-      { key: "fb_reach",          label: "FB Reach",      type: "number" },
-      { key: "fb_engagement",     label: "FB Engage",     type: "number" },
-      { key: "fb_new_followers",  label: "FB New Follow", type: "number" },
-      { key: "fb_page_views",     label: "FB Views",      type: "number" },
-      { key: "ig_followers",      label: "IG Follow",     type: "number" },
-      { key: "ig_reach",          label: "IG Reach",      type: "number" },
-      { key: "ig_impressions",    label: "IG Impr.",      type: "number" },
-      { key: "ig_profile_views",  label: "IG Views",      type: "number" },
-      { key: "ig_new_followers",  label: "IG New Follow", type: "number" },
-      { key: "yt_followers",      label: "YT Subs",       type: "number" },
-      { key: "yt_month_views",    label: "YT Views",      type: "number" },
-      { key: "yt_month_videos",   label: "YT Videos",     type: "number" },
-      { key: "yt_month_likes",    label: "YT Likes",      type: "number" },
-      { key: "yt_month_comments", label: "YT Comments",   type: "number" },
-      { key: "yt_total_views",    label: "YT Total",      type: "number" },
-      { key: "tiktok_followers",  label: "TT Follow",     type: "number" },
-      { key: "tiktok_reach",      label: "TT Reach",      type: "number" },
-      { key: "tiktok_views",      label: "TT Views",      type: "number" },
-      { key: "tiktok_likes",      label: "TT Likes",      type: "number" },
-      { key: "posts_published",   label: "Posts",         type: "number" },
-      { key: "videos_published",  label: "Videos",        type: "number" },
-      { key: "web_clicks",        label: "Web Clicks",    type: "number" },
-      { key: "top_video_views",   label: "Top Vid Views", type: "number" },
+      { key: "fb_followers",      label: "FB Follow",      type: "number" },
+      { key: "fb_reach",          label: "FB Reach",       type: "number" },
+      { key: "fb_engagement",     label: "FB Engage",      type: "number" },
+      { key: "fb_new_followers",  label: "FB New Follow",  type: "number" },
+      { key: "fb_page_views",     label: "FB Views",       type: "number" },
+      { key: "ig_followers",      label: "IG Follow",      type: "number" },
+      { key: "ig_reach",          label: "IG Reach",       type: "number" },
+      { key: "ig_impressions",    label: "IG Impr.",       type: "number" },
+      { key: "ig_profile_views",  label: "IG Views",       type: "number" },
+      { key: "ig_new_followers",  label: "IG New Follow",  type: "number" },
+      { key: "yt_followers",      label: "YT Subs",        type: "number" },
+      { key: "yt_month_views",    label: "YT Views",       type: "number" },
+      { key: "yt_month_videos",   label: "YT Videos",      type: "number" },
+      { key: "yt_month_likes",    label: "YT Likes",       type: "number" },
+      { key: "yt_month_comments", label: "YT Comments",    type: "number" },
+      { key: "yt_total_views",    label: "YT Total",       type: "number" },
+      { key: "tiktok_followers",  label: "TT Follow",      type: "number" },
+      { key: "tiktok_reach",      label: "TT Reach",       type: "number" },
+      { key: "tiktok_views",      label: "TT Views",       type: "number" },
+      { key: "tiktok_likes",      label: "TT Likes",       type: "number" },
+      { key: "posts_published",   label: "Posts",          type: "number" },
+      { key: "videos_published",  label: "Videos",         type: "number" },
+      { key: "web_clicks",        label: "Web Clicks",     type: "number" },
+      { key: "top_video_views",   label: "Top Vid Views",  type: "number" },
     ]
   },
   {
@@ -218,9 +222,7 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
 
   const hasValue = value !== null && value !== undefined && String(value).trim() !== "";
 
-  const bgColor = disabled
-    ? "repeating-linear-gradient(45deg, #f0f0f0, #f0f0f0 3px, #e8e8e8 3px, #e8e8e8 6px)"
-    : editing
+  const bgColor = editing
     ? "#fffbeb"
     : isManualLocked && hasValue
     ? "#fff"
@@ -250,8 +252,8 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
 
   return (
     <td style={{
+      backgroundImage: disabled ? "repeating-linear-gradient(45deg,#f0f0f0,#f0f0f0 3px,#e8e8e8 3px,#e8e8e8 6px)" : undefined,
       background: disabled ? undefined : bgColor,
-      backgroundImage: disabled ? bgColor : undefined,
       borderRight: isLastInDept ? `2px solid ${deptColor}55` : `1px solid ${C.bl2}`,
       borderBottom: `1px solid ${C.bl2}`,
       padding: 0,
@@ -260,7 +262,6 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
       position: "relative",
     }}>
       {disabled ? (
-        // N/A cell — not applicable for this client
         <div style={{
           width: "100%",
           height: "100%",
@@ -431,7 +432,6 @@ export default function BulkEditPage() {
     let total = 0, filled = 0;
     BULK_DEPTS.forEach(dept => {
       dept.fields.forEach(f => {
-        // Skip disabled leads fields for this client
         if (dept.id === "leads" && !leadsConfig.active.includes(f.key)) return;
         total++;
         const val = allData[client.id]?.[monthStr]?.[dept.id]?.[f.key];
@@ -499,7 +499,7 @@ export default function BulkEditPage() {
               <span style={{ width: 10, height: 10, borderRadius: 2, background: "#fffbeb", border: "1px solid #fde68a", display: "inline-block" }} /> Editing
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: "repeating-linear-gradient(45deg,#f0f0f0,#f0f0f0 2px,#e8e8e8 2px,#e8e8e8 4px)", border: "1px solid #ddd", display: "inline-block" }} /> N/A
+              <span style={{ width: 10, height: 10, borderRadius: 2, backgroundImage: "repeating-linear-gradient(45deg,#f0f0f0,#f0f0f0 2px,#e8e8e8 2px,#e8e8e8 4px)", border: "1px solid #ddd", display: "inline-block" }} /> N/A
             </span>
           </div>
           <button
@@ -519,7 +519,6 @@ export default function BulkEditPage() {
 
           {/* ── Column headers ── */}
           <thead>
-            {/* Row 1: dept group labels */}
             <tr>
               <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 60, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 12px", textAlign: "left", width: 150, minWidth: 150, borderRight: `3px solid ${C.cyan}`, borderBottom: `1px solid rgba(255,255,255,0.1)`, whiteSpace: "nowrap" }}>
                 Client
@@ -537,7 +536,6 @@ export default function BulkEditPage() {
                 </th>
               ))}
             </tr>
-            {/* Row 2: field names */}
             <tr>
               {BULK_DEPTS.map(dept =>
                 dept.fields.map((f, fi) => (
@@ -586,11 +584,9 @@ export default function BulkEditPage() {
                         const val = deptData[f.key];
                         const isManualLocked = (deptData._manual_overrides || []).includes(f.key);
                         const isApiSourced = !!deptData._pulled_at && !isManualLocked;
-
-                        // For leads dept: check if this field is active for this client
                         const isDisabled = dept.id === "leads" && !leadsConfig.active.includes(f.key);
 
-                        // Override OEM field labels per client
+                        // Dynamic OEM label for Juneau brand stores
                         let displayField = f;
                         if (dept.id === "leads" && leadsConfig.oemLabel) {
                           if (f.key === "oem_leads") displayField = { ...f, label: `${leadsConfig.oemLabel} Leads` };
