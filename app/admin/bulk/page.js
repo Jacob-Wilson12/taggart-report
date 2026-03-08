@@ -12,19 +12,49 @@ const F = "Inter,system-ui,sans-serif";
 
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+// ── Per-client lead field config ──────────────────────────────────────────────
+// Keys must match the master leads fields below.
+// Any key not listed for a client renders as a disabled (grayed) cell.
+const CLIENT_LEADS_CONFIG = {
+  // Goode Motor Group stores — OEM leads only, no website/3rd party/facebook
+  "Goode Motor Ford":       { active: ["total_leads","oem_leads","total_sold","oem_sold"],           oemLabel: "Ford"   },
+  "Goode Motor Mazda":      { active: ["total_leads","oem_leads","total_sold","oem_sold"],           oemLabel: "Mazda"  },
+  "Twin Falls Volkswagen":  { active: ["total_leads","oem_leads","total_sold","oem_sold"],           oemLabel: "VW"     },
+  // Juneau stores — OEM replaces 3rd party
+  "Juneau Auto Mall":       { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "OEM"     },
+  "Juneau Subaru":          { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "Subaru"  },
+  "Juneau CDJR":            { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "CDJR"    },
+  "Juneau Toyota":          { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "Toyota"  },
+  "Juneau Chevrolet":       { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "Chevy"   },
+  "Juneau Honda":           { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "Honda"   },
+  "Juneau Powersports":     { active: ["total_leads","oem_leads","facebook_leads","total_sold","oem_sold","facebook_sold"], oemLabel: "OEM"     },
+  // Default (website/3rd party/facebook) used for all others
+};
+
+const DEFAULT_LEADS_ACTIVE = ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"];
+
+function getLeadsConfig(clientName) {
+  return CLIENT_LEADS_CONFIG[clientName] || { active: DEFAULT_LEADS_ACTIVE, oemLabel: null };
+}
+
+// ── Master leads fields (union of all possible columns) ───────────────────────
+const LEADS_MASTER_FIELDS = [
+  { key: "total_leads",      label: "Total Leads",  type: "number" },
+  { key: "website_leads",    label: "Web Leads",    type: "number" },
+  { key: "third_party",      label: "3rd Party",    type: "number" },
+  { key: "oem_leads",        label: "OEM Leads",    type: "number" }, // label overridden per client
+  { key: "facebook_leads",   label: "FB Leads",     type: "number" },
+  { key: "total_sold",       label: "Total Sold",   type: "number" },
+  { key: "website_sold",     label: "Web Sold",     type: "number" },
+  { key: "third_party_sold", label: "3P Sold",      type: "number" },
+  { key: "oem_sold",         label: "OEM Sold",     type: "number" }, // label overridden per client
+  { key: "facebook_sold",    label: "FB Sold",      type: "number" },
+];
+
 const BULK_DEPTS = [
   {
     id: "leads", label: "Leads & CRM", color: "#6366f1",
-    fields: [
-      { key: "total_leads",      label: "Total Leads",    type: "number" },
-      { key: "website_leads",    label: "Web Leads",      type: "number" },
-      { key: "third_party",      label: "3rd Party",      type: "number" },
-      { key: "facebook_leads",   label: "FB Leads",       type: "number" },
-      { key: "total_sold",       label: "Total Sold",     type: "number" },
-      { key: "website_sold",     label: "Web Sold",       type: "number" },
-      { key: "third_party_sold", label: "3P Sold",        type: "number" },
-      { key: "facebook_sold",    label: "FB Sold",        type: "number" },
-    ]
+    fields: LEADS_MASTER_FIELDS,
   },
   {
     id: "callrail", label: "CallRail", color: "#0891b2",
@@ -38,120 +68,120 @@ const BULK_DEPTS = [
   {
     id: "seo", label: "SEO", color: "#059669",
     fields: [
-      { key: "organic_sessions",     label: "Sessions",    type: "number"  },
-      { key: "impressions",          label: "Impr.",       type: "number"  },
-      { key: "ctr",                  label: "CTR%",        type: "decimal" },
-      { key: "avg_position",         label: "Avg Pos",     type: "decimal" },
-      { key: "page1_keywords",       label: "Pg1 KW",      type: "number"  },
-      { key: "form_submissions",     label: "Forms",       type: "number"  },
-      { key: "phone_calls",          label: "Calls",       type: "number"  },
-      { key: "vdp_views",            label: "VDP Views",   type: "number"  },
-      { key: "direction_requests",   label: "Directions",  type: "number"  },
-      { key: "chat_conversations",   label: "Chats",       type: "number"  },
-      { key: "bounce_rate",          label: "Bounce%",     type: "decimal" },
-      { key: "avg_session_duration", label: "Sess. Dur",   type: "number"  },
-      { key: "total_sessions",       label: "Total Sessions",  type: "number" },
+      { key: "organic_sessions",     label: "Sessions",       type: "number"  },
+      { key: "impressions",          label: "Impr.",          type: "number"  },
+      { key: "ctr",                  label: "CTR%",           type: "decimal" },
+      { key: "avg_position",         label: "Avg Pos",        type: "decimal" },
+      { key: "page1_keywords",       label: "Pg1 KW",         type: "number"  },
+      { key: "form_submissions",     label: "Forms",          type: "number"  },
+      { key: "phone_calls",          label: "Calls",          type: "number"  },
+      { key: "vdp_views",            label: "VDP Views",      type: "number"  },
+      { key: "direction_requests",   label: "Directions",     type: "number"  },
+      { key: "chat_conversations",   label: "Chats",          type: "number"  },
+      { key: "bounce_rate",          label: "Bounce%",        type: "decimal" },
+      { key: "avg_session_duration", label: "Sess. Dur",      type: "number"  },
+      { key: "total_sessions",       label: "Total Sessions", type: "number"  },
     ]
   },
   {
     id: "gbp", label: "Google Business", color: "#d97706",
     fields: [
-      { key: "profile_views",      label: "Views",       type: "number"  },
-      { key: "search_appearances", label: "Searches",    type: "number"  },
-      { key: "map_views",          label: "Map Views",   type: "number"  },
-      { key: "website_clicks",     label: "Web Clicks",  type: "number"  },
-      { key: "phone_calls",        label: "Calls",       type: "number"  },
-      { key: "direction_requests", label: "Directions",  type: "number"  },
-      { key: "review_count",       label: "Total Reviews",type: "number" },
-      { key: "avg_rating",         label: "Avg Rating",  type: "decimal" },
-      { key: "new_reviews",        label: "New Reviews", type: "number"  },
-      { key: "photo_count",        label: "Photos",      type: "number"  },
-      { key: "posts_published",    label: "Posts",       type: "number"  },
+      { key: "profile_views",      label: "Views",        type: "number"  },
+      { key: "search_appearances", label: "Searches",     type: "number"  },
+      { key: "map_views",          label: "Map Views",    type: "number"  },
+      { key: "website_clicks",     label: "Web Clicks",   type: "number"  },
+      { key: "phone_calls",        label: "Calls",        type: "number"  },
+      { key: "direction_requests", label: "Directions",   type: "number"  },
+      { key: "review_count",       label: "Total Reviews",type: "number"  },
+      { key: "avg_rating",         label: "Avg Rating",   type: "decimal" },
+      { key: "new_reviews",        label: "New Reviews",  type: "number"  },
+      { key: "photo_count",        label: "Photos",       type: "number"  },
+      { key: "posts_published",    label: "Posts",        type: "number"  },
     ]
   },
   {
     id: "google_ads", label: "Google Ads", color: "#1d4ed8",
     fields: [
-      { key: "conversions",      label: "Conv.",        type: "number"  },
-      { key: "impressions",      label: "Impr.",        type: "number"  },
-      { key: "clicks",           label: "Clicks",       type: "number"  },
-      { key: "total_spend",      label: "Spend $",      type: "decimal" },
-      { key: "budget",           label: "Budget $",     type: "decimal" },
-      { key: "ctr",              label: "CTR%",         type: "decimal" },
-      { key: "cpc",              label: "CPC $",        type: "decimal" },
-      { key: "cost_per_lead",    label: "CPL $",        type: "decimal" },
-      { key: "impression_share", label: "Impr. Share%", type: "decimal" },
-      { key: "quality_score",    label: "Qual. Score",  type: "decimal" },
+      { key: "conversions",      label: "Conv.",         type: "number"  },
+      { key: "impressions",      label: "Impr.",         type: "number"  },
+      { key: "clicks",           label: "Clicks",        type: "number"  },
+      { key: "total_spend",      label: "Spend $",       type: "decimal" },
+      { key: "budget",           label: "Budget $",      type: "decimal" },
+      { key: "ctr",              label: "CTR%",          type: "decimal" },
+      { key: "cpc",              label: "CPC $",         type: "decimal" },
+      { key: "cost_per_lead",    label: "CPL $",         type: "decimal" },
+      { key: "impression_share", label: "Impr. Share%",  type: "decimal" },
+      { key: "quality_score",    label: "Qual. Score",   type: "decimal" },
     ]
   },
   {
     id: "meta_ads", label: "Meta Ads", color: "#1877f2",
     fields: [
-      { key: "conversions",          label: "Conv.",         type: "number"  },
-      { key: "impressions",          label: "Impr.",         type: "number"  },
-      { key: "reach",                label: "Reach",         type: "number"  },
-      { key: "total_spend",          label: "Spend $",       type: "decimal" },
-      { key: "cpc",                  label: "CPC $",         type: "decimal" },
-      { key: "ctr",                  label: "CTR%",          type: "decimal" },
-      { key: "cost_per_lead",        label: "CPL $",         type: "decimal" },
-      { key: "frequency",            label: "Frequency",     type: "decimal" },
-      { key: "engagement_rate",      label: "Engage%",       type: "decimal" },
-      { key: "video_view_rate",      label: "Video View%",   type: "decimal" },
-      { key: "lead_form_completion", label: "Lead Form%",    type: "decimal" },
+      { key: "conversions",          label: "Conv.",        type: "number"  },
+      { key: "impressions",          label: "Impr.",        type: "number"  },
+      { key: "reach",                label: "Reach",        type: "number"  },
+      { key: "total_spend",          label: "Spend $",      type: "decimal" },
+      { key: "cpc",                  label: "CPC $",        type: "decimal" },
+      { key: "ctr",                  label: "CTR%",         type: "decimal" },
+      { key: "cost_per_lead",        label: "CPL $",        type: "decimal" },
+      { key: "frequency",            label: "Frequency",    type: "decimal" },
+      { key: "engagement_rate",      label: "Engage%",      type: "decimal" },
+      { key: "video_view_rate",      label: "Video View%",  type: "decimal" },
+      { key: "lead_form_completion", label: "Lead Form%",   type: "decimal" },
     ]
   },
   {
     id: "social", label: "Organic Social", color: "#c026d3",
     fields: [
-      { key: "fb_followers",      label: "FB Follow",    type: "number" },
-      { key: "fb_reach",          label: "FB Reach",     type: "number" },
-      { key: "fb_engagement",     label: "FB Engage",    type: "number" },
-      { key: "fb_new_followers",  label: "FB New Follow",type: "number" },
-      { key: "fb_page_views",     label: "FB Views",     type: "number" },
-      { key: "ig_followers",      label: "IG Follow",    type: "number" },
-      { key: "ig_reach",          label: "IG Reach",     type: "number" },
-      { key: "ig_impressions",    label: "IG Impr.",     type: "number" },
-      { key: "ig_profile_views",  label: "IG Views",     type: "number" },
-      { key: "ig_new_followers",  label: "IG New Follow",type: "number" },
-      { key: "yt_followers",      label: "YT Subs",      type: "number" },
-      { key: "yt_month_views",    label: "YT Views",     type: "number" },
-      { key: "yt_month_videos",   label: "YT Videos",    type: "number" },
-      { key: "yt_month_likes",    label: "YT Likes",     type: "number" },
-      { key: "yt_month_comments", label: "YT Comments",  type: "number" },
-      { key: "yt_total_views",    label: "YT Total",     type: "number" },
-      { key: "tiktok_followers",  label: "TT Follow",    type: "number" },
-      { key: "tiktok_reach",      label: "TT Reach",     type: "number" },
-      { key: "tiktok_views",      label: "TT Views",     type: "number" },
-      { key: "tiktok_likes",      label: "TT Likes",     type: "number" },
-      { key: "posts_published",   label: "Posts",        type: "number" },
-      { key: "videos_published",  label: "Videos",       type: "number" },
-      { key: "web_clicks",        label: "Web Clicks",   type: "number" },
-      { key: "top_video_views",   label: "Top Vid Views",type: "number" },
+      { key: "fb_followers",      label: "FB Follow",     type: "number" },
+      { key: "fb_reach",          label: "FB Reach",      type: "number" },
+      { key: "fb_engagement",     label: "FB Engage",     type: "number" },
+      { key: "fb_new_followers",  label: "FB New Follow", type: "number" },
+      { key: "fb_page_views",     label: "FB Views",      type: "number" },
+      { key: "ig_followers",      label: "IG Follow",     type: "number" },
+      { key: "ig_reach",          label: "IG Reach",      type: "number" },
+      { key: "ig_impressions",    label: "IG Impr.",      type: "number" },
+      { key: "ig_profile_views",  label: "IG Views",      type: "number" },
+      { key: "ig_new_followers",  label: "IG New Follow", type: "number" },
+      { key: "yt_followers",      label: "YT Subs",       type: "number" },
+      { key: "yt_month_views",    label: "YT Views",      type: "number" },
+      { key: "yt_month_videos",   label: "YT Videos",     type: "number" },
+      { key: "yt_month_likes",    label: "YT Likes",      type: "number" },
+      { key: "yt_month_comments", label: "YT Comments",   type: "number" },
+      { key: "yt_total_views",    label: "YT Total",      type: "number" },
+      { key: "tiktok_followers",  label: "TT Follow",     type: "number" },
+      { key: "tiktok_reach",      label: "TT Reach",      type: "number" },
+      { key: "tiktok_views",      label: "TT Views",      type: "number" },
+      { key: "tiktok_likes",      label: "TT Likes",      type: "number" },
+      { key: "posts_published",   label: "Posts",         type: "number" },
+      { key: "videos_published",  label: "Videos",        type: "number" },
+      { key: "web_clicks",        label: "Web Clicks",    type: "number" },
+      { key: "top_video_views",   label: "Top Vid Views", type: "number" },
     ]
   },
   {
     id: "email", label: "Email", color: "#dc2626",
     fields: [
-      { key: "campaigns_sent",   label: "Campaigns",    type: "number"  },
-      { key: "total_recipients", label: "Recipients",   type: "number"  },
-      { key: "avg_open_rate",    label: "Open%",        type: "decimal" },
-      { key: "avg_click_rate",   label: "Click%",       type: "decimal" },
-      { key: "unsubscribe_rate", label: "Unsub%",       type: "decimal" },
-      { key: "site_visits",      label: "Site Visits",  type: "number"  },
-      { key: "conversions",      label: "Conv.",        type: "number"  },
-      { key: "list_size",        label: "List Size",    type: "number"  },
+      { key: "campaigns_sent",   label: "Campaigns",   type: "number"  },
+      { key: "total_recipients", label: "Recipients",  type: "number"  },
+      { key: "avg_open_rate",    label: "Open%",       type: "decimal" },
+      { key: "avg_click_rate",   label: "Click%",      type: "decimal" },
+      { key: "unsubscribe_rate", label: "Unsub%",      type: "decimal" },
+      { key: "site_visits",      label: "Site Visits", type: "number"  },
+      { key: "conversions",      label: "Conv.",       type: "number"  },
+      { key: "list_size",        label: "List Size",   type: "number"  },
     ]
   },
   {
     id: "creative", label: "Creative", color: "#7c3aed",
     fields: [
-      { key: "total_assets",  label: "Total Assets", type: "number" },
-      { key: "videos",        label: "Videos",       type: "number" },
-      { key: "graphics",      label: "Graphics",     type: "number" },
-      { key: "banners",       label: "Banners",      type: "number" },
-      { key: "print",         label: "Print",        type: "number" },
-      { key: "ad_creative",   label: "Ad Creative",  type: "number" },
-      { key: "email_headers", label: "Email Headers",type: "number" },
+      { key: "total_assets",  label: "Total Assets",  type: "number" },
+      { key: "videos",        label: "Videos",        type: "number" },
+      { key: "graphics",      label: "Graphics",      type: "number" },
+      { key: "banners",       label: "Banners",       type: "number" },
+      { key: "print",         label: "Print",         type: "number" },
+      { key: "ad_creative",   label: "Ad Creative",   type: "number" },
+      { key: "email_headers", label: "Email Headers", type: "number" },
     ]
   },
 ];
@@ -175,26 +205,22 @@ function getAllMonths() {
     });
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
-  return months.reverse(); // newest first
+  return months.reverse();
 }
 
 const ALL_MONTHS = getAllMonths();
 
-// ── Inline editable cell ──
-function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, value, isManualLocked, isApiSourced, onSave }) {
+// ── Inline editable cell ──────────────────────────────────────────────────────
+function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, value, isManualLocked, isApiSourced, disabled, onSave }) {
   const [editing, setEditing] = useState(false);
   const [localVal, setLocalVal] = useState("");
   const inputRef = useRef();
 
-  const isEmpty = value === null || value === undefined || String(value).trim() === "" || value === 0 && !isManualLocked && !isApiSourced;
   const hasValue = value !== null && value !== undefined && String(value).trim() !== "";
 
-  // Color logic:
-  // Editing         → yellow highlight
-  // Manual locked   → white with colored dot indicator
-  // API sourced     → light blue
-  // Empty           → light gray
-  const bgColor = editing
+  const bgColor = disabled
+    ? "repeating-linear-gradient(45deg, #f0f0f0, #f0f0f0 3px, #e8e8e8 3px, #e8e8e8 6px)"
+    : editing
     ? "#fffbeb"
     : isManualLocked && hasValue
     ? "#fff"
@@ -203,6 +229,7 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
     : "#f8fafc";
 
   const handleFocus = () => {
+    if (disabled) return;
     setEditing(true);
     setLocalVal(hasValue ? String(value) : "");
     setTimeout(() => inputRef.current?.select(), 0);
@@ -223,7 +250,8 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
 
   return (
     <td style={{
-      background: bgColor,
+      background: disabled ? undefined : bgColor,
+      backgroundImage: disabled ? bgColor : undefined,
       borderRight: isLastInDept ? `2px solid ${deptColor}55` : `1px solid ${C.bl2}`,
       borderBottom: `1px solid ${C.bl2}`,
       padding: 0,
@@ -231,48 +259,66 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
       minWidth: 64,
       position: "relative",
     }}>
-      <input
-        ref={inputRef}
-        type="number"
-        step={field.type === "decimal" ? "0.01" : "1"}
-        value={editing ? localVal : displayVal}
-        onChange={e => setLocalVal(e.target.value)}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={e => {
-          if (e.key === "Enter") e.target.blur();
-          if (e.key === "Escape") { setLocalVal(hasValue ? String(value) : ""); setEditing(false); e.target.blur(); }
-        }}
-        placeholder="—"
-        style={{
-          width: "100%",
-          border: "none",
-          outline: editing ? `2px solid ${deptColor}` : "none",
-          outlineOffset: "-2px",
-          background: "transparent",
-          padding: "5px 5px",
-          fontSize: 11,
-          fontFamily: F,
-          color: hasValue || editing ? C.t : C.tl,
-          textAlign: "right",
-          cursor: "text",
-          boxSizing: "border-box",
-        }}
-      />
-      {/* Dot indicator: colored = manual locked, faint = api */}
-      {hasValue && (
+      {disabled ? (
+        // N/A cell — not applicable for this client
         <div style={{
-          position: "absolute", top: 3, left: 3,
-          width: 4, height: 4, borderRadius: "50%",
-          background: isManualLocked ? deptColor : isApiSourced ? "#93c5fd" : "transparent",
-          opacity: 0.7
-        }} />
+          width: "100%",
+          height: "100%",
+          padding: "5px",
+          fontSize: 10,
+          color: "#ccc",
+          textAlign: "center",
+          userSelect: "none",
+          boxSizing: "border-box",
+          lineHeight: "18px",
+        }}>
+          n/a
+        </div>
+      ) : (
+        <>
+          <input
+            ref={inputRef}
+            type="number"
+            step={field.type === "decimal" ? "0.01" : "1"}
+            value={editing ? localVal : displayVal}
+            onChange={e => setLocalVal(e.target.value)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onKeyDown={e => {
+              if (e.key === "Enter") e.target.blur();
+              if (e.key === "Escape") { setLocalVal(hasValue ? String(value) : ""); setEditing(false); e.target.blur(); }
+            }}
+            placeholder="—"
+            style={{
+              width: "100%",
+              border: "none",
+              outline: editing ? `2px solid ${deptColor}` : "none",
+              outlineOffset: "-2px",
+              background: "transparent",
+              padding: "5px 5px",
+              fontSize: 11,
+              fontFamily: F,
+              color: hasValue || editing ? C.t : C.tl,
+              textAlign: "right",
+              cursor: "text",
+              boxSizing: "border-box",
+            }}
+          />
+          {hasValue && (
+            <div style={{
+              position: "absolute", top: 3, left: 3,
+              width: 4, height: 4, borderRadius: "50%",
+              background: isManualLocked ? deptColor : isApiSourced ? "#93c5fd" : "transparent",
+              opacity: 0.7
+            }} />
+          )}
+        </>
       )}
     </td>
   );
 }
 
-// ── Main page ──
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function BulkEditPage() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -284,7 +330,6 @@ export default function BulkEditPage() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Auth
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -339,7 +384,6 @@ export default function BulkEditPage() {
     const parsed = fieldType === "decimal" ? parseFloat(rawValue) : parseInt(rawValue, 10);
     const finalVal = rawValue === "" || rawValue === null ? null : (isNaN(parsed) ? null : parsed);
 
-    // Manage _manual_overrides — same pattern as admin panel
     const overrides = new Set(existing._manual_overrides || []);
     if (finalVal !== null) {
       overrides.add(fieldKey);
@@ -354,7 +398,6 @@ export default function BulkEditPage() {
       _bulk_edited_at: new Date().toISOString(),
     };
 
-    // Optimistic local update
     setAllData(prev => ({
       ...prev,
       [clientId]: {
@@ -382,20 +425,22 @@ export default function BulkEditPage() {
     setSavingCells(prev => { const n = { ...prev }; delete n[cellKey]; return n; });
   }, [allData]);
 
-  // ── Completion % per client+month ──
-  const getCompletion = (clientId, monthStr) => {
+  // Completion % — only counts active fields for leads dept
+  const getCompletion = (client, monthStr) => {
+    const leadsConfig = getLeadsConfig(client.name);
     let total = 0, filled = 0;
     BULK_DEPTS.forEach(dept => {
       dept.fields.forEach(f => {
+        // Skip disabled leads fields for this client
+        if (dept.id === "leads" && !leadsConfig.active.includes(f.key)) return;
         total++;
-        const val = allData[clientId]?.[monthStr]?.[dept.id]?.[f.key];
+        const val = allData[client.id]?.[monthStr]?.[dept.id]?.[f.key];
         if (val !== null && val !== undefined && String(val).trim() !== "") filled++;
       });
     });
     return { total, filled, pct: total > 0 ? Math.round((filled / total) * 100) : 0 };
   };
 
-  // ── Auth/access guards ──
   if (authLoading || dataLoading) return (
     <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ textAlign: "center" }}>
@@ -440,7 +485,6 @@ export default function BulkEditPage() {
           )}
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          {/* Legend */}
           <div style={{ display: "flex", gap: 10, fontSize: 10, color: "rgba(255,255,255,0.6)" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: "#eff6ff", border: "1px solid #93c5fd", display: "inline-block" }} /> API data
@@ -453,6 +497,9 @@ export default function BulkEditPage() {
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: "#fffbeb", border: "1px solid #fde68a", display: "inline-block" }} /> Editing
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: "repeating-linear-gradient(45deg,#f0f0f0,#f0f0f0 2px,#e8e8e8 2px,#e8e8e8 4px)", border: "1px solid #ddd", display: "inline-block" }} /> N/A
             </span>
           </div>
           <button
@@ -507,17 +554,16 @@ export default function BulkEditPage() {
           <tbody>
             {clients.map((client, ci) => {
               const clientBg = ci % 2 === 0 ? "#f0f4ff" : "#f5f0ff";
+              const leadsConfig = getLeadsConfig(client.name);
               return ALL_MONTHS.map((mon, mi) => {
                 const isFirstRow = mi === 0;
-                const isLastRow = mi === ALL_MONTHS.length - 1;
-                const comp = getCompletion(client.id, mon.str);
+                const comp = getCompletion(client, mon.str);
                 const rowBg = mi % 2 === 0 ? C.white : "#fafafa";
                 const compColor = comp.pct === 100 ? C.g : comp.pct >= 50 ? C.o : comp.pct > 0 ? "#f59e0b88" : C.tl;
 
                 return (
                   <tr key={`${client.id}_${mon.str}`}>
 
-                    {/* Client name — spans all months for this client */}
                     {isFirstRow && (
                       <td rowSpan={ALL_MONTHS.length}
                         style={{ position: "sticky", left: 0, zIndex: 10, background: clientBg, borderRight: `3px solid ${C.cyan}`, borderBottom: `3px solid ${C.bd}`, padding: "10px 12px", verticalAlign: "top", width: 150, minWidth: 150 }}>
@@ -526,35 +572,44 @@ export default function BulkEditPage() {
                       </td>
                     )}
 
-                    {/* Month */}
                     <td style={{ position: "sticky", left: 150, zIndex: 10, background: rowBg, borderRight: `2px solid rgba(0,0,0,0.06)`, borderBottom: `1px solid ${C.bl2}`, padding: "4px 8px", textAlign: "center", width: 75, minWidth: 75 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.t, whiteSpace: "nowrap" }}>{mon.label}</div>
                     </td>
 
-                    {/* Completion % */}
                     <td style={{ position: "sticky", left: 225, zIndex: 10, background: rowBg, borderRight: `2px solid rgba(0,0,0,0.08)`, borderBottom: `1px solid ${C.bl2}`, padding: "4px 4px", textAlign: "center", width: 44, minWidth: 44 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: compColor }}>{comp.pct > 0 ? `${comp.pct}%` : "—"}</div>
                     </td>
 
-                    {/* Data cells */}
                     {BULK_DEPTS.map(dept =>
                       dept.fields.map((f, fi) => {
                         const deptData = allData[client.id]?.[mon.str]?.[dept.id] || {};
                         const val = deptData[f.key];
                         const isManualLocked = (deptData._manual_overrides || []).includes(f.key);
                         const isApiSourced = !!deptData._pulled_at && !isManualLocked;
+
+                        // For leads dept: check if this field is active for this client
+                        const isDisabled = dept.id === "leads" && !leadsConfig.active.includes(f.key);
+
+                        // Override OEM field labels per client
+                        let displayField = f;
+                        if (dept.id === "leads" && leadsConfig.oemLabel) {
+                          if (f.key === "oem_leads") displayField = { ...f, label: `${leadsConfig.oemLabel} Leads` };
+                          if (f.key === "oem_sold")  displayField = { ...f, label: `${leadsConfig.oemLabel} Sold` };
+                        }
+
                         return (
                           <BulkCell
                             key={`${client.id}_${mon.str}_${dept.id}_${f.key}`}
                             clientId={client.id}
                             monthStr={mon.str}
                             deptId={dept.id}
-                            field={f}
+                            field={displayField}
                             deptColor={dept.color}
                             isLastInDept={fi === dept.fields.length - 1}
                             value={val}
                             isManualLocked={isManualLocked}
                             isApiSourced={isApiSourced}
+                            disabled={isDisabled}
                             onSave={handleCellSave}
                           />
                         );
