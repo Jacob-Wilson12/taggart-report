@@ -344,22 +344,30 @@ export default function BulkEditPage() {
   }, []);
 
   const loadData = useCallback(async () => {
-    setRefreshing(true);
-    const { data: rows } = await supabase
-      .from("report_data")
-      .select("client_id,month,department,data");
-    const map = {};
-    (rows || []).forEach(r => {
-      if (!map[r.client_id]) map[r.client_id] = {};
-      if (!map[r.client_id][r.month]) map[r.client_id][r.month] = {};
-      // ── FIX: parse data if Supabase returns it as a JSON string ──
-      map[r.client_id][r.month][r.department] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
-    });
-    setAllData(map);
-    setLastRefresh(new Date());
+  setRefreshing(true);
+  const { data: rows, error } = await supabase
+    .from("report_data")
+    .select("client_id,month,department,data");
+
+  if (error) {
+    console.error("loadData error:", error);
+    alert("Load failed: " + error.message);
     setRefreshing(false);
     setDataLoading(false);
-  }, []);
+    return;
+  }
+
+  const map = {};
+  (rows || []).forEach(r => {
+    if (!map[r.client_id]) map[r.client_id] = {};
+    if (!map[r.client_id][r.month]) map[r.client_id][r.month] = {};
+    map[r.client_id][r.month][r.department] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
+  });
+  setAllData(map);
+  setLastRefresh(new Date());
+  setRefreshing(false);
+  setDataLoading(false);
+}, []);
 
   useEffect(() => {
     if (!session) return;
