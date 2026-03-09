@@ -137,30 +137,30 @@ const BULK_DEPTS = [
   {
     id: "social", label: "Organic Social", color: "#c026d3",
     fields: [
-      { key: "fb_followers",      label: "FB Follow",      type: "number" },
-      { key: "fb_reach",          label: "FB Reach",       type: "number" },
-      { key: "fb_engagement",     label: "FB Engage",      type: "number" },
-      { key: "fb_new_followers",  label: "FB New Follow",  type: "number" },
-      { key: "fb_page_views",     label: "FB Views",       type: "number" },
-      { key: "ig_followers",      label: "IG Follow",      type: "number" },
-      { key: "ig_reach",          label: "IG Reach",       type: "number" },
-      { key: "ig_impressions",    label: "IG Impr.",       type: "number" },
-      { key: "ig_profile_views",  label: "IG Views",       type: "number" },
-      { key: "ig_new_followers",  label: "IG New Follow",  type: "number" },
-      { key: "yt_followers",      label: "YT Subs",        type: "number" },
-      { key: "yt_month_views",    label: "YT Views",       type: "number" },
-      { key: "yt_month_videos",   label: "YT Videos",      type: "number" },
-      { key: "yt_month_likes",    label: "YT Likes",       type: "number" },
-      { key: "yt_month_comments", label: "YT Comments",    type: "number" },
-      { key: "yt_total_views",    label: "YT Total",       type: "number" },
-      { key: "tiktok_followers",  label: "TT Follow",      type: "number" },
-      { key: "tiktok_reach",      label: "TT Reach",       type: "number" },
-      { key: "tiktok_views",      label: "TT Views",       type: "number" },
-      { key: "tiktok_likes",      label: "TT Likes",       type: "number" },
-      { key: "posts_published",   label: "Posts",          type: "number" },
-      { key: "videos_published",  label: "Videos",         type: "number" },
-      { key: "web_clicks",        label: "Web Clicks",     type: "number" },
-      { key: "top_video_views",   label: "Top Vid Views",  type: "number" },
+      { key: "fb_followers",      label: "FB Follow",     type: "number" },
+      { key: "fb_reach",          label: "FB Reach",      type: "number" },
+      { key: "fb_engagement",     label: "FB Engage",     type: "number" },
+      { key: "fb_new_followers",  label: "FB New Follow", type: "number" },
+      { key: "fb_page_views",     label: "FB Views",      type: "number" },
+      { key: "ig_followers",      label: "IG Follow",     type: "number" },
+      { key: "ig_reach",          label: "IG Reach",      type: "number" },
+      { key: "ig_impressions",    label: "IG Impr.",      type: "number" },
+      { key: "ig_profile_views",  label: "IG Views",      type: "number" },
+      { key: "ig_new_followers",  label: "IG New Follow", type: "number" },
+      { key: "yt_followers",      label: "YT Subs",       type: "number" },
+      { key: "yt_month_views",    label: "YT Views",      type: "number" },
+      { key: "yt_month_videos",   label: "YT Videos",     type: "number" },
+      { key: "yt_month_likes",    label: "YT Likes",      type: "number" },
+      { key: "yt_month_comments", label: "YT Comments",   type: "number" },
+      { key: "yt_total_views",    label: "YT Total",      type: "number" },
+      { key: "tiktok_followers",  label: "TT Follow",     type: "number" },
+      { key: "tiktok_reach",      label: "TT Reach",      type: "number" },
+      { key: "tiktok_views",      label: "TT Views",      type: "number" },
+      { key: "tiktok_likes",      label: "TT Likes",      type: "number" },
+      { key: "posts_published",   label: "Posts",         type: "number" },
+      { key: "videos_published",  label: "Videos",        type: "number" },
+      { key: "web_clicks",        label: "Web Clicks",    type: "number" },
+      { key: "top_video_views",   label: "Top Vid Views", type: "number" },
     ]
   },
   {
@@ -195,6 +195,13 @@ const CLIENT_ORDER = [
   "Juneau Auto Mall","Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet",
   "Juneau Honda","Juneau Powersports","Cassia Car Rental","Explore Juneau"
 ];
+
+// ── Juneau Auto Mall cascade config ───────────────────────────────────────────
+// Edits to Juneau Auto Mall auto-populate to child stores
+// except oem_leads and oem_sold (those are brand-specific per store)
+const JUNEAU_PARENT_NAME = "Juneau Auto Mall";
+const JUNEAU_CHILD_NAMES = ["Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet","Juneau Honda"];
+const JUNEAU_NO_CASCADE  = new Set(["oem_leads","oem_sold"]);
 
 function getAllMonths() {
   const months = [];
@@ -381,50 +388,65 @@ export default function BulkEditPage() {
     const cellKey = `${clientId}_${monthStr}_${deptId}_${fieldKey}`;
     setSavingCells(prev => ({ ...prev, [cellKey]: true }));
 
-    const existing = allData[clientId]?.[monthStr]?.[deptId] || {};
     const parsed = fieldType === "decimal" ? parseFloat(rawValue) : parseInt(rawValue, 10);
     const finalVal = rawValue === "" || rawValue === null ? null : (isNaN(parsed) ? null : parsed);
 
-    const overrides = new Set(existing._manual_overrides || []);
-    if (finalVal !== null) {
-      overrides.add(fieldKey);
-    } else {
-      overrides.delete(fieldKey);
-    }
-
-    const updated = {
-      ...existing,
-      [fieldKey]: finalVal,
-      _manual_overrides: Array.from(overrides),
-      _bulk_edited_at: new Date().toISOString(),
+    // ── Build updated data object for any client ──
+    const buildUpdated = (existingData) => {
+      const overrides = new Set(existingData._manual_overrides || []);
+      if (finalVal !== null) overrides.add(fieldKey);
+      else overrides.delete(fieldKey);
+      return {
+        ...existingData,
+        [fieldKey]: finalVal,
+        _manual_overrides: Array.from(overrides),
+        _bulk_edited_at: new Date().toISOString(),
+      };
     };
+
+    // ── Save primary client ──
+    const primaryExisting = allData[clientId]?.[monthStr]?.[deptId] || {};
+    const primaryUpdated = buildUpdated(primaryExisting);
 
     setAllData(prev => ({
       ...prev,
       [clientId]: {
         ...(prev[clientId] || {}),
-        [monthStr]: {
-          ...(prev[clientId]?.[monthStr] || {}),
-          [deptId]: updated,
-        }
+        [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), [deptId]: primaryUpdated }
       }
     }));
 
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from("report_data").upsert(
-      {
-        client_id: clientId,
-        month: monthStr,
-        department: deptId,
-        data: updated,
-        last_updated_by: user.id,
-        last_updated_at: new Date().toISOString(),
-      },
+      { client_id: clientId, month: monthStr, department: deptId, data: primaryUpdated, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
       { onConflict: "client_id,month,department" }
     );
 
+    // ── Cascade to Juneau child stores if applicable ──
+    const savingClient = clients.find(c => c.id === clientId);
+    if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey)) {
+      const childClients = clients.filter(c => JUNEAU_CHILD_NAMES.includes(c.name));
+      await Promise.all(childClients.map(async (child) => {
+        const childExisting = allData[child.id]?.[monthStr]?.[deptId] || {};
+        const childUpdated = buildUpdated(childExisting);
+
+        setAllData(prev => ({
+          ...prev,
+          [child.id]: {
+            ...(prev[child.id] || {}),
+            [monthStr]: { ...(prev[child.id]?.[monthStr] || {}), [deptId]: childUpdated }
+          }
+        }));
+
+        await supabase.from("report_data").upsert(
+          { client_id: child.id, month: monthStr, department: deptId, data: childUpdated, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
+          { onConflict: "client_id,month,department" }
+        );
+      }));
+    }
+
     setSavingCells(prev => { const n = { ...prev }; delete n[cellKey]; return n; });
-  }, [allData]);
+  }, [allData, clients]);
 
   // Completion % — only counts active fields for leads dept
   const getCompletion = (client, monthStr) => {
@@ -467,7 +489,7 @@ export default function BulkEditPage() {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F }}>
 
-      {/* ── Sticky header ── */}
+      {/* ── Sticky nav bar ── */}
       <div style={{ background: C.navy, padding: "0 20px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 200, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <img src="/Taggart_Advertising_Logo.png" alt="Taggart" style={{ height: 32 }} />
@@ -517,9 +539,9 @@ export default function BulkEditPage() {
       <div style={{ overflow: "auto" }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12, fontFamily: F }}>
 
-          {/* ── Column headers ── */}
+          {/* ── Column headers — both rows sticky ── */}
           <thead>
-            <tr>
+            <tr style={{ position: "sticky", top: 56, zIndex: 50 }}>
               <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 60, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 12px", textAlign: "left", width: 150, minWidth: 150, borderRight: `3px solid ${C.cyan}`, borderBottom: `1px solid rgba(255,255,255,0.1)`, whiteSpace: "nowrap" }}>
                 Client
               </th>
@@ -536,7 +558,7 @@ export default function BulkEditPage() {
                 </th>
               ))}
             </tr>
-            <tr>
+            <tr style={{ position: "sticky", top: 89, zIndex: 50 }}>
               {BULK_DEPTS.map(dept =>
                 dept.fields.map((f, fi) => (
                   <th key={`h_${dept.id}_${f.key}`}
