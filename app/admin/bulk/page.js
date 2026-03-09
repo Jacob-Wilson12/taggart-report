@@ -424,11 +424,16 @@ export default function BulkEditPage() {
       }
     }));
 
-    const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("report_data").upsert(
-      { client_id: clientId, month: monthStr, department: deptId, data: primaryUpdated, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
-      { onConflict: "client_id,month,department" }
-    );
+   const { data: { user } } = await supabase.auth.getUser();
+const { error: saveError } = await supabase.from("report_data").upsert(
+  { client_id: clientId, month: monthStr, department: deptId, data: primaryUpdated, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
+  { onConflict: "client_id,month,department" }
+);
+
+if (saveError) {
+  console.error("Save failed:", saveError);
+  alert(`Save failed: ${saveError.message}`);
+}
 
     // ── Cascade to Juneau child stores if applicable ──
     const savingClient = clients.find(c => c.id === clientId);
