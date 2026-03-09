@@ -197,8 +197,6 @@ const CLIENT_ORDER = [
 ];
 
 // ── Juneau Auto Mall cascade config ───────────────────────────────────────────
-// Edits to Juneau Auto Mall auto-populate to child stores
-// except oem_leads and oem_sold (those are brand-specific per store)
 const JUNEAU_PARENT_NAME = "Juneau Auto Mall";
 const JUNEAU_CHILD_NAMES = ["Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet","Juneau Honda"];
 const JUNEAU_NO_CASCADE  = new Set(["oem_leads","oem_sold"]);
@@ -354,7 +352,8 @@ export default function BulkEditPage() {
     (rows || []).forEach(r => {
       if (!map[r.client_id]) map[r.client_id] = {};
       if (!map[r.client_id][r.month]) map[r.client_id][r.month] = {};
-      map[r.client_id][r.month][r.department] = r.data || {};
+      // ── FIX: parse data if Supabase returns it as a JSON string ──
+      map[r.client_id][r.month][r.department] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
     });
     setAllData(map);
     setLastRefresh(new Date());
@@ -539,7 +538,6 @@ export default function BulkEditPage() {
       <div style={{ overflow: "auto" }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12, fontFamily: F }}>
 
-          {/* ── Column headers — both rows sticky ── */}
           <thead>
             <tr>
               <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 60, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 12px", textAlign: "left", width: 150, minWidth: 150, borderRight: `3px solid ${C.cyan}`, borderBottom: `1px solid rgba(255,255,255,0.1)`, whiteSpace: "nowrap" }}>
