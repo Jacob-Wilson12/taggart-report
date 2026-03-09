@@ -346,8 +346,9 @@ export default function BulkEditPage() {
   const loadData = useCallback(async () => {
   setRefreshing(true);
   const { data: rows, error } = await supabase
-    .from("report_data")
-    .select("client_id,month,department,data");
+  .from("report_data")
+  .select("client_id,month,department,data")
+  .range(0, 9999);
 
   if (error) {
     console.error("loadData error:", error);
