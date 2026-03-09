@@ -541,28 +541,28 @@ export default function BulkEditPage() {
 
           {/* ── Column headers — both rows sticky ── */}
          <thead>
-            <tr>
-              <th rowSpan={2} style={{ position: "sticky", top: 56, left: 0, zIndex: 70, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 12px", textAlign: "left", width: 150, minWidth: 150, borderRight: `3px solid ${C.cyan}`, borderBottom: `1px solid rgba(255,255,255,0.1)`, whiteSpace: "nowrap" }}>
+            <tr style={{ height: 28 }}>
+              <th rowSpan={2} style={{ position: "sticky", top: 56, left: 0, zIndex: 70, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "4px 12px", textAlign: "left", width: 150, minWidth: 150, borderRight: `3px solid ${C.cyan}`, borderBottom: `1px solid rgba(255,255,255,0.1)`, whiteSpace: "nowrap", verticalAlign: "middle" }}>
                 Client
               </th>
-              <th rowSpan={2} style={{ position: "sticky", top: 56, left: 150, zIndex: 70, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 10px", textAlign: "center", width: 75, minWidth: 75, borderRight: `2px solid rgba(255,255,255,0.15)`, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
+              <th rowSpan={2} style={{ position: "sticky", top: 56, left: 150, zIndex: 70, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "4px 10px", textAlign: "center", width: 75, minWidth: 75, borderRight: `2px solid rgba(255,255,255,0.15)`, borderBottom: `1px solid rgba(255,255,255,0.1)`, verticalAlign: "middle" }}>
                 Month
               </th>
-              <th rowSpan={2} style={{ position: "sticky", top: 56, left: 225, zIndex: 70, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 10, padding: "8px 6px", textAlign: "center", width: 44, minWidth: 44, borderRight: `2px solid rgba(255,255,255,0.15)`, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
+              <th rowSpan={2} style={{ position: "sticky", top: 56, left: 225, zIndex: 70, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 10, padding: "4px 6px", textAlign: "center", width: 44, minWidth: 44, borderRight: `2px solid rgba(255,255,255,0.15)`, borderBottom: `1px solid rgba(255,255,255,0.1)`, verticalAlign: "middle" }}>
                 Fill %
               </th>
               {BULK_DEPTS.map(dept => (
                 <th key={dept.id} colSpan={dept.fields.length}
-                  style={{ position: "sticky", top: 56, zIndex: 50, background: dept.color, color: "#fff", fontSize: 10, fontWeight: 700, padding: "6px 8px", textAlign: "center", borderRight: "3px solid #fff", borderBottom: "1px solid rgba(255,255,255,0.3)", whiteSpace: "nowrap", letterSpacing: "0.05em" }}>
+                  style={{ position: "sticky", top: 56, zIndex: 50, background: dept.color, color: "#fff", fontSize: 10, fontWeight: 700, padding: "6px 8px", textAlign: "center", borderRight: "3px solid #fff", borderBottom: "1px solid rgba(255,255,255,0.3)", whiteSpace: "nowrap", letterSpacing: "0.05em", height: 28, boxSizing: "border-box" }}>
                   {dept.label}
                 </th>
               ))}
             </tr>
-            <tr>
+            <tr style={{ height: 24 }}>
               {BULK_DEPTS.map(dept =>
                 dept.fields.map((f, fi) => (
                   <th key={`h_${dept.id}_${f.key}`}
-                    style={{ position: "sticky", top: 89, zIndex: 50, background: dept.color + "cc", color: "#fff", fontSize: 10, fontWeight: 600, padding: "4px 5px", textAlign: "center", borderRight: fi === dept.fields.length - 1 ? "3px solid #fff" : `1px solid ${dept.color}88`, width: 64, minWidth: 64, whiteSpace: "nowrap", borderBottom: `2px solid ${dept.color}` }}>
+                    style={{ position: "sticky", top: 84, zIndex: 50, background: dept.color + "cc", color: "#fff", fontSize: 10, fontWeight: 600, padding: "3px 5px", textAlign: "center", borderRight: fi === dept.fields.length - 1 ? "3px solid #fff" : `1px solid ${dept.color}88`, width: 64, minWidth: 64, whiteSpace: "nowrap", borderBottom: `2px solid ${dept.color}`, height: 24, boxSizing: "border-box" }}>
                     {f.label}
                   </th>
                 ))
