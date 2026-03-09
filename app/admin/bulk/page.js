@@ -350,6 +350,8 @@ export default function BulkEditPage() {
   .select("client_id,month,department,data")
   .range(0, 9999);
 
+    console.log("Total rows loaded:", rows?.length, "| Sample month format:", rows?.[0]?.month);
+
   if (error) {
     console.error("loadData error:", error);
     alert("Load failed: " + error.message);
@@ -359,11 +361,12 @@ export default function BulkEditPage() {
   }
 
   const map = {};
-  (rows || []).forEach(r => {
-    if (!map[r.client_id]) map[r.client_id] = {};
-    if (!map[r.client_id][r.month]) map[r.client_id][r.month] = {};
-    map[r.client_id][r.month][r.department] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
-  });
+(rows || []).forEach(r => {
+  if (!map[r.client_id]) map[r.client_id] = {};
+  const monthKey = r.month.substring(0, 10);
+  if (!map[r.client_id][monthKey]) map[r.client_id][monthKey] = {};
+  map[r.client_id][monthKey][r.department] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
+});
   setAllData(map);
   setLastRefresh(new Date());
   setRefreshing(false);
