@@ -344,34 +344,45 @@ export default function BulkEditPage() {
   }, []);
 
   const loadData = useCallback(async () => {
-  setRefreshing(true);
-  const { data: rows, error } = await supabase
-  .from("report_data")
-  .select("client_id,month,department,data")
-  .range(0, 9999);
+    setRefreshing(true);
 
-    console.log("Total rows loaded:", rows?.length, "| Sample month format:", rows?.[0]?.month);
+    // ── Paginated fetch — bypasses Supabase 1000-row default limit ──
+    let allRows = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data: batch, error } = await supabase
+        .from("report_data")
+        .select("client_id,month,department,data")
+        .range(from, from + pageSize - 1);
+      if (error) {
+        console.error("loadData error:", error);
+        alert("Load failed: " + error.message);
+        setRefreshing(false);
+        setDataLoading(false);
+        return;
+      }
+      if (!batch || batch.length === 0) break;
+      allRows = allRows.concat(batch);
+      if (batch.length < pageSize) break;
+      from += pageSize;
+    }
 
-  if (error) {
-    console.error("loadData error:", error);
-    alert("Load failed: " + error.message);
+    console.log("Total rows loaded:", allRows.length);
+
+    const map = {};
+    allRows.forEach(r => {
+      if (!map[r.client_id]) map[r.client_id] = {};
+      const monthKey = r.month.substring(0, 10);
+      if (!map[r.client_id][monthKey]) map[r.client_id][monthKey] = {};
+      map[r.client_id][monthKey][r.department] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
+    });
+
+    setAllData(map);
+    setLastRefresh(new Date());
     setRefreshing(false);
     setDataLoading(false);
-    return;
-  }
-
-  const map = {};
-(rows || []).forEach(r => {
-  if (!map[r.client_id]) map[r.client_id] = {};
-  const monthKey = r.month.substring(0, 10);
-  if (!map[r.client_id][monthKey]) map[r.client_id][monthKey] = {};
-  map[r.client_id][monthKey][r.department] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
-});
-  setAllData(map);
-  setLastRefresh(new Date());
-  setRefreshing(false);
-  setDataLoading(false);
-}, []);
+  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -427,16 +438,16 @@ export default function BulkEditPage() {
       }
     }));
 
-   const { data: { user } } = await supabase.auth.getUser();
-const { error: saveError } = await supabase.from("report_data").upsert(
-  { client_id: clientId, month: monthStr, department: deptId, data: primaryUpdated, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
-  { onConflict: "client_id,month,department" }
-);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error: saveError } = await supabase.from("report_data").upsert(
+      { client_id: clientId, month: monthStr, department: deptId, data: primaryUpdated, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
+      { onConflict: "client_id,month,department" }
+    );
 
-if (saveError) {
-  console.error("Save failed:", saveError);
-  alert(`Save failed: ${saveError.message}`);
-}
+    if (saveError) {
+      console.error("Save failed:", saveError);
+      alert(`Save failed: ${saveError.message}`);
+    }
 
     // ── Cascade to Juneau child stores if applicable ──
     const savingClient = clients.find(c => c.id === clientId);
