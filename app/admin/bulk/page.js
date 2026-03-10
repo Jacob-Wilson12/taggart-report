@@ -450,12 +450,12 @@ export default function BulkEditPage() {
     }
 
     // ── Cascade to Juneau child stores if applicable ──
-    const savingClient = clients.find(c => c.id === clientId);
-    if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey)) {
-      const childClients = clients.filter(c => JUNEAU_CHILD_NAMES.includes(c.name));
-      await Promise.all(childClients.map(async (child) => {
-        const childExisting = allData[child.id]?.[monthStr]?.[deptId] || {};
-        const childUpdated = buildUpdated(childExisting);
+   const savingClient = clients.find(c => c.id === clientId);
+if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey) && (deptId === "leads" || deptId === "social")) {
+  const childClients = clients.filter(c => JUNEAU_CHILD_NAMES.includes(c.name));
+  await Promise.all(childClients.map(async (child) => {
+    const childExisting = allData[child.id]?.[monthStr]?.[deptId] || {};
+    const childUpdated = buildUpdated(childExisting);
 
         setAllData(prev => ({
           ...prev,
