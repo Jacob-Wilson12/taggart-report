@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../supabase";
 
 const C = {
@@ -118,6 +118,7 @@ const DEPT_FIELDS = {
     { key: "website_sold",     label: "Website Sold",        type: "number" },
     { key: "third_party_sold", label: "Third Party Sold",    type: "number" },
     { key: "facebook_sold",    label: "Facebook Sold",       type: "number" },
+    { key: "phone_sold",       label: "Phone Sold",          type: "number" },
     { key: "notes",            label: "Notes",               type: "textarea", optional: true },
   ],
   callrail: [
@@ -140,7 +141,7 @@ const DEPT_FIELDS = {
     { key: "avg_position",          label: "Avg Position",                type: "decimal",  api: true },
     { key: "bounce_rate",           label: "Bounce Rate (%)",             type: "decimal",  api: true,    hint: "From GA4" },
     { key: "avg_session_duration",  label: "Avg Session Duration (sec)",  type: "number",   api: true,    hint: "From GA4, in seconds" },
-    { key: "total_sessions",        label: "Total Sessions",              type: "number",   api: true,    hint: "From GA4" },
+    { key: "organic_traffic_pct",   label: "Organic % of Traffic",        type: "decimal",  api: true,    hint: "From GA4 channel breakdown" },
     { key: "top_query",             label: "Top Performing Query",        type: "text",     api: true },
     { key: "tracked_keywords",      label: "Tracked Keywords",            type: "keywords", manual: true, optional: true, hint: "Enter keywords + target positions — positions auto-fill from Search Console" },
     { key: "page_links",            label: "Page Links (SEO)",            type: "links",    manual: true },
@@ -266,7 +267,7 @@ const JUNEAU_OEM_LABEL = {
   "Juneau Chevrolet": "Chevrolet", "Juneau Honda": "Honda",
 };
 const JUNEAU_LEAD_SOURCE = "Juneau Auto Mall";
-const SHARED_KEYS = ["total_leads","total_sold","website_leads","website_sold","facebook_leads","facebook_sold","notes"];
+const SHARED_KEYS = ["total_leads","total_sold","website_leads","website_sold","facebook_leads","facebook_sold","phone_sold","notes"];
 const leadsFieldsJuneau = (oemLabel) => [
   { key: "total_leads",    label: "Total Leads",       type: "number" },
   { key: "website_leads",  label: "Website Leads",     type: "number" },
@@ -276,6 +277,7 @@ const leadsFieldsJuneau = (oemLabel) => [
   { key: "website_sold",   label: "Website Sold",      type: "number" },
   { key: "oem_sold",       label: `${oemLabel} Sold`,  type: "number" },
   { key: "facebook_sold",  label: "Facebook Sold",     type: "number" },
+  { key: "phone_sold",     label: "Phone Sold",        type: "number" },
   { key: "notes",          label: "Notes",             type: "textarea", optional: true },
 ];
 const LEADS_FIELDS_GOODE = [
@@ -871,13 +873,17 @@ const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
 
 /* ─── FIELD INPUT ─── */
 const FieldInput = ({ field, value, onChange, disabled, scData }) => {
-  if (field.type === "links") return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
-  if (field.type === "keywords") return <TrackedKeywordsField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} scData={scData} />;
+  if (field.type === "links")     return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
+  if (field.type === "keywords")  return <TrackedKeywordsField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} scData={scData} />;
+  if (field.type === "rows_work") return <WorkRowsBuilder value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
+  if (field.type === "bullets")   return <BulletBuilder value={value} onChange={v => onChange(field.key, v)} disabled={disabled} placeholder={`Add ${field.label.toLowerCase()}...`} />;
+  if (field.type === "rows")      return <RowBuilder value={value} onChange={v => onChange(field.key, v)} disabled={disabled} schema={field.schema} addLabel={`Add Row`} />;
+  if (field.type === "clickup")   return <ClickUpField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
   const base = { width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box", background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t, cursor: disabled ? "not-allowed" : "text" };
   if (field.type === "textarea") return (
     <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`} style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
   );
-  return <input type={field.type === "number" || field.type === "decimal" ? "number" : "text"} step={field.type === "decimal" ? "0.01" : "1"} value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} placeholder={field.hint || "0"} style={base} />;
+  return <input type={field.type === "number" || field.type === "decimal" ? "number" : "text"} step={field.type === "decimal" ? "0.01" : "1"} value={value ?? ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} placeholder={field.hint || "0"} style={base} />;
 };
 
 /* ─── DEPT FORM ─── */
@@ -933,17 +939,16 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     const ts = { last_updated_by: user.id, last_updated_at: new Date().toISOString() };
 
     // ── Build _manual_overrides ──
-    // Any field that is NOT api-sourced and has a value gets locked.
-    // This prevents future API pulls from overwriting data you manually entered.
     const existingOverrides = new Set(data._manual_overrides || []);
     manualFields.forEach(f => {
-      const val = data[f.key];
-      if (val !== undefined && val !== null && String(val).trim() !== "") {
-        existingOverrides.add(f.key);
-      } else {
-        // If a manual field was cleared, remove the lock so API can fill it
-        existingOverrides.delete(f.key);
-      }
+      const v = data[f.key];
+      let hasVal = false;
+      if (f.type === "rows" || f.type === "rows_work") hasVal = Array.isArray(v) && v.length > 0;
+      else if (f.type === "bullets") hasVal = Array.isArray(v) ? v.length > 0 : (typeof v === "string" && v.trim().length > 0);
+      else if (f.type === "clickup" || f.type === "links" || f.type === "keywords") hasVal = Array.isArray(v) ? v.length > 0 : (typeof v === "string" && v.trim().length > 0);
+      else hasVal = v !== undefined && v !== null && String(v).trim() !== "";
+      if (hasVal) existingOverrides.add(f.key);
+      else existingOverrides.delete(f.key);
     });
 
     const savePayload = {
@@ -975,10 +980,34 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     if (onSaved) onSaved(dept.id);
   };
 
-  const filledCount = fields.filter(f => {
-    if (f.optional) return false;
-    return data[f.key] && String(data[f.key]).trim() !== "";
-  }).length;
+  const FULL_WIDTH_TYPES = new Set(["textarea","links","keywords","rows","rows_work","bullets","clickup"]);
+  const SECTION_STARTS = {
+    work_completed:   { label: "Work Summary",               icon: "📋" },
+    wins:             { label: "Highlights & Watch Items",   icon: "✨" },
+    competitors:      { label: "Competitive Intelligence",   icon: "🏁" },
+    pages_built:      { label: "Content Work",               icon: "📄" },
+    gbp_posts:        { label: "GBP Activity",               icon: "📍" },
+    reviews:          { label: "Recent Reviews",             icon: "⭐" },
+    top_content:      { label: "Top Performing Content",     icon: "🏆" },
+    deliverables:     { label: "Deliverables",               icon: "🎨" },
+    tracked_keywords: { label: "Keyword Tracking",           icon: "🔑" },
+    page_links:       { label: "Page Links",                 icon: "🔗" },
+    clickup_url:      { label: "Internal",                   icon: "🟣" },
+  };
+
+  const hasFieldContent = (field) => {
+    const v = data[field.key];
+    if (field.type === "rows" || field.type === "rows_work") return Array.isArray(v) && v.length > 0;
+    if (field.type === "bullets") {
+      if (Array.isArray(v)) return v.length > 0;
+      return typeof v === "string" && v.trim().length > 0;
+    }
+    if (field.type === "clickup") return typeof v === "string" && v.trim().length > 0;
+    if (field.type === "keywords" || field.type === "links") return Array.isArray(v) && v.length > 0;
+    return v !== null && v !== undefined && String(v).trim() !== "";
+  };
+
+  const filledCount = fields.filter(f => !f.optional && hasFieldContent(f)).length;
   const requiredTotal = fields.filter(f => !f.optional).length;
   const pulledAt = data._pulled_at ? new Date(data._pulled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
 
@@ -1034,19 +1063,28 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {(apiFields.length > 0 ? manualFields : fields).map(field => {
           const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
-          const isFullWidth = field.type === "textarea" || field.type === "links" || field.type === "keywords";
+          const isFullWidth = FULL_WIDTH_TYPES.has(field.type);
           const isLocked = manualOverrides.has(field.key);
+          const sectionStart = SECTION_STARTS[field.key];
           return (
-            <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
-                {field.label}
-                {field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>optional</span>}
-                {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>↔ synced</span>}
-                {isLocked && <span style={{ color: "#92400e", fontWeight: 600, marginLeft: 6, fontSize: 10 }}>🔒 locked</span>}
-                {field.hint && !field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4 }}>({field.hint})</span>}
-              </label>
-              <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField} scData={data} />
-            </div>
+            <React.Fragment key={field.key}>
+              {sectionStart && (
+                <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, marginTop: 8, paddingBottom: 10, borderBottom: `2px solid ${C.bl2}` }}>
+                  <span style={{ fontSize: 15 }}>{sectionStart.icon}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.07em", fontFamily: F }}>{sectionStart.label}</span>
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto" }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
+                  {field.label}
+                  {field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>optional</span>}
+                  {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>↔ synced</span>}
+                  {isLocked && <span style={{ color: "#92400e", fontWeight: 600, marginLeft: 6, fontSize: 10 }}>🔒 locked</span>}
+                  {field.hint && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4, fontSize: 11 }}>({field.hint})</span>}
+                </label>
+                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField} scData={data} />
+              </div>
+            </React.Fragment>
           );
         })}
       </div>
@@ -1324,7 +1362,14 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const refreshCompletion = useCallback(async (deptId) => {
     const fields = (DEPT_FIELDS[deptId] || []).filter(f => !f.optional);
     const { data: row } = await supabase.from("report_data").select("data").eq("client_id", client.id).eq("month", month).eq("department", deptId).single();
-    const filled = fields.filter(f => row?.data?.[f.key] && String(row.data[f.key]).trim() !== "").length;
+    const d = row?.data || {};
+    const filled = fields.filter(f => {
+      const v = d[f.key];
+      if (f.type === "rows" || f.type === "rows_work") return Array.isArray(v) && v.length > 0;
+      if (f.type === "bullets") return Array.isArray(v) ? v.length > 0 : (typeof v === "string" && v.trim().length > 0);
+      if (f.type === "keywords" || f.type === "links") return Array.isArray(v) && v.length > 0;
+      return v !== null && v !== undefined && String(v).trim() !== "";
+    }).length;
     setDeptCompletion(prev => ({ ...prev, [deptId]: { filled, total: fields.length } }));
   }, [client.id, month]);
 
@@ -1511,38 +1556,6 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
   const lastMonth = now.getMonth() === 0 ? `${now.getFullYear() - 1}-12-01` : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}-01`;
   const [statuses, setStatuses] = useState({});
   const [search, setSearch] = useState("");
-  const [pullingLastMonth, setPullingLastMonth] = useState(false);
-  const [pullLastMonthResult, setPullLastMonthResult] = useState("");
-  const [pullLastMonthProgress, setPullLastMonthProgress] = useState({ done: 0, total: 0 });
-
-  const lmDate = now.getMonth() === 0
-    ? { year: now.getFullYear() - 1, month: 12 }
-    : { year: now.getFullYear(), month: now.getMonth() };
-  const lmLabel = `${MONTHS[lmDate.month - 1]} ${lmDate.year}`;
-
-  const handlePullAllLastMonth = async () => {
-    setPullingLastMonth(true); setPullLastMonthResult("");
-    const apiDepts = Object.entries(LIVE_APIS);
-    const total = clients.length * apiDepts.length;
-    setPullLastMonthProgress({ done: 0, total });
-    let success = 0, skipped = 0, error = 0, done = 0;
-    for (const client of clients) {
-      for (const [deptId, api] of apiDepts) {
-        try {
-          const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${lmDate.year}&month=${lmDate.month}&save=true`);
-          const json = await res.json();
-          if (json.success && json.saved) success++;
-          else if (json.error?.includes("No ") && json.error?.includes("integration")) skipped++;
-          else error++;
-        } catch { error++; }
-        done++;
-        setPullLastMonthProgress({ done, total });
-        await sleep(150);
-      }
-    }
-    setPullingLastMonth(false);
-    setPullLastMonthResult(`${lmLabel} — ${success} saved · ${skipped} skipped · ${error} errors`);
-  };
 
   useEffect(() => {
     const load = async () => {
@@ -1574,32 +1587,13 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
         ))}
       </div>
       {userRole === "admin" && (
-        <>
-          <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-            <div style={{ background: C.navy, borderRadius: 12, padding: "18px 24px", flex: 1, minWidth: 280, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4, fontFamily: F }}>📥 Historical Data Backfill</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>All clients · Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min</div>
-              </div>
-              <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>⬇ Run Backfill</button>
-            </div>
-            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "18px 24px", flex: 1, minWidth: 280, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#166534", marginBottom: 4, fontFamily: F }}>⬇ Pull Last Month — All Clients</div>
-                <div style={{ fontSize: 12, color: "#4ade80", fontFamily: F }}>
-                  {pullingLastMonth
-                    ? `Pulling ${lmLabel}... ${pullLastMonthProgress.done} / ${pullLastMonthProgress.total}`
-                    : pullLastMonthResult
-                    ? pullLastMonthResult
-                    : `${lmLabel} · ${clients.length} clients · ${Object.keys(LIVE_APIS).length} APIs each`}
-                </div>
-              </div>
-              <button onClick={handlePullAllLastMonth} disabled={pullingLastMonth} style={{ background: pullingLastMonth ? "#bbf7d0" : "#166534", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: pullingLastMonth ? "not-allowed" : "pointer", fontFamily: F, whiteSpace: "nowrap", opacity: pullingLastMonth ? 0.7 : 1 }}>
-                {pullingLastMonth ? `↻ ${pullLastMonthProgress.done}/${pullLastMonthProgress.total}` : "⬇ Pull Last Month"}
-              </button>
-            </div>
+        <div style={{ background: C.navy, borderRadius: 12, padding: "18px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4, fontFamily: F }}>📥 Historical Data Backfill</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>Pull all API data for all clients from Jan 2024 → last month · ~{totalBackfillRequests} requests · ~{estMinutes} min</div>
           </div>
-        </>
+          <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>⬇ Run Backfill</button>
+        </div>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <input type="text" placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)}
