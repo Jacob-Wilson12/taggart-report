@@ -35,7 +35,7 @@ function getLeadsConfig(clientName) {
   return CLIENT_LEADS_CONFIG[clientName] || { active: DEFAULT_LEADS_ACTIVE };
 }
 
-// ── Master leads fields (union of all possible columns) ───────────────────────
+// ── Master leads fields ───────────────────────────────────────────────────────
 const LEADS_MASTER_FIELDS = [
   { key: "total_leads",      label: "Total Leads",  type: "number" },
   { key: "website_leads",    label: "Web Leads",    type: "number" },
@@ -177,15 +177,10 @@ const BULK_DEPTS = [
     ]
   },
   {
+    // Creative: total deliverables count only — detail (deliverables list, notes) lives in per-client admin
     id: "creative", label: "Creative", color: "#7c3aed",
     fields: [
-      { key: "total_assets",  label: "Total Assets",  type: "number" },
-      { key: "videos",        label: "Videos",        type: "number" },
-      { key: "graphics",      label: "Graphics",      type: "number" },
-      { key: "banners",       label: "Banners",       type: "number" },
-      { key: "print",         label: "Print",         type: "number" },
-      { key: "ad_creative",   label: "Ad Creative",   type: "number" },
-      { key: "email_headers", label: "Email Headers", type: "number" },
+      { key: "total_assets", label: "Total Deliverables", type: "number" },
     ]
   },
 ];
@@ -196,7 +191,7 @@ const CLIENT_ORDER = [
   "Juneau Honda","Juneau Powersports","Cassia Car Rental","Explore Juneau"
 ];
 
-// ── Juneau Auto Mall cascade config ───────────────────────────────────────────
+// ── Juneau cascade config ─────────────────────────────────────────────────────
 const JUNEAU_PARENT_NAME = "Juneau Auto Mall";
 const JUNEAU_CHILD_NAMES = ["Juneau Subaru","Juneau CDJR","Juneau Toyota","Juneau Chevrolet","Juneau Honda"];
 const JUNEAU_NO_CASCADE  = new Set(["oem_leads","oem_sold"]);
@@ -229,10 +224,8 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
 
   const bgColor = editing
     ? "#fffbeb"
-    : isManualLocked && hasValue
-    ? "#fff"
-    : isApiSourced && hasValue
-    ? "#eff6ff"
+    : isManualLocked && hasValue ? "#fff"
+    : isApiSourced && hasValue ? "#eff6ff"
     : "#f8fafc";
 
   const handleFocus = () => {
@@ -261,23 +254,10 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
       background: disabled ? undefined : bgColor,
       borderRight: isLastInDept ? `2px solid ${deptColor}55` : `1px solid ${C.bl2}`,
       borderBottom: `1px solid ${C.bl2}`,
-      padding: 0,
-      width: 64,
-      minWidth: 64,
-      position: "relative",
+      padding: 0, width: 64, minWidth: 64, position: "relative",
     }}>
       {disabled ? (
-        <div style={{
-          width: "100%",
-          height: "100%",
-          padding: "5px",
-          fontSize: 10,
-          color: "#ccc",
-          textAlign: "center",
-          userSelect: "none",
-          boxSizing: "border-box",
-          lineHeight: "18px",
-        }}>
+        <div style={{ width: "100%", height: "100%", padding: "5px", fontSize: 10, color: "#ccc", textAlign: "center", userSelect: "none", boxSizing: "border-box", lineHeight: "18px" }}>
           n/a
         </div>
       ) : (
@@ -296,18 +276,12 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
             }}
             placeholder="—"
             style={{
-              width: "100%",
-              border: "none",
+              width: "100%", border: "none",
               outline: editing ? `2px solid ${deptColor}` : "none",
-              outlineOffset: "-2px",
-              background: "transparent",
-              padding: "5px 5px",
-              fontSize: 11,
-              fontFamily: F,
+              outlineOffset: "-2px", background: "transparent",
+              padding: "5px 5px", fontSize: 11, fontFamily: F,
               color: hasValue || editing ? C.t : C.tl,
-              textAlign: "right",
-              cursor: "text",
-              boxSizing: "border-box",
+              textAlign: "right", cursor: "text", boxSizing: "border-box",
             }}
           />
           {hasValue && (
@@ -315,7 +289,7 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
               position: "absolute", top: 3, left: 3,
               width: 4, height: 4, borderRadius: "50%",
               background: isManualLocked ? deptColor : isApiSourced ? "#93c5fd" : "transparent",
-              opacity: 0.7
+              opacity: 0.7,
             }} />
           )}
         </>
@@ -345,8 +319,6 @@ export default function BulkEditPage() {
 
   const loadData = useCallback(async () => {
     setRefreshing(true);
-
-    // ── Paginated fetch — bypasses Supabase 1000-row default limit ──
     let allRows = [];
     let from = 0;
     const pageSize = 1000;
@@ -368,14 +340,13 @@ export default function BulkEditPage() {
       from += pageSize;
     }
 
-    console.log("Total rows loaded:", allRows.length);
-
     const map = {};
     allRows.forEach(r => {
       if (!map[r.client_id]) map[r.client_id] = {};
       const monthKey = r.month.substring(0, 10);
       if (!map[r.client_id][monthKey]) map[r.client_id][monthKey] = {};
-      map[r.client_id][monthKey][r.department] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {});
+      map[r.client_id][monthKey][r.department] = typeof r.data === "string"
+        ? JSON.parse(r.data) : (r.data || {});
     });
 
     setAllData(map);
@@ -413,7 +384,6 @@ export default function BulkEditPage() {
     const parsed = fieldType === "decimal" ? parseFloat(rawValue) : parseInt(rawValue, 10);
     const finalVal = rawValue === "" || rawValue === null ? null : (isNaN(parsed) ? null : parsed);
 
-    // ── Build updated data object for any client ──
     const buildUpdated = (existingData) => {
       const overrides = new Set(existingData._manual_overrides || []);
       if (finalVal !== null) overrides.add(fieldKey);
@@ -426,7 +396,7 @@ export default function BulkEditPage() {
       };
     };
 
-    // ── Save primary client ──
+    // Save primary client
     const primaryExisting = allData[clientId]?.[monthStr]?.[deptId] || {};
     const primaryUpdated = buildUpdated(primaryExisting);
 
@@ -449,13 +419,13 @@ export default function BulkEditPage() {
       alert(`Save failed: ${saveError.message}`);
     }
 
-    // ── Cascade to Juneau child stores if applicable ──
-   const savingClient = clients.find(c => c.id === clientId);
-if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey) && (deptId === "leads" || deptId === "social")) {
-  const childClients = clients.filter(c => JUNEAU_CHILD_NAMES.includes(c.name));
-  await Promise.all(childClients.map(async (child) => {
-    const childExisting = allData[child.id]?.[monthStr]?.[deptId] || {};
-    const childUpdated = buildUpdated(childExisting);
+    // Cascade to Juneau child stores
+    const savingClient = clients.find(c => c.id === clientId);
+    if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey) && (deptId === "leads" || deptId === "social")) {
+      const childClients = clients.filter(c => JUNEAU_CHILD_NAMES.includes(c.name));
+      await Promise.all(childClients.map(async (child) => {
+        const childExisting = allData[child.id]?.[monthStr]?.[deptId] || {};
+        const childUpdated = buildUpdated(childExisting);
 
         setAllData(prev => ({
           ...prev,
@@ -475,7 +445,7 @@ if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey
     setSavingCells(prev => { const n = { ...prev }; delete n[cellKey]; return n; });
   }, [allData, clients]);
 
-  // Completion % — only counts active fields for leads dept
+  // Completion % — numeric fields only, respects per-client leads config
   const getCompletion = (client, monthStr) => {
     const leadsConfig = getLeadsConfig(client.name);
     let total = 0, filled = 0;
@@ -510,52 +480,58 @@ if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey
     </div>
   );
 
-  const totalFields = BULK_DEPTS.reduce((sum, d) => sum + d.fields.length, 0);
+  const totalDeptFields = BULK_DEPTS.reduce((sum, d) => sum + d.fields.length, 0);
   const activeSaveCount = Object.keys(savingCells).length;
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F }}>
 
-      {/* ── Sticky nav bar ── */}
-      <div style={{ background: C.navy, padding: "0 20px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 200, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+      {/* ── Sticky nav ── */}
+      <div style={{
+        background: C.navy, padding: "0 20px", height: 56,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        position: "sticky", top: 0, zIndex: 200, boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <img src="/Taggart_Advertising_Logo.png" alt="Taggart" style={{ height: 32 }} />
           <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>Bulk Data Editor</span>
-          <span style={{ background: "rgba(0,201,232,0.2)", color: C.cyan, borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>ADMIN ONLY</span>
-          {activeSaveCount > 0 && (
+          <span style={{ background: "rgba(0,201,232,0.2)", color: "#00c9e8", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>ADMIN ONLY</span>
+          {activeSaveCount > 0 ? (
             <span style={{ background: C.o + "33", color: C.o, borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>
               ↻ Saving {activeSaveCount} cell{activeSaveCount !== 1 ? "s" : ""}...
             </span>
-          )}
-          {activeSaveCount === 0 && lastRefresh && (
+          ) : lastRefresh ? (
             <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
-              ✓ All saved · {clients.length} clients · {ALL_MONTHS.length} months · {totalFields} fields
+              ✓ All saved · {clients.length} clients · {ALL_MONTHS.length} months · {totalDeptFields} fields
             </span>
-          )}
+          ) : null}
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 10, fontSize: 10, color: "rgba(255,255,255,0.6)" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: "#eff6ff", border: "1px solid #93c5fd", display: "inline-block" }} /> API data
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: "#fff", border: "1px solid #d0d5dd", display: "inline-block" }} /> Manual (locked)
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: "#f8fafc", border: "1px solid #e4e7ec", display: "inline-block" }} /> Empty
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: "#fffbeb", border: "1px solid #fde68a", display: "inline-block" }} /> Editing
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, backgroundImage: "repeating-linear-gradient(45deg,#f0f0f0,#f0f0f0 2px,#e8e8e8 2px,#e8e8e8 4px)", border: "1px solid #ddd", display: "inline-block" }} /> N/A
-            </span>
+            {[
+              { bg: "#eff6ff", bd: "#93c5fd", label: "API data" },
+              { bg: "#fff",    bd: "#d0d5dd", label: "Manual (locked)" },
+              { bg: "#f8fafc", bd: "#e4e7ec", label: "Empty" },
+              { bg: "#fffbeb", bd: "#fde68a", label: "Editing" },
+              { bg: null,      bd: "#ddd",    label: "N/A", striped: true },
+            ].map(item => (
+              <span key={item.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{
+                  width: 10, height: 10, borderRadius: 2, display: "inline-block",
+                  background: item.striped
+                    ? undefined
+                    : item.bg,
+                  backgroundImage: item.striped
+                    ? "repeating-linear-gradient(45deg,#f0f0f0,#f0f0f0 2px,#e8e8e8 2px,#e8e8e8 4px)"
+                    : undefined,
+                  border: `1px solid ${item.bd}`,
+                }} />
+                {item.label}
+              </span>
+            ))}
           </div>
-          <button
-            onClick={loadData}
-            disabled={refreshing}
-            style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 6, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: refreshing ? "not-allowed" : "pointer", fontFamily: F, opacity: refreshing ? 0.6 : 1 }}
-          >
+          <button onClick={loadData} disabled={refreshing}
+            style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 6, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: refreshing ? "not-allowed" : "pointer", fontFamily: F, opacity: refreshing ? 0.6 : 1 }}>
             {refreshing ? "↻ Refreshing..." : "↻ Refresh Data"}
           </button>
           <a href="/admin" style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, textDecoration: "none", fontWeight: 600 }}>← Admin Panel</a>
@@ -565,30 +541,70 @@ if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey
       {/* ── Scrollable grid ── */}
       <div style={{ overflow: "auto" }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12, fontFamily: F }}>
-
           <thead>
             <tr>
-              <th rowSpan={2} style={{ position: "sticky", left: 0, zIndex: 60, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 12px", textAlign: "left", width: 150, minWidth: 150, borderRight: `3px solid ${C.cyan}`, borderBottom: `1px solid rgba(255,255,255,0.1)`, whiteSpace: "nowrap" }}>
-                Client
-              </th>
-              <th rowSpan={2} style={{ position: "sticky", left: 150, zIndex: 60, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11, padding: "8px 10px", textAlign: "center", width: 75, minWidth: 75, borderRight: `2px solid rgba(255,255,255,0.15)`, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
-                Month
-              </th>
-              <th rowSpan={2} style={{ position: "sticky", left: 225, zIndex: 60, background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 10, padding: "8px 6px", textAlign: "center", width: 44, minWidth: 44, borderRight: `2px solid rgba(255,255,255,0.15)`, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
-                Fill %
-              </th>
+              {/* Client — rowSpan 2 */}
+              <th rowSpan={2} style={{
+                position: "sticky", left: 0, top: 56, zIndex: 60,
+                background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11,
+                padding: "8px 12px", textAlign: "left",
+                width: 150, minWidth: 150, height: 28,
+                borderRight: "3px solid #00c9e8",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+                whiteSpace: "nowrap",
+              }}>Client</th>
+
+              {/* Month — rowSpan 2 */}
+              <th rowSpan={2} style={{
+                position: "sticky", left: 150, top: 56, zIndex: 60,
+                background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11,
+                padding: "8px 10px", textAlign: "center",
+                width: 75, minWidth: 75, height: 28,
+                borderRight: "2px solid rgba(255,255,255,0.15)",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+              }}>Month</th>
+
+              {/* Fill % — rowSpan 2 */}
+              <th rowSpan={2} style={{
+                position: "sticky", left: 225, top: 56, zIndex: 60,
+                background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 10,
+                padding: "8px 6px", textAlign: "center",
+                width: 44, minWidth: 44, height: 28,
+                borderRight: "2px solid rgba(255,255,255,0.15)",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+              }}>Fill %</th>
+
+              {/* Dept group headers */}
               {BULK_DEPTS.map(dept => (
                 <th key={dept.id} colSpan={dept.fields.length}
-                  style={{ background: dept.color, color: "#fff", fontSize: 10, fontWeight: 700, padding: "6px 8px", textAlign: "center", borderRight: "3px solid #fff", borderBottom: "1px solid rgba(255,255,255,0.3)", whiteSpace: "nowrap", letterSpacing: "0.05em" }}>
+                  style={{
+                    position: "sticky", top: 56, zIndex: 50,
+                    background: dept.color, color: "#fff",
+                    fontSize: 10, fontWeight: 700,
+                    padding: "6px 8px", textAlign: "center", height: 28,
+                    borderRight: "3px solid #fff",
+                    borderBottom: "1px solid rgba(255,255,255,0.3)",
+                    whiteSpace: "nowrap", letterSpacing: "0.05em",
+                  }}>
                   {dept.label}
                 </th>
               ))}
             </tr>
             <tr>
+              {/* Field sub-headers */}
               {BULK_DEPTS.map(dept =>
                 dept.fields.map((f, fi) => (
                   <th key={`h_${dept.id}_${f.key}`}
-                    style={{ background: dept.color + "cc", color: "#fff", fontSize: 10, fontWeight: 600, padding: "4px 5px", textAlign: "center", borderRight: fi === dept.fields.length - 1 ? "3px solid #fff" : `1px solid ${dept.color}88`, width: 64, minWidth: 64, whiteSpace: "nowrap", borderBottom: `2px solid ${dept.color}` }}>
+                    style={{
+                      position: "sticky", top: 84, zIndex: 50,
+                      background: dept.color + "cc", color: "#fff",
+                      fontSize: 10, fontWeight: 600,
+                      padding: "4px 5px", textAlign: "center",
+                      width: 64, minWidth: 64, height: 24,
+                      borderRight: fi === dept.fields.length - 1 ? "3px solid #fff" : `1px solid ${dept.color}88`,
+                      borderBottom: `2px solid ${dept.color}`,
+                      whiteSpace: "nowrap",
+                    }}>
                     {f.label}
                   </th>
                 ))
@@ -596,11 +612,11 @@ if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey
             </tr>
           </thead>
 
-          {/* ── Data rows ── */}
           <tbody>
             {clients.map((client, ci) => {
               const clientBg = ci % 2 === 0 ? "#f0f4ff" : "#f5f0ff";
               const leadsConfig = getLeadsConfig(client.name);
+
               return ALL_MONTHS.map((mon, mi) => {
                 const isFirstRow = mi === 0;
                 const comp = getCompletion(client, mon.str);
@@ -612,18 +628,39 @@ if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey
 
                     {isFirstRow && (
                       <td rowSpan={ALL_MONTHS.length}
-                        style={{ position: "sticky", left: 0, zIndex: 10, background: clientBg, borderRight: `3px solid ${C.cyan}`, borderBottom: `3px solid ${C.bd}`, padding: "10px 12px", verticalAlign: "top", width: 150, minWidth: 150 }}>
+                        style={{
+                          position: "sticky", left: 0, zIndex: 10,
+                          background: clientBg,
+                          borderRight: "3px solid #00c9e8",
+                          borderBottom: "3px solid #d0d5dd",
+                          padding: "10px 12px", verticalAlign: "top",
+                          width: 150, minWidth: 150,
+                        }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: C.t, lineHeight: 1.3 }}>{client.name}</div>
                         <div style={{ fontSize: 10, color: C.tl, marginTop: 3 }}>{client.group_name}</div>
                       </td>
                     )}
 
-                    <td style={{ position: "sticky", left: 150, zIndex: 10, background: rowBg, borderRight: `2px solid rgba(0,0,0,0.06)`, borderBottom: `1px solid ${C.bl2}`, padding: "4px 8px", textAlign: "center", width: 75, minWidth: 75 }}>
+                    <td style={{
+                      position: "sticky", left: 150, zIndex: 10, background: rowBg,
+                      borderRight: "2px solid rgba(0,0,0,0.06)",
+                      borderBottom: `1px solid ${C.bl2}`,
+                      padding: "4px 8px", textAlign: "center",
+                      width: 75, minWidth: 75,
+                    }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.t, whiteSpace: "nowrap" }}>{mon.label}</div>
                     </td>
 
-                    <td style={{ position: "sticky", left: 225, zIndex: 10, background: rowBg, borderRight: `2px solid rgba(0,0,0,0.08)`, borderBottom: `1px solid ${C.bl2}`, padding: "4px 4px", textAlign: "center", width: 44, minWidth: 44 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: compColor }}>{comp.pct > 0 ? `${comp.pct}%` : "—"}</div>
+                    <td style={{
+                      position: "sticky", left: 225, zIndex: 10, background: rowBg,
+                      borderRight: "2px solid rgba(0,0,0,0.08)",
+                      borderBottom: `1px solid ${C.bl2}`,
+                      padding: "4px 4px", textAlign: "center",
+                      width: 44, minWidth: 44,
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: compColor }}>
+                        {comp.pct > 0 ? `${comp.pct}%` : "—"}
+                      </div>
                     </td>
 
                     {BULK_DEPTS.map(dept =>
@@ -634,7 +671,6 @@ if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey
                         const isApiSourced = !!deptData._pulled_at && !isManualLocked;
                         const isDisabled = dept.id === "leads" && !leadsConfig.active.includes(f.key);
 
-                        // Dynamic OEM label for Juneau brand stores
                         let displayField = f;
                         if (dept.id === "leads" && leadsConfig.oemLabel) {
                           if (f.key === "oem_leads") displayField = { ...f, label: `${leadsConfig.oemLabel} Leads` };
