@@ -132,6 +132,9 @@ const DEPT_FIELDS = {
     { key: "phone_calls",           label: "Phone Calls (SEO)",          type: "number",   manual: true },
     { key: "form_submissions",      label: "Form Submissions",            type: "number",   api: true },
     { key: "organic_sessions",      label: "Organic Sessions",            type: "number",   api: true },
+    { key: "direct_sessions",       label: "Direct Sessions",             type: "number",   manual: true, hint: "From GA4 — Direct channel" },
+    { key: "paid_sessions",         label: "Paid Sessions",               type: "number",   manual: true, hint: "From GA4 — Paid channel" },
+    { key: "social_sessions",       label: "Social Sessions",             type: "number",   manual: true, hint: "From GA4 — Social channel" },
     { key: "vdp_views",             label: "VDP Views",                   type: "number",   api: true },
     { key: "direction_requests",    label: "Direction Requests",          type: "number",   manual: true },
     { key: "chat_conversations",    label: "Chat Conversations",          type: "number",   manual: true },
@@ -871,6 +874,54 @@ const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
   );
 };
 
+/* ─── TRAFFIC CHANNEL PREVIEW ─── */
+function TrafficChannelPreview({ data }) {
+  const organic = Number(data.organic_sessions) || 0;
+  const direct  = Number(data.direct_sessions)  || 0;
+  const paid    = Number(data.paid_sessions)    || 0;
+  const social  = Number(data.social_sessions)  || 0;
+  const total   = organic + direct + paid + social;
+
+  if (total === 0) return null;
+
+  const pct = (n) => total > 0 ? Math.round((n / total) * 100) : 0;
+  const channels = [
+    { label: "Organic", value: organic, color: "#059669", pct: pct(organic) },
+    { label: "Direct",  value: direct,  color: "#6366f1", pct: pct(direct)  },
+    { label: "Paid",    value: paid,    color: "#f59e0b", pct: pct(paid)    },
+    { label: "Social",  value: social,  color: "#c026d3", pct: pct(social)  },
+  ];
+
+  return (
+    <div style={{
+      gridColumn: "1 / -1",
+      background: "#f8fafc", border: `1px solid ${C.bd}`,
+      borderRadius: 10, padding: "14px 18px", marginTop: 4,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>
+        📊 Traffic Channel Breakdown — Total: {total.toLocaleString()} sessions
+      </div>
+      <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", height: 10, marginBottom: 12 }}>
+        {channels.filter(ch => ch.pct > 0).map(ch => (
+          <div key={ch.label} style={{ width: `${ch.pct}%`, background: ch.color, transition: "width 0.3s" }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        {channels.map(ch => (
+          <div key={ch.label} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: ch.color, flexShrink: 0, marginTop: 2 }} />
+            <div style={{ fontFamily: F }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: C.t }}>{ch.pct}%</span>
+              <span style={{ fontSize: 11, color: C.tl, marginLeft: 5 }}>{ch.label}</span>
+              <div style={{ fontSize: 11, color: C.tl }}>{ch.value.toLocaleString()} sessions</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── FIELD INPUT ─── */
 const FieldInput = ({ field, value, onChange, disabled, scData }) => {
   if (field.type === "links")     return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
@@ -961,7 +1012,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       { onConflict: "client_id,month,department" }
     );
 
-    setData(savePayload); // keep local state in sync with what was saved
+    setData(savePayload);
 
     if (isJuneauSource && allClients) {
       const sharedPayload = Object.fromEntries(SHARED_KEYS.map(k => [k, savePayload[k] ?? null]));
@@ -1011,7 +1062,6 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   const requiredTotal = fields.filter(f => !f.optional).length;
   const pulledAt = data._pulled_at ? new Date(data._pulled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
 
-  // Show which fields are manually locked (for UI indicator)
   const manualOverrides = new Set(data._manual_overrides || []);
 
   if (loading) return <div style={{ padding: 24, textAlign: "center", color: C.tl, fontFamily: F, fontSize: 13 }}>Loading...</div>;
@@ -1088,6 +1138,8 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           );
         })}
       </div>
+
+      {dept.id === "seo" && <TrafficChannelPreview data={data} />}
 
       {UPLOAD_DEPTS.includes(dept.id) && editable && (
         <UploadSection clientId={clientId} deptId={dept.id} month={month} />
@@ -1484,10 +1536,10 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
           )}
         </div>
       </div>
-      {pullAllResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>{pullAllResult}</div>}
-      {pullLastMonthResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>📅 {pullLastMonthResult}</div>}
+      {pullAllResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166834", fontFamily: F }}>{pullAllResult}</div>}
+      {pullLastMonthResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166834", fontFamily: F }}>📅 {pullLastMonthResult}</div>}
       {publishError && <div style={{ background: C.rL, border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.r, fontFamily: F }}>⚠️ {publishError}</div>}
-      {reportStatus === "published" && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166534", fontFamily: F }}>✓ This report is live. Clients can see it now.</div>}
+      {reportStatus === "published" && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166834", fontFamily: F }}>✓ This report is live. Clients can see it now.</div>}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
         <div style={{ width: 210, flexShrink: 0, display: "flex", flexDirection: "column", gap: 4 }}>
           {DEPARTMENTS.map(dept => {
