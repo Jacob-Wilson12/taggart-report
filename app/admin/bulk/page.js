@@ -209,7 +209,7 @@ function getAllMonths() {
     });
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
-  return months;
+  return months; // oldest → newest; new months append at bottom automatically
 }
 
 const ALL_MONTHS = getAllMonths();
