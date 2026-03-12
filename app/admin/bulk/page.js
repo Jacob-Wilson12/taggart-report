@@ -545,7 +545,7 @@ export default function BulkEditPage() {
             <tr>
               {/* Client — rowSpan 2 */}
               <th rowSpan={2} style={{
-                position: "sticky", left: 0, top: 56, zIndex: 60,
+                position: "sticky", left: 0, top: 0, zIndex: 60,
                 background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11,
                 padding: "8px 12px", textAlign: "left",
                 width: 150, minWidth: 150, height: 28,
@@ -556,7 +556,7 @@ export default function BulkEditPage() {
 
               {/* Month — rowSpan 2 */}
               <th rowSpan={2} style={{
-                position: "sticky", left: 150, top: 56, zIndex: 60,
+                position: "sticky", left: 150, top: 0, zIndex: 60,
                 background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11,
                 padding: "8px 10px", textAlign: "center",
                 width: 75, minWidth: 75, height: 28,
@@ -566,7 +566,7 @@ export default function BulkEditPage() {
 
               {/* Fill % — rowSpan 2 */}
               <th rowSpan={2} style={{
-                position: "sticky", left: 225, top: 56, zIndex: 60,
+                position: "sticky", left: 225, top: 0, zIndex: 60,
                 background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 10,
                 padding: "8px 6px", textAlign: "center",
                 width: 44, minWidth: 44, height: 28,
@@ -578,7 +578,7 @@ export default function BulkEditPage() {
               {BULK_DEPTS.map(dept => (
                 <th key={dept.id} colSpan={dept.fields.length}
                   style={{
-                    position: "sticky", top: 56, zIndex: 50,
+                    position: "sticky", top: 0, zIndex: 50,
                     background: dept.color, color: "#fff",
                     fontSize: 10, fontWeight: 700,
                     padding: "6px 8px", textAlign: "center", height: 28,
@@ -596,7 +596,7 @@ export default function BulkEditPage() {
                 dept.fields.map((f, fi) => (
                   <th key={`h_${dept.id}_${f.key}`}
                     style={{
-                      position: "sticky", top: 84, zIndex: 50,
+                      position: "sticky", top: 28, zIndex: 50,
                       background: dept.color + "cc", color: "#fff",
                       fontSize: 10, fontWeight: 600,
                       padding: "4px 5px", textAlign: "center",
