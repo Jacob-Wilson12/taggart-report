@@ -72,7 +72,10 @@ const BULK_DEPTS = [
   {
     id: "seo", label: "SEO", color: "#059669",
     fields: [
-      { key: "organic_sessions",     label: "Sessions",       type: "number"  },
+      { key: "organic_sessions",     label: "Organic Ses.",   type: "number"  },
+      { key: "direct_sessions",      label: "Direct Ses.",    type: "number"  },
+      { key: "paid_sessions",        label: "Paid Ses.",      type: "number"  },
+      { key: "social_sessions",      label: "Social Ses.",    type: "number"  },
       { key: "impressions",          label: "Impr.",          type: "number"  },
       { key: "ctr",                  label: "CTR%",           type: "decimal" },
       { key: "avg_position",         label: "Avg Pos",        type: "decimal" },
@@ -177,7 +180,7 @@ const BULK_DEPTS = [
     ]
   },
   {
-    // Creative: total deliverables count only — detail (deliverables list, notes) lives in per-client admin
+    // Creative: total deliverables count only — detail lives in per-client admin
     id: "creative", label: "Creative", color: "#7c3aed",
     fields: [
       { key: "total_assets", label: "Total Deliverables", type: "number" },
@@ -209,7 +212,7 @@ function getAllMonths() {
     });
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
-  return months; // oldest → newest; new months append at bottom automatically
+  return months;
 }
 
 const ALL_MONTHS = getAllMonths();
@@ -518,9 +521,7 @@ export default function BulkEditPage() {
               <span key={item.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{
                   width: 10, height: 10, borderRadius: 2, display: "inline-block",
-                  background: item.striped
-                    ? undefined
-                    : item.bg,
+                  background: item.striped ? undefined : item.bg,
                   backgroundImage: item.striped
                     ? "repeating-linear-gradient(45deg,#f0f0f0,#f0f0f0 2px,#e8e8e8 2px,#e8e8e8 4px)"
                     : undefined,
