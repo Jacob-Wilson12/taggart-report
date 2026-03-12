@@ -209,7 +209,7 @@ function getAllMonths() {
     });
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
-  return months.reverse();
+  return months;
 }
 
 const ALL_MONTHS = getAllMonths();
