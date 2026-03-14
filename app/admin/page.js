@@ -158,7 +158,7 @@ const DEPT_FIELDS = {
     { key: "search_appearances", label: "Search Appearances",     type: "number",   api: true },
     { key: "map_views",          label: "Map Views",              type: "number",   api: true },
     { key: "website_clicks",     label: "Website Clicks",         type: "number",   api: true },
-    { key: "phone_calls",        label: "Phone Calls",            type: "number",   api: true },
+    { key: "phone_calls",        label: "Phone Calls",            type: "number",   synced: true, hint: "Synced from CallRail → GBP calls" },
     { key: "direction_requests", label: "Direction Requests",     type: "number",   api: true },
     { key: "review_count",       label: "Total Reviews",          type: "number",   manual: true },
     { key: "avg_rating",         label: "Average Rating",         type: "decimal",  manual: true },
@@ -968,12 +968,31 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
 
   const handleApiPulled = useCallback(async (deptId) => {
     if (deptId === dept.id) { await load(); setSaved(false); }
+    // ── Cascade CallRail gbp_calls → GBP phone_calls on API pull ──
+    if (deptId === "callrail") {
+      const { data: crRow } = await supabase.from("report_data").select("data")
+        .eq("client_id", clientId).eq("month", month).eq("department", "callrail").single();
+      const gbpCalls = crRow?.data?.gbp_calls ?? null;
+      const { data: existingGbp } = await supabase.from("report_data").select("data")
+        .eq("client_id", clientId).eq("month", month).eq("department", "gbp").single();
+      const gbpData = existingGbp?.data || {};
+      const gbpOverrides = new Set(gbpData._manual_overrides || []);
+      if (!gbpOverrides.has("phone_calls")) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const ts = { last_updated_by: user.id, last_updated_at: new Date().toISOString() };
+        const updatedGbp = { ...gbpData, phone_calls: gbpCalls, _callrail_synced_at: new Date().toISOString() };
+        await supabase.from("report_data").upsert(
+          { client_id: clientId, month, department: "gbp", data: updatedGbp, ...ts },
+          { onConflict: "client_id,month,department" }
+        );
+      }
+    }
     if (onApiPulled) onApiPulled(deptId);
-  }, [dept.id, load, onApiPulled]);
+  }, [dept.id, clientId, month, load, onApiPulled]);
 
   const handleChange = (key, val) => { setData(prev => ({ ...prev, [key]: val })); setSaved(false); };
 
-  // Service disabled check — AFTER all hooks so React Rules of Hooks are satisfied
+  // Service disabled check — AFTER all hooks
   if (serviceEnabled === false) {
     return (
       <div style={{ textAlign: "center", padding: "48px 24px", color: C.tl, fontFamily: F }}>
@@ -1013,6 +1032,22 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     );
 
     setData(savePayload);
+
+    // ── Cascade CallRail gbp_calls → GBP phone_calls on manual save ──
+    if (dept.id === "callrail") {
+      const gbpCalls = savePayload.gbp_calls ?? null;
+      const { data: existingGbp } = await supabase.from("report_data").select("data")
+        .eq("client_id", clientId).eq("month", month).eq("department", "gbp").single();
+      const gbpData = existingGbp?.data || {};
+      const gbpOverrides = new Set(gbpData._manual_overrides || []);
+      if (!gbpOverrides.has("phone_calls")) {
+        const updatedGbp = { ...gbpData, phone_calls: gbpCalls, _callrail_synced_at: new Date().toISOString() };
+        await supabase.from("report_data").upsert(
+          { client_id: clientId, month, department: "gbp", data: updatedGbp, ...ts },
+          { onConflict: "client_id,month,department" }
+        );
+      }
+    }
 
     if (isJuneauSource && allClients) {
       const sharedPayload = Object.fromEntries(SHARED_KEYS.map(k => [k, savePayload[k] ?? null]));
@@ -1081,6 +1116,16 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           🔒 {manualOverrides.size} field{manualOverrides.size !== 1 ? "s are" : " is"} manually locked — API pulls will not overwrite them. Clear a field and save to unlock it.
         </div>
       )}
+      {dept.id === "callrail" && (
+        <div style={{ background: "#e6f9fc", border: "1px solid #a5f3fc", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
+          📞 Saving CallRail data will automatically sync GBP Calls → Google Business Profile phone calls.
+        </div>
+      )}
+      {dept.id === "gbp" && data._callrail_synced_at && !manualOverrides.has("phone_calls") && (
+        <div style={{ background: "#e6f9fc", border: "1px solid #a5f3fc", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
+          📞 Phone Calls synced from CallRail · {new Date(data._callrail_synced_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+        </div>
+      )}
       {isJuneauSource && <div style={{ background: C.gL, border: `1px solid ${C.g}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>📡 Saving here syncs Total, Website, Facebook & Phone leads to all Juneau stores.</div>}
       {isJuneauChild && <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>🔗 Total, Website, Facebook & Phone synced from Juneau Auto Mall. Enter {oemLabel} leads here.</div>}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -1115,6 +1160,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
           const isFullWidth = FULL_WIDTH_TYPES.has(field.type);
           const isLocked = manualOverrides.has(field.key);
+          const isSynced = field.synced && !isLocked;
           const sectionStart = SECTION_STARTS[field.key];
           return (
             <React.Fragment key={field.key}>
@@ -1129,10 +1175,11 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                   {field.label}
                   {field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>optional</span>}
                   {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>↔ synced</span>}
+                  {isSynced && <span style={{ color: C.cyanD, fontWeight: 600, marginLeft: 6, fontSize: 10 }}>📞 from CallRail</span>}
                   {isLocked && <span style={{ color: "#92400e", fontWeight: 600, marginLeft: 6, fontSize: 10 }}>🔒 locked</span>}
-                  {field.hint && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4, fontSize: 11 }}>({field.hint})</span>}
+                  {field.hint && !isSynced && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4, fontSize: 11 }}>({field.hint})</span>}
                 </label>
-                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField} scData={data} />
+                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField || isSynced} scData={data} />
               </div>
             </React.Fragment>
           );
@@ -1427,6 +1474,8 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
 
   const handleSaved = useCallback(async (deptId) => {
     await refreshCompletion(deptId);
+    // Also refresh GBP completion if CallRail was saved (cascade may have updated it)
+    if (deptId === "callrail") await refreshCompletion("gbp");
     const { data: existing } = await supabase.from("monthly_reports").select("status").eq("client_id", client.id).eq("month", month).single();
     if (!existing) { await supabase.from("monthly_reports").insert({ client_id: client.id, month, status: "in_progress" }); setReportStatus("in_progress"); }
     else if (existing.status === "draft") { await supabase.from("monthly_reports").update({ status: "in_progress" }).eq("client_id", client.id).eq("month", month); setReportStatus("in_progress"); }
