@@ -180,7 +180,6 @@ const BULK_DEPTS = [
     ]
   },
   {
-    // Creative: total deliverables count only — detail lives in per-client admin
     id: "creative", label: "Creative", color: "#7c3aed",
     fields: [
       { key: "total_assets", label: "Total Deliverables", type: "number" },
@@ -422,6 +421,30 @@ export default function BulkEditPage() {
       alert(`Save failed: ${saveError.message}`);
     }
 
+    // ── Cascade CallRail gbp_calls → GBP phone_calls ──
+    if (deptId === "callrail" && fieldKey === "gbp_calls") {
+      const gbpExisting = allData[clientId]?.[monthStr]?.["gbp"] || {};
+      const gbpOverrides = new Set(gbpExisting._manual_overrides || []);
+      if (!gbpOverrides.has("phone_calls")) {
+        const updatedGbp = {
+          ...gbpExisting,
+          phone_calls: finalVal,
+          _callrail_synced_at: new Date().toISOString(),
+        };
+        setAllData(prev => ({
+          ...prev,
+          [clientId]: {
+            ...(prev[clientId] || {}),
+            [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), gbp: updatedGbp }
+          }
+        }));
+        await supabase.from("report_data").upsert(
+          { client_id: clientId, month: monthStr, department: "gbp", data: updatedGbp, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
+          { onConflict: "client_id,month,department" }
+        );
+      }
+    }
+
     // Cascade to Juneau child stores
     const savingClient = clients.find(c => c.id === clientId);
     if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey) && (deptId === "leads" || deptId === "social")) {
@@ -544,7 +567,6 @@ export default function BulkEditPage() {
         <table style={{ borderCollapse: "collapse", fontSize: 12, fontFamily: F }}>
           <thead>
             <tr>
-              {/* Client — rowSpan 2 */}
               <th rowSpan={2} style={{
                 position: "sticky", left: 0, top: 0, zIndex: 60,
                 background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11,
@@ -554,8 +576,6 @@ export default function BulkEditPage() {
                 borderBottom: "1px solid rgba(255,255,255,0.1)",
                 whiteSpace: "nowrap",
               }}>Client</th>
-
-              {/* Month — rowSpan 2 */}
               <th rowSpan={2} style={{
                 position: "sticky", left: 150, top: 0, zIndex: 60,
                 background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 11,
@@ -564,8 +584,6 @@ export default function BulkEditPage() {
                 borderRight: "2px solid rgba(255,255,255,0.15)",
                 borderBottom: "1px solid rgba(255,255,255,0.1)",
               }}>Month</th>
-
-              {/* Fill % — rowSpan 2 */}
               <th rowSpan={2} style={{
                 position: "sticky", left: 225, top: 0, zIndex: 60,
                 background: "#1e3a5f", color: "#fff", fontWeight: 700, fontSize: 10,
@@ -574,8 +592,6 @@ export default function BulkEditPage() {
                 borderRight: "2px solid rgba(255,255,255,0.15)",
                 borderBottom: "1px solid rgba(255,255,255,0.1)",
               }}>Fill %</th>
-
-              {/* Dept group headers */}
               {BULK_DEPTS.map(dept => (
                 <th key={dept.id} colSpan={dept.fields.length}
                   style={{
@@ -592,7 +608,6 @@ export default function BulkEditPage() {
               ))}
             </tr>
             <tr>
-              {/* Field sub-headers */}
               {BULK_DEPTS.map(dept =>
                 dept.fields.map((f, fi) => (
                   <th key={`h_${dept.id}_${f.key}`}
@@ -626,7 +641,6 @@ export default function BulkEditPage() {
 
                 return (
                   <tr key={`${client.id}_${mon.str}`}>
-
                     {isFirstRow && (
                       <td rowSpan={ALL_MONTHS.length}
                         style={{
@@ -641,7 +655,6 @@ export default function BulkEditPage() {
                         <div style={{ fontSize: 10, color: C.tl, marginTop: 3 }}>{client.group_name}</div>
                       </td>
                     )}
-
                     <td style={{
                       position: "sticky", left: 150, zIndex: 10, background: rowBg,
                       borderRight: "2px solid rgba(0,0,0,0.06)",
@@ -651,7 +664,6 @@ export default function BulkEditPage() {
                     }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.t, whiteSpace: "nowrap" }}>{mon.label}</div>
                     </td>
-
                     <td style={{
                       position: "sticky", left: 225, zIndex: 10, background: rowBg,
                       borderRight: "2px solid rgba(0,0,0,0.08)",
@@ -663,7 +675,6 @@ export default function BulkEditPage() {
                         {comp.pct > 0 ? `${comp.pct}%` : "—"}
                       </div>
                     </td>
-
                     {BULK_DEPTS.map(dept =>
                       dept.fields.map((f, fi) => {
                         const deptData = allData[client.id]?.[mon.str]?.[dept.id] || {};
