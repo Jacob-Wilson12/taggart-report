@@ -1325,6 +1325,7 @@ export default function App() {
   const [compData, setCompData]       = useState([{}, {}]);
   const [services, setServices]       = useState({});
   const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError]     = useState(null);
 
   // Derived range (recomputed on every render when deps change — stable because preset/custom are primitives)
   const range       = getMonthRange(preset, customStart, customEnd);
@@ -1376,6 +1377,8 @@ export default function App() {
     if (!selectedClient) return;
     const load = async () => {
       setDataLoading(true);
+      setDataError(null);
+      try {
 
       // Collect all unique months needed: current range + both comp ranges
       const allMonths = [...range, ...cr0, ...cr1];
@@ -1393,10 +1396,12 @@ export default function App() {
       ]);
 
       // Index rows by month string → dept → data
+      // Normalize r.month to "YYYY-MM-DD" to handle both date and timestamptz returns
       const byMonth = {};
       (allRows || []).forEach(r => {
-        if (!byMonth[r.month]) byMonth[r.month] = {};
-        byMonth[r.month][r.department] = r.data || {};
+        const key = typeof r.month === "string" ? r.month.substring(0, 10) : toMonthStr(r);
+        if (!byMonth[key]) byMonth[key] = {};
+        byMonth[key][r.department] = r.data || {};
       });
 
       setReportData(aggregateRange(range, byMonth));
@@ -1406,7 +1411,12 @@ export default function App() {
       (svcRows || []).forEach(r => { svcMap[r.department] = r.enabled; });
       setServices(svcMap);
 
-      setDataLoading(false);
+        setDataLoading(false);
+      } catch (err) {
+        console.error("Report data load error:", err);
+        setDataError(err.message || "Failed to load report data.");
+        setDataLoading(false);
+      }
     };
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1423,6 +1433,13 @@ export default function App() {
   const cd          = compData[compIdx] || {};
 
   const renderPage = () => {
+    if (dataError) return (
+      <div style={{ padding: "40px 24px", textAlign: "center", color: C.r, fontFamily: F }}>
+        <div style={{ fontSize: 24, marginBottom: 10 }}>⚠️</div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Error loading report data</div>
+        <div style={{ fontSize: 12, color: C.tl, marginTop: 6, fontFamily: "monospace" }}>{dataError}</div>
+      </div>
+    );
     if (dataLoading) return (
       <div style={{ padding: "60px 24px", textAlign: "center", color: C.tl, fontFamily: F }}>
         <div style={{ fontSize: 13 }}>Loading…</div>
