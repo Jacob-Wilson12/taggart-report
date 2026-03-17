@@ -212,7 +212,9 @@ const SUM_FIELDS = {
   meta_ads:   ["conversions","total_spend","reach","impressions"],
   social:     ["fb_reach","ig_reach","tiktok_reach","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","posts_published","videos_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments"],
   callrail:   ["total_calls","website_calls","ads_calls","gbp_calls"],
-  leads:      ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"],
+  leads:      ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold","phone_sold",
+               "ford_leads","ford_sold","mazda_leads","mazda_sold","vw_leads","vw_sold",
+               "oem_leads","oem_sold"],
   email:      ["campaigns_sent","total_recipients","site_visits","conversions"],
   creative:   ["total_assets","videos","graphics","banners","print","ad_creative","email_headers"],
 };
@@ -517,22 +519,38 @@ function Dashboard({ data, cd, services, clientName }) {
     // Goode Motor Group — per-brand
     if (isGoode) {
       if (leads.total_leads == null && leads.ford_leads == null) return null;
-      const overallClose = closePct(leads.total_sold, leads.total_leads);
       return (
         <SecWrap title="Lead Summary" sub="Total leads by brand — Goode Motor Group">
+          {/* Row 1: Leads */}
           <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
             <KpiCard label="Total Leads"      value={fmt(leads.total_leads)} change={pct(leads.total_leads, lcmp.total_leads)} />
             <KpiCard label="Ford Leads"       value={fmt(leads.ford_leads)}  change={pct(leads.ford_leads,  lcmp.ford_leads)} />
             <KpiCard label="Mazda Leads"      value={fmt(leads.mazda_leads)} change={pct(leads.mazda_leads, lcmp.mazda_leads)} />
             <KpiCard label="Volkswagen Leads" value={fmt(leads.vw_leads)}    change={pct(leads.vw_leads,    lcmp.vw_leads)} />
           </div>
+          {/* Row 2: Sold */}
+          <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+            <KpiCard label="Total Sold"  value={fmt(leads.total_sold)}  color={C.g} change={pct(leads.total_sold,  lcmp.total_sold)} />
+            <KpiCard label="Ford Sold"   value={fmt(leads.ford_sold)}   change={pct(leads.ford_sold,   lcmp.ford_sold)} />
+            <KpiCard label="Mazda Sold"  value={fmt(leads.mazda_sold)}  change={pct(leads.mazda_sold,  lcmp.mazda_sold)} />
+            <KpiCard label="VW Sold"     value={fmt(leads.vw_sold)}     change={pct(leads.vw_sold,     lcmp.vw_sold)} />
+          </div>
+          {/* Row 3: Close % */}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total Sold" value={fmt(leads.total_sold)} color={C.g}
-              change={pct(leads.total_sold, lcmp.total_sold)}
-              sub={overallClose !== null ? `${overallClose}% overall close rate` : null} />
-            <KpiCard label="Ford Sold"  value={fmt(leads.ford_sold)}  change={pct(leads.ford_sold,  lcmp.ford_sold)}  sub={soldSub(leads.ford_sold,  leads.ford_leads)} />
-            <KpiCard label="Mazda Sold" value={fmt(leads.mazda_sold)} change={pct(leads.mazda_sold, lcmp.mazda_sold)} sub={soldSub(leads.mazda_sold, leads.mazda_leads)} />
-            <KpiCard label="VW Sold"    value={fmt(leads.vw_sold)}    change={pct(leads.vw_sold,    lcmp.vw_sold)}    sub={soldSub(leads.vw_sold,    leads.vw_leads)} />
+            <KpiCard label="Overall Close %"
+              value={closePct(leads.total_sold, leads.total_leads) !== null ? closePct(leads.total_sold, leads.total_leads) + "%" : "—"}
+              color={C.cyanD}
+              change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))}
+              tip="Total sold ÷ total leads" />
+            <KpiCard label="Ford Close %"
+              value={closePct(leads.ford_sold, leads.ford_leads) !== null ? closePct(leads.ford_sold, leads.ford_leads) + "%" : "—"}
+              change={pct(closePct(leads.ford_sold, leads.ford_leads), closePct(lcmp.ford_sold, lcmp.ford_leads))} />
+            <KpiCard label="Mazda Close %"
+              value={closePct(leads.mazda_sold, leads.mazda_leads) !== null ? closePct(leads.mazda_sold, leads.mazda_leads) + "%" : "—"}
+              change={pct(closePct(leads.mazda_sold, leads.mazda_leads), closePct(lcmp.mazda_sold, lcmp.mazda_leads))} />
+            <KpiCard label="VW Close %"
+              value={closePct(leads.vw_sold, leads.vw_leads) !== null ? closePct(leads.vw_sold, leads.vw_leads) + "%" : "—"}
+              change={pct(closePct(leads.vw_sold, leads.vw_leads), closePct(lcmp.vw_sold, lcmp.vw_leads))} />
           </div>
         </SecWrap>
       );
@@ -541,22 +559,38 @@ function Dashboard({ data, cd, services, clientName }) {
     // Juneau OEM clients
     if (oemLabel) {
       if (leads.total_leads == null) return null;
-      const overallClose = closePct(leads.total_sold, leads.total_leads);
       return (
         <SecWrap title="Lead Summary" sub="Total leads across all sources">
+          {/* Row 1: Leads */}
           <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
             <KpiCard label="Total Leads"           value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} />
             <KpiCard label="Website Leads"         value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)}  tip="Leads from the dealership website." />
             <KpiCard label={`${oemLabel} Leads`}   value={fmt(leads.oem_leads)}      change={pct(leads.oem_leads,      lcmp.oem_leads)}      tip={`Leads from ${oemLabel} OEM sources.`} />
             <KpiCard label="Facebook Leads"        value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} />
           </div>
+          {/* Row 2: Sold */}
+          <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+            <KpiCard label="Total Sold"           value={fmt(leads.total_sold)}    color={C.g} change={pct(leads.total_sold,    lcmp.total_sold)} />
+            <KpiCard label="Website Sold"         value={fmt(leads.website_sold)}  change={pct(leads.website_sold,  lcmp.website_sold)} />
+            <KpiCard label={`${oemLabel} Sold`}   value={fmt(leads.oem_sold)}      change={pct(leads.oem_sold,      lcmp.oem_sold)} />
+            <KpiCard label="Facebook Sold"        value={fmt(leads.facebook_sold)} change={pct(leads.facebook_sold, lcmp.facebook_sold)} />
+          </div>
+          {/* Row 3: Close % */}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total Sold" value={fmt(leads.total_sold)} color={C.g}
-              change={pct(leads.total_sold, lcmp.total_sold)}
-              sub={overallClose !== null ? `${overallClose}% overall close rate` : null} />
-            <KpiCard label="Website Sold"        value={fmt(leads.website_sold)}  change={pct(leads.website_sold,  lcmp.website_sold)}  sub={soldSub(leads.website_sold,  leads.website_leads)} />
-            <KpiCard label={`${oemLabel} Sold`}  value={fmt(leads.oem_sold)}      change={pct(leads.oem_sold,      lcmp.oem_sold)}      sub={soldSub(leads.oem_sold,      leads.oem_leads)} />
-            <KpiCard label="Facebook Sold"       value={fmt(leads.facebook_sold)} change={pct(leads.facebook_sold, lcmp.facebook_sold)} sub={soldSub(leads.facebook_sold, leads.facebook_leads)} />
+            <KpiCard label="Overall Close %"
+              value={closePct(leads.total_sold, leads.total_leads) !== null ? closePct(leads.total_sold, leads.total_leads) + "%" : "—"}
+              color={C.cyanD}
+              change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))}
+              tip="Total sold ÷ total leads" />
+            <KpiCard label="Website Close %"
+              value={closePct(leads.website_sold, leads.website_leads) !== null ? closePct(leads.website_sold, leads.website_leads) + "%" : "—"}
+              change={pct(closePct(leads.website_sold, leads.website_leads), closePct(lcmp.website_sold, lcmp.website_leads))} />
+            <KpiCard label={`${oemLabel} Close %`}
+              value={closePct(leads.oem_sold, leads.oem_leads) !== null ? closePct(leads.oem_sold, leads.oem_leads) + "%" : "—"}
+              change={pct(closePct(leads.oem_sold, leads.oem_leads), closePct(lcmp.oem_sold, lcmp.oem_leads))} />
+            <KpiCard label="Facebook Close %"
+              value={closePct(leads.facebook_sold, leads.facebook_leads) !== null ? closePct(leads.facebook_sold, leads.facebook_leads) + "%" : "—"}
+              change={pct(closePct(leads.facebook_sold, leads.facebook_leads), closePct(lcmp.facebook_sold, lcmp.facebook_leads))} />
           </div>
         </SecWrap>
       );
@@ -564,22 +598,38 @@ function Dashboard({ data, cd, services, clientName }) {
 
     // Standard layout
     if (leads.total_leads == null) return null;
-    const overallClose = closePct(leads.total_sold, leads.total_leads);
     return (
       <SecWrap title="Lead Summary" sub="Total leads across all channels">
+        {/* Row 1: Leads */}
         <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
           <KpiCard label="Total Leads"    value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} />
           <KpiCard label="Website Leads"  value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)}  tip="Leads from the dealership website." />
           <KpiCard label="Third Party"    value={fmt(leads.third_party)}    change={pct(leads.third_party,    lcmp.third_party)}    tip="Cars.com, AutoTrader, etc." />
           <KpiCard label="Facebook Leads" value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} />
         </div>
+        {/* Row 2: Sold */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+          <KpiCard label="Total Sold"       value={fmt(leads.total_sold)}         color={C.g} change={pct(leads.total_sold,        lcmp.total_sold)} />
+          <KpiCard label="Website Sold"     value={fmt(leads.website_sold)}       change={pct(leads.website_sold,     lcmp.website_sold)} />
+          <KpiCard label="Third Party Sold" value={fmt(leads.third_party_sold)}   change={pct(leads.third_party_sold, lcmp.third_party_sold)} />
+          <KpiCard label="Facebook Sold"    value={fmt(leads.facebook_sold)}      change={pct(leads.facebook_sold,    lcmp.facebook_sold)} />
+        </div>
+        {/* Row 3: Close % */}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Total Sold" value={fmt(leads.total_sold)} color={C.g}
-            change={pct(leads.total_sold, lcmp.total_sold)}
-            sub={overallClose !== null ? `${overallClose}% overall close rate` : null} />
-          <KpiCard label="Website Sold"     value={fmt(leads.website_sold)}      change={pct(leads.website_sold,     lcmp.website_sold)}     sub={soldSub(leads.website_sold,     leads.website_leads)} />
-          <KpiCard label="Third Party Sold" value={fmt(leads.third_party_sold)}  change={pct(leads.third_party_sold, lcmp.third_party_sold)} sub={soldSub(leads.third_party_sold, leads.third_party)} />
-          <KpiCard label="Facebook Sold"    value={fmt(leads.facebook_sold)}     change={pct(leads.facebook_sold,    lcmp.facebook_sold)}    sub={soldSub(leads.facebook_sold,    leads.facebook_leads)} />
+          <KpiCard label="Overall Close %"
+            value={closePct(leads.total_sold, leads.total_leads) !== null ? closePct(leads.total_sold, leads.total_leads) + "%" : "—"}
+            color={C.cyanD}
+            change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))}
+            tip="Total sold ÷ total leads" />
+          <KpiCard label="Website Close %"
+            value={closePct(leads.website_sold, leads.website_leads) !== null ? closePct(leads.website_sold, leads.website_leads) + "%" : "—"}
+            change={pct(closePct(leads.website_sold, leads.website_leads), closePct(lcmp.website_sold, lcmp.website_leads))} />
+          <KpiCard label="3rd Party Close %"
+            value={closePct(leads.third_party_sold, leads.third_party) !== null ? closePct(leads.third_party_sold, leads.third_party) + "%" : "—"}
+            change={pct(closePct(leads.third_party_sold, leads.third_party), closePct(lcmp.third_party_sold, lcmp.third_party))} />
+          <KpiCard label="Facebook Close %"
+            value={closePct(leads.facebook_sold, leads.facebook_leads) !== null ? closePct(leads.facebook_sold, leads.facebook_leads) + "%" : "—"}
+            change={pct(closePct(leads.facebook_sold, leads.facebook_leads), closePct(lcmp.facebook_sold, lcmp.facebook_leads))} />
         </div>
         {leads.phone_sold != null && (
           <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
