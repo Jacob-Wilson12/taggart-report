@@ -31,6 +31,19 @@ const CLIENT_ORDER = [
   "Juneau Chevrolet","Juneau Honda","Juneau Powersports",
   "Cassia Car Rental","Explore Juneau",
 ];
+
+// Lead-type detection — mirrors admin/page.js
+const GOODE_MOTOR_GROUP = "Goode Motor Group";
+const JUNEAU_OEM_LABEL = {
+  "Juneau Auto Mall": "OEM", "Juneau Subaru": "Subaru",
+  "Juneau CDJR": "CDJR", "Juneau Toyota": "Toyota",
+  "Juneau Chevrolet": "Chevrolet", "Juneau Honda": "Honda",
+};
+const closePct = (sold, leads) => {
+  const s = Number(sold), l = Number(leads);
+  if (!s || !l || l === 0) return null;
+  return Math.round((s / l) * 1000) / 10;
+};
 const DEPT_TABS = [
   { id: "dashboard",  label: "Dashboard" },
   { id: "seo",        label: "🔍 SEO" },
@@ -460,7 +473,7 @@ function NoData({ label }) {
 }
 
 /* ─── DASHBOARD ─── */
-function Dashboard({ data, cd, services }) {
+function Dashboard({ data, cd, services, clientName }) {
   const leads  = data.leads      || {};
   const lcmp   = cd.leads        || {};
   const cr     = data.callrail   || {};
@@ -479,35 +492,107 @@ function Dashboard({ data, cd, services }) {
   const ecmp   = cd.email        || {};
   const creat  = data.creative   || {};
 
-  const totalReach = (Number(social.fb_reach) || 0) + (Number(social.ig_reach) || 0) + (Number(social.tiktok_reach) || 0);
-  const totalEngage = (Number(social.fb_engagement) || 0) + (Number(social.ig_engagement) || 0) + (Number(social.tiktok_likes) || 0);
-  const newFollowers = (Number(social.fb_new_followers) || 0) + (Number(social.ig_new_followers) || 0) + (Number(social.tiktok_followers) || 0);
+  const totalReach    = (Number(social.fb_reach) || 0)         + (Number(social.ig_reach) || 0)         + (Number(social.tiktok_reach) || 0);
+  const totalEngage   = (Number(social.fb_engagement) || 0)    + (Number(social.ig_engagement) || 0)    + (Number(social.tiktok_likes) || 0);
+  const newFollowers  = (Number(social.fb_new_followers) || 0) + (Number(social.ig_new_followers) || 0) + (Number(social.tiktok_followers) || 0);
+  const prevReach     = (Number(socmp.fb_reach) || 0)          + (Number(socmp.ig_reach) || 0)          + (Number(socmp.tiktok_reach) || 0);
+  const prevEngage    = (Number(socmp.fb_engagement) || 0)     + (Number(socmp.ig_engagement) || 0)     + (Number(socmp.tiktok_likes) || 0);
+  const prevFollowers = (Number(socmp.fb_new_followers) || 0)  + (Number(socmp.ig_new_followers) || 0)  + (Number(socmp.tiktok_followers) || 0);
 
-  const prevReach = (Number(socmp.fb_reach) || 0) + (Number(socmp.ig_reach) || 0) + (Number(socmp.tiktok_reach) || 0);
-  const prevEngage = (Number(socmp.fb_engagement) || 0) + (Number(socmp.ig_engagement) || 0) + (Number(socmp.tiktok_likes) || 0);
-  const prevFollowers = (Number(socmp.fb_new_followers) || 0) + (Number(socmp.ig_new_followers) || 0) + (Number(socmp.tiktok_followers) || 0);
+  // ── Lead type detection ──
+  const isGoode      = clientName === GOODE_MOTOR_GROUP;
+  const oemLabel     = JUNEAU_OEM_LABEL[clientName] || null;
+  const leadsEnabled = services.leads !== false;
+
+  // close % sub label helper
+  const soldSub = (sold, src) => {
+    const p = closePct(sold, src);
+    return p !== null ? `${p}% close rate` : null;
+  };
+
+  // ── Lead summary — three layouts ──
+  const renderLeads = () => {
+    if (!leadsEnabled) return null;
+
+    // Goode Motor Group — per-brand
+    if (isGoode) {
+      if (leads.total_leads == null && leads.ford_leads == null) return null;
+      const overallClose = closePct(leads.total_sold, leads.total_leads);
+      return (
+        <SecWrap title="Lead Summary" sub="Total leads by brand — Goode Motor Group">
+          <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+            <KpiCard label="Total Leads"      value={fmt(leads.total_leads)} change={pct(leads.total_leads, lcmp.total_leads)} />
+            <KpiCard label="Ford Leads"       value={fmt(leads.ford_leads)}  change={pct(leads.ford_leads,  lcmp.ford_leads)} />
+            <KpiCard label="Mazda Leads"      value={fmt(leads.mazda_leads)} change={pct(leads.mazda_leads, lcmp.mazda_leads)} />
+            <KpiCard label="Volkswagen Leads" value={fmt(leads.vw_leads)}    change={pct(leads.vw_leads,    lcmp.vw_leads)} />
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <KpiCard label="Total Sold" value={fmt(leads.total_sold)} color={C.g}
+              change={pct(leads.total_sold, lcmp.total_sold)}
+              sub={overallClose !== null ? `${overallClose}% overall close rate` : null} />
+            <KpiCard label="Ford Sold"  value={fmt(leads.ford_sold)}  change={pct(leads.ford_sold,  lcmp.ford_sold)}  sub={soldSub(leads.ford_sold,  leads.ford_leads)} />
+            <KpiCard label="Mazda Sold" value={fmt(leads.mazda_sold)} change={pct(leads.mazda_sold, lcmp.mazda_sold)} sub={soldSub(leads.mazda_sold, leads.mazda_leads)} />
+            <KpiCard label="VW Sold"    value={fmt(leads.vw_sold)}    change={pct(leads.vw_sold,    lcmp.vw_sold)}    sub={soldSub(leads.vw_sold,    leads.vw_leads)} />
+          </div>
+        </SecWrap>
+      );
+    }
+
+    // Juneau OEM clients
+    if (oemLabel) {
+      if (leads.total_leads == null) return null;
+      const overallClose = closePct(leads.total_sold, leads.total_leads);
+      return (
+        <SecWrap title="Lead Summary" sub="Total leads across all sources">
+          <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+            <KpiCard label="Total Leads"           value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} />
+            <KpiCard label="Website Leads"         value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)}  tip="Leads from the dealership website." />
+            <KpiCard label={`${oemLabel} Leads`}   value={fmt(leads.oem_leads)}      change={pct(leads.oem_leads,      lcmp.oem_leads)}      tip={`Leads from ${oemLabel} OEM sources.`} />
+            <KpiCard label="Facebook Leads"        value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} />
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <KpiCard label="Total Sold" value={fmt(leads.total_sold)} color={C.g}
+              change={pct(leads.total_sold, lcmp.total_sold)}
+              sub={overallClose !== null ? `${overallClose}% overall close rate` : null} />
+            <KpiCard label="Website Sold"        value={fmt(leads.website_sold)}  change={pct(leads.website_sold,  lcmp.website_sold)}  sub={soldSub(leads.website_sold,  leads.website_leads)} />
+            <KpiCard label={`${oemLabel} Sold`}  value={fmt(leads.oem_sold)}      change={pct(leads.oem_sold,      lcmp.oem_sold)}      sub={soldSub(leads.oem_sold,      leads.oem_leads)} />
+            <KpiCard label="Facebook Sold"       value={fmt(leads.facebook_sold)} change={pct(leads.facebook_sold, lcmp.facebook_sold)} sub={soldSub(leads.facebook_sold, leads.facebook_leads)} />
+          </div>
+        </SecWrap>
+      );
+    }
+
+    // Standard layout
+    if (leads.total_leads == null) return null;
+    const overallClose = closePct(leads.total_sold, leads.total_leads);
+    return (
+      <SecWrap title="Lead Summary" sub="Total leads across all channels">
+        <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+          <KpiCard label="Total Leads"    value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} />
+          <KpiCard label="Website Leads"  value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)}  tip="Leads from the dealership website." />
+          <KpiCard label="Third Party"    value={fmt(leads.third_party)}    change={pct(leads.third_party,    lcmp.third_party)}    tip="Cars.com, AutoTrader, etc." />
+          <KpiCard label="Facebook Leads" value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} />
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <KpiCard label="Total Sold" value={fmt(leads.total_sold)} color={C.g}
+            change={pct(leads.total_sold, lcmp.total_sold)}
+            sub={overallClose !== null ? `${overallClose}% overall close rate` : null} />
+          <KpiCard label="Website Sold"     value={fmt(leads.website_sold)}      change={pct(leads.website_sold,     lcmp.website_sold)}     sub={soldSub(leads.website_sold,     leads.website_leads)} />
+          <KpiCard label="Third Party Sold" value={fmt(leads.third_party_sold)}  change={pct(leads.third_party_sold, lcmp.third_party_sold)} sub={soldSub(leads.third_party_sold, leads.third_party)} />
+          <KpiCard label="Facebook Sold"    value={fmt(leads.facebook_sold)}     change={pct(leads.facebook_sold,    lcmp.facebook_sold)}    sub={soldSub(leads.facebook_sold,    leads.facebook_leads)} />
+        </div>
+        {leads.phone_sold != null && (
+          <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+            <KpiCard label="Phone Sold" value={fmt(leads.phone_sold)} change={pct(leads.phone_sold, lcmp.phone_sold)} />
+          </div>
+        )}
+      </SecWrap>
+    );
+  };
 
   return (
     <>
-      {/* Lead Summary */}
-      {services.leads !== false && (leads.total_leads != null) && (
-        <SecWrap title="Lead Summary" sub="Total leads across all channels">
-          <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total Leads"    value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} />
-            <KpiCard label="Website Leads"  value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)} tip="Leads from the dealership website." />
-            <KpiCard label="Third Party"    value={fmt(leads.third_party)}    change={pct(leads.third_party,    lcmp.third_party)} tip="Cars.com, AutoTrader, etc." />
-            <KpiCard label="Facebook Leads" value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} />
-          </div>
-          {leads.total_sold != null && (
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <KpiCard label="Total Sold"        value={fmt(leads.total_sold)}         color={C.g} change={pct(leads.total_sold,        lcmp.total_sold)} />
-              <KpiCard label="Website Sold"      value={fmt(leads.website_sold)}       change={pct(leads.website_sold,      lcmp.website_sold)} />
-              <KpiCard label="Third Party Sold"  value={fmt(leads.third_party_sold)}   change={pct(leads.third_party_sold,  lcmp.third_party_sold)} />
-              <KpiCard label="Facebook Sold"     value={fmt(leads.facebook_sold)}      change={pct(leads.facebook_sold,     lcmp.facebook_sold)} />
-            </div>
-          )}
-        </SecWrap>
-      )}
+      {renderLeads()}
 
       {/* CallRail */}
       {services.callrail !== false && (cr.total_calls != null) && (
@@ -1344,7 +1429,7 @@ export default function App() {
       </div>
     );
     switch (activeTab) {
-      case "dashboard":  return <Dashboard data={reportData} cd={cd} services={services} />;
+      case "dashboard":  return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} />;
       case "seo":        return svcEnabled("seo")        ? <SeoPage       d={reportData.seo}        cd={cd.seo        || {}} /> : <DisabledDept label="SEO" />;
       case "gbp":        return svcEnabled("gbp")        ? <GbpPage       d={reportData.gbp}        cd={cd.gbp        || {}} /> : <DisabledDept label="Google Business Profile" />;
       case "google_ads": return svcEnabled("google_ads") ? <GoogleAdsPage d={reportData.google_ads} cd={cd.google_ads || {}} /> : <DisabledDept label="Google Ads" />;
