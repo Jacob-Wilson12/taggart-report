@@ -71,6 +71,194 @@ const pct = (curr, prev) => {
   return Math.round(((c - p) / p) * 1000) / 10;
 };
 
+/* ─── DATE RANGE UTILITIES ─── */
+
+function getLastComplete() {
+  const now = new Date();
+  const m0  = now.getMonth(); // 0-indexed
+  if (m0 === 0) return { month: 12, year: now.getFullYear() - 1 };
+  return { month: m0, year: now.getFullYear() }; // m0 is 1-based last month
+}
+
+function buildRange(sy, sm, ey, em) {
+  const out = [];
+  let y = sy, m = sm;
+  while (y < ey || (y === ey && m <= em)) {
+    out.push({ year: y, month: m });
+    if (++m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+function getQuarter(m) { return Math.ceil(m / 3); }
+function qStart(q)     { return (q - 1) * 3 + 1; }
+function qEnd(q)       { return q * 3; }
+
+function getMonthRange(preset, customStart, customEnd) {
+  const { month: lcm, year: lcy } = getLastComplete();
+  const now  = new Date();
+  const curY = now.getFullYear();
+  const curM = now.getMonth() + 1; // 1-based current calendar month
+
+  switch (preset) {
+    case "last_month":
+      return [{ year: lcy, month: lcm }];
+
+    case "current_quarter": {
+      const q  = getQuarter(curM);
+      const qs = qStart(q);
+      // Include from quarter start up to last complete month (capped at qEnd)
+      const endM = Math.min(lcm, qEnd(q));
+      const endY = curY;
+      if (qs > endM && curY === lcy) return [{ year: lcy, month: lcm }];
+      return buildRange(curY, qs, endY, endM);
+    }
+
+    case "last_quarter": {
+      const q    = getQuarter(curM);
+      const prevQ = q === 1 ? 4 : q - 1;
+      const prevY = q === 1 ? curY - 1 : curY;
+      return buildRange(prevY, qStart(prevQ), prevY, qEnd(prevQ));
+    }
+
+    case "ytd":
+      return buildRange(curY, 1, lcy, lcm);
+
+    case "last_year":
+      return buildRange(curY - 1, 1, curY - 1, 12);
+
+    case "custom": {
+      const { year: sy, month: sm } = customStart;
+      const { year: ey, month: em } = customEnd;
+      // Guard: end must be >= start
+      if (ey < sy || (ey === sy && em < sm)) return [customStart];
+      return buildRange(sy, sm, ey, em);
+    }
+
+    default:
+      return [{ year: lcy, month: lcm }];
+  }
+}
+
+function shiftRange(range, months) {
+  return range.map(({ year, month }) => {
+    let m = month + months, y = year;
+    while (m <= 0)  { m += 12; y--; }
+    while (m > 12)  { m -= 12; y++; }
+    return { year: y, month: m };
+  });
+}
+
+/** Returns [priorEquivalentRange, sameRangeLastYear] */
+function getCompRanges(range) {
+  return [
+    shiftRange(range, -range.length),
+    shiftRange(range, -12),
+  ];
+}
+
+function rangeToLabel(range) {
+  if (!range.length) return "";
+  const s = range[0], e = range[range.length - 1];
+  if (range.length === 1) return `${MONTHS[s.month - 1]} ${s.year}`;
+  if (s.year === e.year)
+    return `${MONTHS[s.month - 1].slice(0, 3)}–${MONTHS[e.month - 1].slice(0, 3)} ${s.year}`;
+  return `${MONTHS[s.month - 1].slice(0, 3)} ${s.year} – ${MONTHS[e.month - 1].slice(0, 3)} ${e.year}`;
+}
+
+function presetLabel(preset, range) {
+  const now = new Date();
+  const curY = now.getFullYear();
+  switch (preset) {
+    case "last_month":    return rangeToLabel(range);
+    case "current_quarter": {
+      const q = getQuarter(range[range.length - 1].month);
+      return `Q${q} ${range[0].year} (to date)`;
+    }
+    case "last_quarter": {
+      const q = getQuarter(range[0].month);
+      return `Q${q} ${range[0].year}`;
+    }
+    case "ytd":           return `YTD ${range[0].year}`;
+    case "last_year":     return `${range[0].year} (Full Year)`;
+    case "custom":        return rangeToLabel(range);
+    default:              return rangeToLabel(range);
+  }
+}
+
+function toMonthStr({ year, month }) {
+  return `${year}-${String(month).padStart(2, "0")}-01`;
+}
+
+/* ─── AGGREGATION ENGINE ─── */
+
+const SUM_FIELDS = {
+  seo:        ["organic_sessions","total_sessions","impressions","vdp_views","phone_calls","form_submissions","direction_requests","chat_conversations"],
+  gbp:        ["profile_views","search_appearances","map_views","website_clicks","phone_calls","direction_requests","new_reviews"],
+  google_ads: ["conversions","total_spend","impressions","clicks"],
+  meta_ads:   ["conversions","total_spend","reach","impressions"],
+  social:     ["fb_reach","ig_reach","tiktok_reach","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","posts_published","videos_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments"],
+  callrail:   ["total_calls","website_calls","ads_calls","gbp_calls"],
+  leads:      ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold"],
+  email:      ["campaigns_sent","total_recipients","site_visits","conversions"],
+  creative:   ["total_assets","videos","graphics","banners","print","ad_creative","email_headers"],
+};
+
+const AVG_FIELDS = {
+  seo:        ["ctr","avg_position","bounce_rate","avg_session_duration"],
+  gbp:        ["avg_rating"],
+  google_ads: ["ctr","impression_share","quality_score"],
+  meta_ads:   ["ctr","frequency","engagement_rate","video_view_rate","lead_form_completion"],
+  social:     [],
+  callrail:   [],
+  leads:      [],
+  email:      ["avg_open_rate","avg_click_rate","unsubscribe_rate"],
+  creative:   [],
+};
+
+function aggregateDept(dataArr, dept) {
+  if (!dataArr.length) return {};
+  if (dataArr.length === 1) return dataArr[0];
+
+  // Start with last month's values (captures text/snapshot fields like top_query, work_completed, etc.)
+  const result = { ...dataArr[dataArr.length - 1] };
+
+  (SUM_FIELDS[dept] || []).forEach(f => {
+    const total = dataArr.reduce((acc, d) => acc + (Number(d[f]) || 0), 0);
+    result[f] = total > 0 ? total : null;
+  });
+
+  (AVG_FIELDS[dept] || []).forEach(f => {
+    const vals = dataArr.map(d => d[f]).filter(v => v != null && !isNaN(Number(v)));
+    result[f] = vals.length ? vals.reduce((a, b) => a + Number(b), 0) / vals.length : null;
+  });
+
+  // Derived CPL and CPC from aggregated totals (more accurate than averaging)
+  if (["google_ads","meta_ads"].includes(dept) && result.total_spend && result.conversions) {
+    result.cost_per_lead = Number(result.total_spend) / Number(result.conversions);
+  }
+  if (dept === "google_ads" && result.total_spend && result.clicks) {
+    result.cpc = Number(result.total_spend) / Number(result.clicks);
+  }
+
+  return result;
+}
+
+/** Given a range and a byMonth lookup, return aggregated {dept: data} map */
+function aggregateRange(range, byMonth) {
+  const allDepts = new Set();
+  range.forEach(m => { const key = toMonthStr(m); Object.keys(byMonth[key] || {}).forEach(d => allDepts.add(d)); });
+
+  const result = {};
+  allDepts.forEach(dept => {
+    const rows = range
+      .map(m => byMonth[toMonthStr(m)]?.[dept])
+      .filter(Boolean);
+    result[dept] = aggregateDept(rows, dept);
+  });
+  return result;
+}
+
 /* ─── SHARED COMPONENTS ─── */
 
 /** Arrow change indicator. Pass invert=true for cost metrics (lower = better). */
@@ -915,6 +1103,118 @@ function LoginPage() {
   );
 }
 
+/* ─── DATE PICKER COMPONENT ─── */
+function DatePicker({ preset, setPreset, customStart, setCustomStart, customEnd, setCustomEnd, rangeLabel, open, setOpen }) {
+  const PRESETS = [
+    { id: "last_month",      label: "Last Month" },
+    { id: "current_quarter", label: "Current Quarter" },
+    { id: "last_quarter",    label: "Last Quarter" },
+    { id: "ytd",             label: "Year to Date" },
+    { id: "last_year",       label: "Last Year" },
+    { id: "custom",          label: "Custom Range…" },
+  ];
+
+  // Build month/year options for custom pickers (last 3 years)
+  const now = new Date();
+  const monthYearOpts = [];
+  for (let i = 0; i < 36; i++) {
+    let m = now.getMonth() - i;
+    let y = now.getFullYear();
+    while (m < 0) { m += 12; y--; }
+    monthYearOpts.push({ label: `${MONTHS[m].slice(0, 3)} ${y}`, year: y, month: m + 1 });
+  }
+
+  const selStyle = {
+    padding: "6px 10px", borderRadius: 6, border: `1px solid ${C.bd}`,
+    fontSize: 12, fontFamily: F, fontWeight: 600, color: C.t,
+    background: C.white, cursor: "pointer", outline: "none",
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{ background: "#f0f2f5", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "7px 14px",
+          color: C.t, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: F }}>
+        📅 {rangeLabel} <span style={{ fontSize: 10, color: C.tl }}>▼</span>
+      </button>
+
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: C.white,
+          border: `1px solid ${C.bd}`, borderRadius: 12, padding: "8px 0", zIndex: 300,
+          width: 240, boxShadow: "0 8px 30px rgba(0,0,0,0.14)" }}>
+
+          {/* Preset options */}
+          {PRESETS.map(p => (
+            <button key={p.id}
+              onClick={() => { setPreset(p.id); if (p.id !== "custom") setOpen(false); }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", textAlign: "left", padding: "9px 16px", border: "none", cursor: "pointer",
+                background: preset === p.id ? C.cyanL : "transparent",
+                color: preset === p.id ? C.cyanD : C.t,
+                fontSize: 13, fontWeight: 600, fontFamily: F }}>
+              {p.label}
+              {preset === p.id && <span style={{ fontSize: 11, color: C.cyanD }}>✓</span>}
+            </button>
+          ))}
+
+          {/* Custom range UI */}
+          {preset === "custom" && (
+            <div style={{ margin: "10px 16px 8px", padding: "12px", background: "#f8fafc",
+              borderRadius: 8, border: `1px solid ${C.bd}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: "uppercase",
+                letterSpacing: "0.06em", fontFamily: F, marginBottom: 8 }}>Select Range</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: C.tl, fontFamily: F, marginBottom: 3 }}>Start</div>
+                  <select
+                    value={`${customStart.year}-${customStart.month}`}
+                    onChange={e => {
+                      const [y, m] = e.target.value.split("-").map(Number);
+                      setCustomStart({ year: y, month: m });
+                      // Auto-correct end if before start
+                      if (customEnd.year < y || (customEnd.year === y && customEnd.month < m)) {
+                        setCustomEnd({ year: y, month: m });
+                      }
+                    }}
+                    style={selStyle}>
+                    {monthYearOpts.map((o, i) => (
+                      <option key={i} value={`${o.year}-${o.month}`}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: C.tl, fontFamily: F, marginBottom: 3 }}>End</div>
+                  <select
+                    value={`${customEnd.year}-${customEnd.month}`}
+                    onChange={e => {
+                      const [y, m] = e.target.value.split("-").map(Number);
+                      setCustomEnd({ year: y, month: m });
+                    }}
+                    style={selStyle}>
+                    {monthYearOpts
+                      .filter(o => o.year > customStart.year || (o.year === customStart.year && o.month >= customStart.month))
+                      .map((o, i) => (
+                        <option key={i} value={`${o.year}-${o.month}`}>{o.label}</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                style={{ marginTop: 10, width: "100%", padding: "7px", background: C.cyanD,
+                  color: "#fff", border: "none", borderRadius: 6, fontSize: 12,
+                  fontWeight: 700, cursor: "pointer", fontFamily: F }}>
+                Apply
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── ROOT APP ─── */
 export default function App() {
   const [session, setSession]               = useState(null);
@@ -924,23 +1224,29 @@ export default function App() {
   const [selectedClient, setSelectedClient] = useState(null);
   const [activeTab, setActiveTab]           = useState("dashboard");
   const [clientMenuOpen, setClientMenuOpen] = useState(false);
-  const [monthMenuOpen, setMonthMenuOpen]   = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
-  // Month/year
-  const now = new Date();
-  const defaultYear  = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const defaultMonth = now.getMonth() === 0 ? 12 : now.getMonth(); // 1-based
-  const [selectedYear, setSelectedYear]   = useState(defaultYear);
-  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  // Date range state
+  const { month: lcm, year: lcy } = getLastComplete();
+  const [preset, setPreset]           = useState("last_month");
+  const [customStart, setCustomStart] = useState({ year: lcy, month: lcm });
+  const [customEnd, setCustomEnd]     = useState({ year: lcy, month: lcm });
 
   // Comparison
-  const [compIdx, setCompIdx] = useState(0); // 0 = vs prior month, 1 = vs same month last year
+  const [compIdx, setCompIdx] = useState(0);
 
   // Report data
   const [reportData, setReportData]   = useState({});
-  const [compData, setCompData]       = useState([{}, {}]); // [priorMonth, SMLY]
+  const [compData, setCompData]       = useState([{}, {}]);
   const [services, setServices]       = useState({});
   const [dataLoading, setDataLoading] = useState(false);
+
+  // Derived range (recomputed on every render when deps change — stable because preset/custom are primitives)
+  const range       = getMonthRange(preset, customStart, customEnd);
+  const [cr0, cr1]  = getCompRanges(range);
+  const rangeKey    = range.map(toMonthStr).join(",");
+  const rangeLabel  = presetLabel(preset, range);
+  const compLabels  = [`vs ${rangeToLabel(cr0)}`, `vs ${rangeToLabel(cr1)}`];
 
   /* Auth */
   useEffect(() => {
@@ -980,37 +1286,36 @@ export default function App() {
     fetchClients();
   }, [session]);
 
-  /* Load current + comparison data */
+  /* Load report + comparison data whenever client or range changes */
   useEffect(() => {
     if (!selectedClient) return;
     const load = async () => {
       setDataLoading(true);
 
-      const month = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
+      // Collect all unique months needed: current range + both comp ranges
+      const allMonths = [...range, ...cr0, ...cr1];
+      const unique = [...new Map(allMonths.map(m => [toMonthStr(m), m])).values()];
+      const monthStrs = unique.map(toMonthStr);
 
-      // Prior month
-      const priorM = selectedMonth === 1 ? 12 : selectedMonth - 1;
-      const priorY = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-      const priorMonth = `${priorY}-${String(priorM).padStart(2, "0")}-01`;
-
-      // Same month last year
-      const smlyMonth = `${selectedYear - 1}-${String(selectedMonth).padStart(2, "0")}-01`;
-
-      const mapRows = (rows) => {
-        const m = {};
-        (rows || []).forEach(r => { m[r.department] = r.data || {}; });
-        return m;
-      };
-
-      const [{ data: rows }, { data: priorRows }, { data: smlyRows }, { data: svcRows }] = await Promise.all([
-        supabase.from("report_data").select("department, data").eq("client_id", selectedClient.id).eq("month", month),
-        supabase.from("report_data").select("department, data").eq("client_id", selectedClient.id).eq("month", priorMonth),
-        supabase.from("report_data").select("department, data").eq("client_id", selectedClient.id).eq("month", smlyMonth),
-        supabase.from("client_services").select("department, enabled").eq("client_id", selectedClient.id),
+      const [{ data: allRows }, { data: svcRows }] = await Promise.all([
+        supabase.from("report_data")
+          .select("department, data, month")
+          .eq("client_id", selectedClient.id)
+          .in("month", monthStrs),
+        supabase.from("client_services")
+          .select("department, enabled")
+          .eq("client_id", selectedClient.id),
       ]);
 
-      setReportData(mapRows(rows));
-      setCompData([mapRows(priorRows), mapRows(smlyRows)]);
+      // Index rows by month string → dept → data
+      const byMonth = {};
+      (allRows || []).forEach(r => {
+        if (!byMonth[r.month]) byMonth[r.month] = {};
+        byMonth[r.month][r.department] = r.data || {};
+      });
+
+      setReportData(aggregateRange(range, byMonth));
+      setCompData([aggregateRange(cr0, byMonth), aggregateRange(cr1, byMonth)]);
 
       const svcMap = {};
       (svcRows || []).forEach(r => { svcMap[r.department] = r.enabled; });
@@ -1019,39 +1324,23 @@ export default function App() {
       setDataLoading(false);
     };
     load();
-  }, [selectedClient, selectedYear, selectedMonth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClient?.id, rangeKey]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setSession(null); setClients([]); setSelectedClient(null);
   };
 
-  // Derived labels
-  const priorM    = selectedMonth === 1 ? 12 : selectedMonth - 1;
-  const priorY    = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-  const monthLabel = `${MONTHS[selectedMonth - 1]} ${selectedYear}`;
-  const compLabels = [
-    `vs ${MONTHS[priorM - 1]} ${priorY}`,
-    `vs ${MONTHS[selectedMonth - 1]} ${selectedYear - 1}`,
-  ];
-
-  // Month picker options (last 24)
-  const monthOptions = [];
-  for (let i = 0; i < 24; i++) {
-    let m = now.getMonth() - i;
-    let y = now.getFullYear();
-    while (m < 0) { m += 12; y--; }
-    monthOptions.push({ label: `${MONTHS[m]} ${y}`, year: y, month: m + 1 });
-  }
-
-  const groups     = [...new Set(clients.map(c => c.group_name))];
-  const svcEnabled = (dept) => services[dept] !== false;
-  const cd         = compData[compIdx] || {};
+  const closeMenus  = () => { setClientMenuOpen(false); setDatePickerOpen(false); };
+  const groups      = [...new Set(clients.map(c => c.group_name))];
+  const svcEnabled  = (dept) => services[dept] !== false;
+  const cd          = compData[compIdx] || {};
 
   const renderPage = () => {
     if (dataLoading) return (
       <div style={{ padding: "60px 24px", textAlign: "center", color: C.tl, fontFamily: F }}>
-        <div style={{ fontSize: 13 }}>Loading report data…</div>
+        <div style={{ fontSize: 13 }}>Loading…</div>
       </div>
     );
     switch (activeTab) {
@@ -1090,8 +1379,6 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: F, background: C.bg }}>
-      {/* Google Fonts — move to app/layout.js for production */}
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Permanent+Marker&display=swap" rel="stylesheet" />
 
       {/* ── HEADER ── */}
       <div style={{ background: C.white, padding: "0 24px", height: 64, display: "flex", alignItems: "center",
@@ -1105,7 +1392,7 @@ export default function App() {
             <>
               <div style={{ width: 1, height: 30, background: C.bd, margin: "0 6px" }} />
               <div style={{ position: "relative" }}>
-                <button onClick={() => { setClientMenuOpen(!clientMenuOpen); setMonthMenuOpen(false); }}
+                <button onClick={() => { setClientMenuOpen(!clientMenuOpen); setDatePickerOpen(false); }}
                   style={{ background: "#f0f2f5", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "7px 14px",
                     color: C.t, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: F }}>
                   {selectedClient?.name} <span style={{ fontSize: 10, color: C.tl }}>▼</span>
@@ -1138,29 +1425,14 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{session?.user?.email}</span>
 
-          {/* Month picker */}
-          <div style={{ position: "relative" }}>
-            <button onClick={() => { setMonthMenuOpen(!monthMenuOpen); setClientMenuOpen(false); }}
-              style={{ background: "#f0f2f5", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "7px 14px",
-                color: C.t, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 7, fontFamily: F }}>
-              📅 {monthLabel} <span style={{ fontSize: 10, color: C.tl }}>▼</span>
-            </button>
-            {monthMenuOpen && (
-              <div style={{ position: "absolute", top: "calc(100% + 5px)", right: 0, background: C.white,
-                border: `1px solid ${C.bd}`, borderRadius: 10, padding: "6px 0", zIndex: 200,
-                width: 200, maxHeight: 300, overflowY: "auto", boxShadow: "0 8px 30px rgba(0,0,0,0.12)" }}>
-                {monthOptions.map((mo, i) => (
-                  <button key={i} onClick={() => { setSelectedYear(mo.year); setSelectedMonth(mo.month); setMonthMenuOpen(false); }}
-                    style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 14px", border: "none", cursor: "pointer",
-                      background: (mo.year === selectedYear && mo.month === selectedMonth) ? C.cyanL : "transparent",
-                      color: (mo.year === selectedYear && mo.month === selectedMonth) ? C.cyanD : C.t,
-                      fontSize: 13, fontWeight: 600, fontFamily: F }}>
-                    {mo.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Date range picker */}
+          <DatePicker
+            preset={preset} setPreset={setPreset}
+            customStart={customStart} setCustomStart={setCustomStart}
+            customEnd={customEnd} setCustomEnd={setCustomEnd}
+            rangeLabel={rangeLabel}
+            open={datePickerOpen} setOpen={(v) => { setDatePickerOpen(v); if (v) setClientMenuOpen(false); }}
+          />
 
           <button onClick={handleLogout}
             style={{ background: "#f0f2f5", border: `1px solid ${C.bd}`, borderRadius: 8,
@@ -1205,10 +1477,10 @@ export default function App() {
 
       {/* ── CONTENT ── */}
       <div style={{ flex: 1, padding: "24px 24px", maxWidth: 1200, margin: "0 auto", width: "100%", boxSizing: "border-box" }}
-        onClick={() => { setClientMenuOpen(false); setMonthMenuOpen(false); }}>
+        onClick={closeMenus}>
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: C.t, margin: 0, fontFamily: FS }}>{selectedClient?.name}</h1>
-          <p style={{ fontSize: 13, color: C.tl, margin: "3px 0 0", fontFamily: F }}>Performance Report — {monthLabel}</p>
+          <p style={{ fontSize: 13, color: C.tl, margin: "3px 0 0", fontFamily: F }}>Performance Report — {rangeLabel}</p>
         </div>
         {renderPage()}
       </div>
@@ -1220,7 +1492,7 @@ export default function App() {
           <span style={{ fontFamily: "'Permanent Marker', cursive", fontSize: 15, color: C.navy }}>TAGGART</span>
           <span style={{ fontFamily: "'Permanent Marker', cursive", fontSize: 15, color: C.cyan }}>ADVERTISING</span>
         </div>
-        <p style={{ fontSize: 11, color: C.tl, margin: "6px 0 0", fontFamily: F }}>Confidential client report — {monthLabel}</p>
+        <p style={{ fontSize: 11, color: C.tl, margin: "6px 0 0", fontFamily: F }}>Confidential client report — {rangeLabel}</p>
       </div>
     </div>
   );
