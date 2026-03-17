@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
+  ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
 import { supabase } from "../supabase";
 
@@ -475,7 +475,7 @@ function NoData({ label }) {
 }
 
 /* ─── DASHBOARD ─── */
-function Dashboard({ data, cd, services, clientName }) {
+function Dashboard({ data, cd, services, clientName, leadTrend }) {
   const leads  = data.leads      || {};
   const lcmp   = cd.leads        || {};
   const cr     = data.callrail   || {};
@@ -640,9 +640,51 @@ function Dashboard({ data, cd, services, clientName }) {
     );
   };
 
+  // Build lead + sold trend from historical data
+  const trendLine = leadTrend
+    .filter(t => t.total_leads != null || t.total_sold != null)
+    .map(t => ({
+      label:  t.label,
+      leads:  t.total_leads != null ? Number(t.total_leads) : null,
+      sold:   t.total_sold  != null ? Number(t.total_sold)  : null,
+    }));
+
+  // Build callrail trend
+  const callTrend = leadTrend.length > 0
+    ? null // callrail is a separate dept — use trendData.callrail if we had it
+    : null;
+
   return (
     <>
       {renderLeads()}
+
+      {/* Lead Trend Chart — only show when we have 3+ months of data */}
+      {trendLine.length >= 3 && leadsEnabled && (
+        <SecWrap title="Lead & Sales Trend" sub="Month-over-month leads and sold">
+          <Card style={{ marginBottom: 0 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={trendLine}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: C.tl }} />
+                <YAxis tick={{ fontSize: 11, fill: C.tl }} allowDecimals={false} />
+                <Tooltip contentStyle={ttS} />
+                <Line type="monotone" dataKey="leads" stroke={C.cyan}  strokeWidth={2.5}
+                  dot={{ r: 3, fill: C.cyan,  stroke: C.white, strokeWidth: 2 }} name="Leads" connectNulls />
+                <Line type="monotone" dataKey="sold"  stroke={C.g}     strokeWidth={2.5}
+                  dot={{ r: 3, fill: C.g,     stroke: C.white, strokeWidth: 2 }} name="Sold"  connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+            <div style={{ display: "flex", gap: 20, marginTop: 10, justifyContent: "center" }}>
+              {[{ label: "Leads", color: C.cyan }, { label: "Sold", color: C.g }].map(s => (
+                <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontFamily: F, color: C.tm }}>
+                  <span style={{ width: 18, height: 3, background: s.color, borderRadius: 2, display: "inline-block" }} />
+                  {s.label}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </SecWrap>
+      )}
 
       {/* CallRail */}
       {services.callrail !== false && (cr.total_calls != null) && (
@@ -762,9 +804,42 @@ function Dashboard({ data, cd, services, clientName }) {
 }
 
 /* ─── SEO PAGE ─── */
-function SeoPage({ d, cd }) {
+function SeoPage({ d, cd, trend }) {
   if (!d) return <NoData label="SEO data" />;
-  const trendData = d._trend || [];
+
+  // Trend line data from real historical fetch
+  const trendLine = trend
+    .filter(t => t.organic_sessions != null)
+    .map(t => ({ month: t.label, sessions: Number(t.organic_sessions) || 0 }));
+
+  // Traffic channel donut
+  const organic = Number(d.organic_sessions) || 0;
+  const direct  = Number(d.direct_sessions)  || 0;
+  const paid    = Number(d.paid_sessions)    || 0;
+  const social  = Number(d.social_sessions)  || 0;
+  const totalSessions = organic + direct + paid + social;
+  const channelData = totalSessions > 0 ? [
+    { name: "Organic", value: organic, color: C.cyan },
+    { name: "Direct",  value: direct,  color: C.navy },
+    { name: "Paid",    value: paid,    color: C.o },
+    { name: "Social",  value: social,  color: C.p },
+  ].filter(ch => ch.value > 0) : [];
+
+  // Keyword position distribution from tracked_keywords
+  const keywords = Array.isArray(d.tracked_keywords) ? d.tracked_keywords : [];
+  const positionBrackets = [
+    { p: "Pos 1",    range: [1, 1],   color: C.g },
+    { p: "Pos 2–3",  range: [2, 3],   color: C.cyan },
+    { p: "Pos 4–10", range: [4, 10],  color: C.p },
+    { p: "Pos 11–20",range: [11, 20], color: C.o },
+    { p: "Pos 20+",  range: [21, 999],color: C.tl },
+  ].map(b => ({
+    ...b,
+    count: keywords.filter(k => {
+      const pos = k.current_position ?? k.position;
+      return pos != null && pos >= b.range[0] && pos <= b.range[1];
+    }).length,
+  })).filter(b => b.count > 0);
 
   return (
     <div>
@@ -773,13 +848,12 @@ function SeoPage({ d, cd }) {
           <KpiCard label="Organic Sessions" value={fmt(d.organic_sessions)} color={C.cyanD}
             change={pct(d.organic_sessions, cd.organic_sessions)}
             tip="Website visits from organic Google search."
-            sub={d.total_sessions > 0 ? `${Math.round((Number(d.organic_sessions) / Number(d.total_sessions)) * 1000) / 10}% of ${Number(d.total_sessions).toLocaleString()} total` : null} />
+            sub={totalSessions > 0 ? `${Math.round((organic / totalSessions) * 1000) / 10}% of ${totalSessions.toLocaleString()} total` : null} />
           <KpiCard label="Impressions" value={fmt(d.impressions)}
             change={pct(d.impressions, cd.impressions)}
             tip="Times your site appeared in Google results." />
           <KpiCard label="CTR" value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"}
-            change={pct(d.ctr, cd.ctr)}
-            tip="Click-through rate from search." sub="Industry avg 2–4%" />
+            change={pct(d.ctr, cd.ctr)} tip="Click-through rate from search." sub="Industry avg 2–4%" />
           <KpiCard label="Avg Position" value={d.avg_position != null ? parseFloat(d.avg_position).toFixed(1) : "—"}
             change={pct(d.avg_position, cd.avg_position)} invert
             tip="Average ranking across all tracked keywords." />
@@ -795,8 +869,7 @@ function SeoPage({ d, cd }) {
       <SecWrap title="Conversions & Engagement">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <KpiCard label="Phone Calls (SEO)" value={fmt(d.phone_calls)} color={C.g}
-            change={pct(d.phone_calls, cd.phone_calls)}
-            tip="Calls attributed to organic search." />
+            change={pct(d.phone_calls, cd.phone_calls)} tip="Calls attributed to organic search." />
           <KpiCard label="Form Submissions" value={fmt(d.form_submissions)}
             change={pct(d.form_submissions, cd.form_submissions)}
             tip="Contact, trade-in, and finance forms via GA4." />
@@ -805,33 +878,80 @@ function SeoPage({ d, cd }) {
             tip="Users who requested directions via search." />
           {d.chat_conversations != null && (
             <KpiCard label="Chat Conversations" value={fmt(d.chat_conversations)}
-              change={pct(d.chat_conversations, cd.chat_conversations)}
-              tip="Chat sessions initiated on the website." />
+              change={pct(d.chat_conversations, cd.chat_conversations)} />
           )}
           {d.bounce_rate != null && (
             <KpiCard label="Bounce Rate" value={parseFloat(d.bounce_rate).toFixed(1) + "%"}
-              change={pct(d.bounce_rate, cd.bounce_rate)} invert
-              tip="% of sessions that left without engaging. Lower is better." sub="Industry avg 40–55%" />
+              change={pct(d.bounce_rate, cd.bounce_rate)} invert sub="Industry avg 40–55%" />
           )}
           {d.avg_session_duration != null && (
-            <KpiCard label="Avg Session" value={fmtDur(d.avg_session_duration)}
-              tip="Average time visitors spend on site." sub="2+ min is healthy" />
+            <KpiCard label="Avg Session" value={fmtDur(d.avg_session_duration)} sub="2+ min is healthy" />
           )}
         </div>
       </SecWrap>
 
-      {trendData.length > 0 && (
-        <SecWrap title="Organic Traffic Trend">
+      {/* Organic Traffic Trend + Channel Split */}
+      {(trendLine.length > 0 || channelData.length > 0) && (
+        <SecWrap title="Organic Traffic" sub="Trend over time and channel breakdown">
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "stretch" }}>
+            {trendLine.length > 0 && (
+              <Card style={{ flex: 3, minWidth: 300, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Traffic Trend</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={trendLine}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: C.tl }} />
+                    <YAxis tick={{ fontSize: 10, fill: C.tl }} />
+                    <Tooltip contentStyle={ttS} />
+                    <Line type="monotone" dataKey="sessions" stroke={C.cyan} strokeWidth={2.5}
+                      dot={{ r: 3, fill: C.cyan, stroke: C.white, strokeWidth: 2 }} name="Sessions" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+            {channelData.length > 0 && (
+              <Card style={{ flex: 1.4, minWidth: 200, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Channel Split</div>
+                <ResponsiveContainer width="100%" height={130}>
+                  <PieChart>
+                    <Pie data={channelData} dataKey="value" nameKey="name"
+                      cx="50%" cy="50%" innerRadius={36} outerRadius={56} strokeWidth={0}>
+                      {channelData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={ttS} formatter={(v) => v.toLocaleString()} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                  {channelData.map((s, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontFamily: F }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+                      <span style={{ color: C.tm, flex: 1 }}>{s.name}</span>
+                      <span style={{ fontWeight: 700, color: i === 0 ? C.cyanD : C.t }}>
+                        {Math.round((s.value / totalSessions) * 100)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+        </SecWrap>
+      )}
+
+      {/* Keyword Position Distribution */}
+      {positionBrackets.length > 0 && (
+        <SecWrap title="Keyword Position Distribution" sub={`${keywords.length} tracked keywords`}>
           <Card style={{ marginBottom: 0 }}>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={trendData}>
+            <ResponsiveContainer width="100%" height={positionBrackets.length * 36 + 20}>
+              <BarChart data={positionBrackets} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: C.tl }} />
-                <YAxis tick={{ fontSize: 11, fill: C.tl }} />
-                <Tooltip contentStyle={ttS} />
-                <Line type="monotone" dataKey="sessions" stroke={C.cyan} strokeWidth={2.5}
-                  dot={{ r: 3, fill: C.cyan, stroke: C.white, strokeWidth: 2 }} name="Sessions" />
-              </LineChart>
+                <XAxis type="number" tick={{ fontSize: 10, fill: C.tl }} allowDecimals={false} />
+                <YAxis dataKey="p" type="category" tick={{ fontSize: 11, fill: C.tm }} width={68} />
+                <Tooltip contentStyle={ttS} formatter={(v) => [v, "Keywords"]} />
+                <Bar dataKey="count" name="Keywords" radius={[0, 4, 4, 0]}>
+                  {positionBrackets.map((e, i) => <Cell key={i} fill={e.color} />)}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </Card>
         </SecWrap>
@@ -854,8 +974,26 @@ function SeoPage({ d, cd }) {
 }
 
 /* ─── GBP PAGE ─── */
-function GbpPage({ d, cd }) {
+function GbpPage({ d, cd, trend }) {
   if (!d) return <NoData label="Google Business data" />;
+
+  // Views trend
+  const viewsTrend = trend
+    .filter(t => t.profile_views != null)
+    .map(t => ({ label: t.label, views: Number(t.profile_views) || 0 }));
+
+  // Actions trend (calls, directions, web clicks)
+  const actionsTrend = trend
+    .filter(t => t.phone_calls != null || t.direction_requests != null || t.website_clicks != null)
+    .map(t => ({
+      label: t.label,
+      calls:      Number(t.phone_calls)        || 0,
+      directions: Number(t.direction_requests) || 0,
+      clicks:     Number(t.website_clicks)     || 0,
+    }));
+
+  const hasCharts = viewsTrend.length > 1 || actionsTrend.length > 1;
+
   return (
     <div>
       <SecWrap title="Key Metrics" sub="Google Business Profile visibility and actions">
@@ -868,6 +1006,53 @@ function GbpPage({ d, cd }) {
           <KpiCard label="Direction Requests"  value={fmt(d.direction_requests)} change={pct(d.direction_requests, cd.direction_requests)} tip="Users who requested directions." />
         </div>
       </SecWrap>
+
+      {/* Trend charts */}
+      {hasCharts && (
+        <SecWrap title="Performance Trends" sub="Profile views and customer actions over time">
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            {viewsTrend.length > 1 && (
+              <Card style={{ flex: 1, minWidth: 280, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Profile Views</div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart data={viewsTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: C.tl }} />
+                    <YAxis tick={{ fontSize: 10, fill: C.tl }} />
+                    <Tooltip contentStyle={ttS} />
+                    <Line type="monotone" dataKey="views" stroke={C.cyan} strokeWidth={2.5}
+                      dot={{ r: 3, fill: C.cyan, stroke: C.white, strokeWidth: 2 }} name="Views" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+            {actionsTrend.length > 1 && (
+              <Card style={{ flex: 1.5, minWidth: 320, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Customer Actions</div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart data={actionsTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: C.tl }} />
+                    <YAxis tick={{ fontSize: 10, fill: C.tl }} />
+                    <Tooltip contentStyle={ttS} />
+                    <Line type="monotone" dataKey="calls"      stroke={C.g}    strokeWidth={2} dot={false} name="Calls" />
+                    <Line type="monotone" dataKey="directions" stroke={C.o}    strokeWidth={2} dot={false} name="Directions" />
+                    <Line type="monotone" dataKey="clicks"     stroke={C.cyan} strokeWidth={2} dot={false} name="Web Clicks" />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
+                  {[{label:"Calls",color:C.g},{label:"Directions",color:C.o},{label:"Web Clicks",color:C.cyan}].map(s => (
+                    <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontFamily: F, color: C.tm }}>
+                      <span style={{ width: 16, height: 3, background: s.color, borderRadius: 2, display: "inline-block" }} />
+                      {s.label}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+        </SecWrap>
+      )}
 
       {(d.avg_rating != null || d.review_count != null) && (
         <SecWrap title="Reviews">
@@ -885,9 +1070,9 @@ function GbpPage({ d, cd }) {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 12, flex: 1, flexWrap: "wrap" }}>
-                {d.new_reviews != null && <KpiCard label="New Reviews"    value={`+${d.new_reviews}`} color={C.g} />}
-                {d.photo_count  != null && <KpiCard label="Photos"        value={fmt(d.photo_count)} />}
-                {d.posts_published != null && <KpiCard label="Posts Published" value={fmt(d.posts_published)} />}
+                {d.new_reviews    != null && <KpiCard label="New Reviews"     value={`+${d.new_reviews}`} color={C.g} />}
+                {d.photo_count    != null && <KpiCard label="Photos"          value={fmt(d.photo_count)} />}
+                {d.posts_published!= null && <KpiCard label="Posts Published" value={fmt(d.posts_published)} />}
               </div>
             </div>
           </Card>
@@ -902,45 +1087,88 @@ function GbpPage({ d, cd }) {
 }
 
 /* ─── GOOGLE ADS PAGE ─── */
-function GoogleAdsPage({ d, cd }) {
+function GoogleAdsPage({ d, cd, trend }) {
   if (!d) return <NoData label="Google Ads data" />;
+
+  const convTrend = trend
+    .filter(t => t.conversions != null)
+    .map(t => ({ label: t.label, conversions: Number(t.conversions) || 0 }));
+
+  const spend  = d.total_spend != null ? Number(d.total_spend)  : null;
+  const budget = d.budget      != null ? Number(d.budget)       : null;
+  const spendPct = spend && budget && budget > 0
+    ? Math.min(Math.round((spend / budget) * 100), 100) : null;
+
   return (
     <div>
       <SecWrap title="Key Metrics" sub="Campaign performance from Google Ads">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <KpiCard label="Conversions"     value={fmt(d.conversions)}   color={C.cyanD}
-            change={pct(d.conversions, cd.conversions)}
-            tip="Total tracked conversions from Google Ads." />
+            change={pct(d.conversions, cd.conversions)} tip="Total tracked conversions from Google Ads." />
           <KpiCard label="Cost / Lead"
             value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
-            color={C.g} invert
-            change={pct(d.cost_per_lead, cd.cost_per_lead)}
+            color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
             tip="Average cost per conversion." sub="Industry avg $25–$45" />
           <KpiCard label="Total Spend"
-            value={d.total_spend != null ? "$" + Number(d.total_spend).toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
+            value={spend != null ? "$" + spend.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
             tip="Total ad spend this period."
-            sub={d.budget ? `Budget: $${Number(d.budget).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : null} />
+            sub={budget ? `Budget: $${budget.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : null} />
           <KpiCard label="CTR"
             value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"}
-            change={pct(d.ctr, cd.ctr)}
-            tip="Click-through rate." sub="Industry avg ~8.29%" />
+            change={pct(d.ctr, cd.ctr)} tip="Click-through rate." sub="Industry avg ~8.29%" />
           <KpiCard label="Avg CPC"
             value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"}
-            invert change={pct(d.cpc, cd.cpc)}
-            tip="Average cost per click." sub="Industry avg ~$2.41" />
+            invert change={pct(d.cpc, cd.cpc)} tip="Average cost per click." sub="Industry avg ~$2.41" />
           <KpiCard label="Impression Share"
             value={d.impression_share != null ? parseFloat(d.impression_share).toFixed(0) + "%" : "—"}
-            change={pct(d.impression_share, cd.impression_share)}
-            tip="% of eligible searches you appeared for." />
+            change={pct(d.impression_share, cd.impression_share)} tip="% of eligible searches you appeared for." />
         </div>
       </SecWrap>
+
+      {/* Spend vs Budget + Conversions Trend */}
+      {(spendPct !== null || convTrend.length > 1) && (
+        <SecWrap title="Spend & Trend">
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            {spendPct !== null && (
+              <Card style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 12, fontFamily: F }}>Spend vs Budget</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                  <div>
+                    <span style={{ fontSize: 26, fontWeight: 700, color: C.t, fontFamily: FS }}>${spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    <span style={{ fontSize: 12, color: C.tl, marginLeft: 6, fontFamily: F }}>of ${budget.toLocaleString(undefined, { maximumFractionDigits: 0 })} budget</span>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: spendPct >= 90 ? C.g : spendPct >= 70 ? C.o : C.r, fontFamily: F }}>{spendPct}% utilized</span>
+                </div>
+                <div style={{ height: 10, background: C.bl2, borderRadius: 5, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${spendPct}%`, background: `linear-gradient(90deg, ${C.cyan}, ${C.cyanD})`, borderRadius: 5, transition: "width 0.6s" }} />
+                </div>
+              </Card>
+            )}
+            {convTrend.length > 1 && (
+              <Card style={{ flex: 1.8, minWidth: 300, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Monthly Conversions Trend</div>
+                <ResponsiveContainer width="100%" height={150}>
+                  <LineChart data={convTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: C.tl }} />
+                    <YAxis tick={{ fontSize: 10, fill: C.tl }} allowDecimals={false} />
+                    <Tooltip contentStyle={ttS} />
+                    <Line type="monotone" dataKey="conversions" stroke={C.cyan} strokeWidth={2.5}
+                      dot={{ r: 3, fill: C.cyan, stroke: C.white, strokeWidth: 2 }} name="Conversions" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+          </div>
+        </SecWrap>
+      )}
 
       {(d.impressions != null || d.clicks != null || d.quality_score != null) && (
         <SecWrap title="Secondary Metrics">
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {d.impressions    != null && <KpiCard label="Impressions"      value={fmt(d.impressions)} change={pct(d.impressions, cd.impressions)} />}
-            {d.clicks         != null && <KpiCard label="Total Clicks"     value={fmt(d.clicks)} change={pct(d.clicks, cd.clicks)} />}
-            {d.quality_score  != null && <KpiCard label="Avg Quality Score" value={parseFloat(d.quality_score).toFixed(1) + " / 10"} tip="6+ is standard." sub="Scale: 1–10" />}
+            {d.impressions   != null && <KpiCard label="Impressions"       value={fmt(d.impressions)} change={pct(d.impressions, cd.impressions)} />}
+            {d.clicks        != null && <KpiCard label="Total Clicks"      value={fmt(d.clicks)} change={pct(d.clicks, cd.clicks)} />}
+            {d.quality_score != null && <KpiCard label="Avg Quality Score" value={parseFloat(d.quality_score).toFixed(1) + " / 10"} tip="6+ is standard." sub="Scale: 1–10" />}
           </div>
         </SecWrap>
       )}
@@ -962,15 +1190,19 @@ function GoogleAdsPage({ d, cd }) {
 }
 
 /* ─── META ADS PAGE ─── */
-function MetaAdsPage({ d, cd }) {
+function MetaAdsPage({ d, cd, trend }) {
   if (!d) return <NoData label="Meta Ads data" />;
+
+  const convTrend = trend
+    .filter(t => t.conversions != null)
+    .map(t => ({ label: t.label, conversions: Number(t.conversions) || 0 }));
+
   return (
     <div>
       <SecWrap title="Key Metrics" sub="Facebook & Instagram ad performance">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <KpiCard label="Conversions"  value={fmt(d.conversions)} color={C.cyanD}
-            change={pct(d.conversions, cd.conversions)}
-            tip="Total tracked conversions from Meta ads." />
+            change={pct(d.conversions, cd.conversions)} tip="Total tracked conversions from Meta ads." />
           <KpiCard label="Cost / Lead"
             value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
             color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
@@ -978,17 +1210,33 @@ function MetaAdsPage({ d, cd }) {
           <KpiCard label="Total Spend"
             value={d.total_spend != null ? "$" + Number(d.total_spend).toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"} />
           <KpiCard label="Reach" value={fmt(d.reach)}
-            change={pct(d.reach, cd.reach)}
-            tip="Unique people who saw your ads." />
+            change={pct(d.reach, cd.reach)} tip="Unique people who saw your ads." />
           <KpiCard label="Avg CPC"
             value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"}
-            invert change={pct(d.cpc, cd.cpc)}
-            tip="Cost per click." sub="Industry avg ~$0.79" />
+            invert change={pct(d.cpc, cd.cpc)} tip="Cost per click." sub="Industry avg ~$0.79" />
           <KpiCard label="Frequency"
             value={d.frequency != null ? parseFloat(d.frequency).toFixed(1) : "—"}
             tip="Avg times each person saw your ad. Over 3.0 = fatigue risk." />
         </div>
       </SecWrap>
+
+      {/* Conversions trend */}
+      {convTrend.length > 1 && (
+        <SecWrap title="Monthly Conversions Trend">
+          <Card style={{ marginBottom: 0 }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={convTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: C.tl }} />
+                <YAxis tick={{ fontSize: 10, fill: C.tl }} allowDecimals={false} />
+                <Tooltip contentStyle={ttS} />
+                <Line type="monotone" dataKey="conversions" stroke={C.p} strokeWidth={2.5}
+                  dot={{ r: 3, fill: C.p, stroke: C.white, strokeWidth: 2 }} name="Conversions" />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        </SecWrap>
+      )}
 
       {(d.impressions != null || d.ctr != null || d.engagement_rate != null || d.video_view_rate != null || d.lead_form_completion != null) && (
         <SecWrap title="Secondary Metrics">
@@ -1019,7 +1267,7 @@ function MetaAdsPage({ d, cd }) {
 }
 
 /* ─── SOCIAL PAGE ─── */
-function SocialPage({ d, cd }) {
+function SocialPage({ d, cd, trend }) {
   if (!d) return <NoData label="Organic Social data" />;
 
   const totalReach    = (Number(d.fb_reach) || 0)          + (Number(d.ig_reach) || 0)          + (Number(d.tiktok_reach) || 0);
@@ -1030,24 +1278,78 @@ function SocialPage({ d, cd }) {
   const prevFollowers = (Number(cd.fb_new_followers) || 0) + (Number(cd.ig_new_followers) || 0) + (Number(cd.tiktok_followers) || 0);
 
   const platforms = [
-    { name: "YouTube",   followers: d.yt_followers,      growth: null,              views: d.yt_month_views,  color: "#ff0000", posts: d.yt_month_videos },
-    { name: "Facebook",  followers: d.fb_followers,      growth: d.fb_new_followers, views: d.fb_reach,       color: "#1877f2", posts: null },
-    { name: "Instagram", followers: d.ig_followers,      growth: d.ig_new_followers, views: d.ig_reach,       color: "#e1306c", posts: null },
-    { name: "TikTok",    followers: d.tiktok_followers,  growth: null,              views: d.tiktok_views,    color: "#333",    posts: null },
+    { name: "YouTube",   followers: d.yt_followers,     growth: null,               views: d.yt_month_views, color: "#ff0000", posts: d.yt_month_videos },
+    { name: "Facebook",  followers: d.fb_followers,     growth: d.fb_new_followers,  views: d.fb_reach,       color: "#1877f2", posts: null },
+    { name: "Instagram", followers: d.ig_followers,     growth: d.ig_new_followers,  views: d.ig_reach,       color: "#e1306c", posts: null },
+    { name: "TikTok",    followers: d.tiktok_followers, growth: null,               views: d.tiktok_views,   color: "#333",    posts: null },
   ].filter(p => p.followers != null || p.views != null);
+
+  // Reach trend from historical data
+  const reachTrend = trend
+    .map(t => {
+      const r = (Number(t.fb_reach) || 0) + (Number(t.ig_reach) || 0) + (Number(t.tiktok_reach) || 0);
+      return r > 0 ? { label: t.label, reach: r } : null;
+    })
+    .filter(Boolean);
+
+  // Platform reach bar chart for current month
+  const platformReach = [
+    { name: "Facebook",  reach: Number(d.fb_reach)      || 0, color: "#1877f2" },
+    { name: "Instagram", reach: Number(d.ig_reach)      || 0, color: "#e1306c" },
+    { name: "TikTok",    reach: Number(d.tiktok_reach)  || 0, color: "#333" },
+    { name: "YouTube",   reach: Number(d.yt_month_views)|| 0, color: "#ff0000" },
+  ].filter(p => p.reach > 0);
 
   return (
     <div>
       <SecWrap title="Monthly Overview">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Total Reach"     value={totalReach   > 0 ? fmt(totalReach)   : "—"} change={pct(totalReach,   prevReach)}     tip="Combined reach across FB, IG, and TikTok." />
-          <KpiCard label="Total Engagement" value={totalEngage > 0 ? fmt(totalEngage)  : "—"} change={pct(totalEngage,  prevEngage)}    color={C.cyanD} tip="Likes, comments, shares, and saves." />
-          <KpiCard label="New Followers"   value={newFollowers > 0 ? "+" + fmt(newFollowers) : "—"} change={pct(newFollowers, prevFollowers)} color={C.g} tip="Net new followers across all platforms." />
-          <KpiCard label="Posts Published" value={fmt(d.posts_published)}  tip="Total posts across all platforms." />
+          <KpiCard label="Total Reach"      value={totalReach   > 0 ? fmt(totalReach)   : "—"} change={pct(totalReach,   prevReach)}    tip="Combined reach across FB, IG, and TikTok." />
+          <KpiCard label="Total Engagement" value={totalEngage  > 0 ? fmt(totalEngage)  : "—"} change={pct(totalEngage,  prevEngage)}   color={C.cyanD} tip="Likes, comments, shares, and saves." />
+          <KpiCard label="New Followers"    value={newFollowers > 0 ? "+" + fmt(newFollowers) : "—"} change={pct(newFollowers, prevFollowers)} color={C.g} tip="Net new followers across all platforms." />
+          <KpiCard label="Posts Published"  value={fmt(d.posts_published)}  tip="Total posts across all platforms." />
           <KpiCard label="Videos Published" value={fmt(d.videos_published)} tip="Reels, TikTok, and YouTube videos." />
-          {d.web_clicks != null && <KpiCard label="Social → Web Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} tip="Clicks from social to your website (GA4)." />}
+          {d.web_clicks != null && <KpiCard label="Social → Web" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} tip="Clicks from social to your website (GA4)." />}
         </div>
       </SecWrap>
+
+      {/* Reach Trend + Platform Breakdown side by side */}
+      {(reachTrend.length > 1 || platformReach.length > 0) && (
+        <SecWrap title="Reach Overview" sub="Trend and platform breakdown">
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            {reachTrend.length > 1 && (
+              <Card style={{ flex: 2, minWidth: 300, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Monthly Reach Trend</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={reachTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: C.tl }} />
+                    <YAxis tick={{ fontSize: 10, fill: C.tl }} />
+                    <Tooltip contentStyle={ttS} formatter={(v) => [v.toLocaleString(), "Reach"]} />
+                    <Bar dataKey="reach" fill={C.cyan} radius={[3, 3, 0, 0]} name="Reach" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+            {platformReach.length > 0 && (
+              <Card style={{ flex: 1, minWidth: 220, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Reach by Platform</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={platformReach} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: C.tl }} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: C.tm }} width={72} />
+                    <Tooltip contentStyle={ttS} formatter={(v) => [v.toLocaleString(), "Reach"]} />
+                    <Bar dataKey="reach" radius={[0, 3, 3, 0]} name="Reach">
+                      {platformReach.map((p, i) => <Cell key={i} fill={p.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+          </div>
+        </SecWrap>
+      )}
 
       {platforms.length > 0 && (
         <SecWrap title="Platform Breakdown">
@@ -1077,9 +1379,9 @@ function SocialPage({ d, cd }) {
       {(d.yt_total_views != null || d.yt_month_likes != null) && (
         <SecWrap title="YouTube Highlights">
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {d.yt_total_views     != null && <KpiCard label="Total Channel Views" value={fmt(d.yt_total_views)} />}
-            {d.yt_month_likes     != null && <KpiCard label="Monthly Likes"       value={fmt(d.yt_month_likes)} />}
-            {d.yt_month_comments  != null && <KpiCard label="Monthly Comments"    value={fmt(d.yt_month_comments)} />}
+            {d.yt_total_views    != null && <KpiCard label="Total Channel Views" value={fmt(d.yt_total_views)} />}
+            {d.yt_month_likes    != null && <KpiCard label="Monthly Likes"       value={fmt(d.yt_month_likes)} />}
+            {d.yt_month_comments != null && <KpiCard label="Monthly Comments"    value={fmt(d.yt_month_comments)} />}
           </div>
         </SecWrap>
       )}
@@ -1376,6 +1678,7 @@ export default function App() {
   const [services, setServices]       = useState({});
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError]     = useState(null);
+  const [trendData, setTrendData]     = useState({});
 
   // Derived range (recomputed on every render when deps change — stable because preset/custom are primitives)
   const range       = getMonthRange(preset, customStart, customEnd);
@@ -1430,8 +1733,17 @@ export default function App() {
       setDataError(null);
       try {
 
-      // Collect all unique months needed: current range + both comp ranges
-      const allMonths = [...range, ...cr0, ...cr1];
+      // Always fetch last 12 months for trend charts (regardless of selected range)
+      const nowD = new Date();
+      const trendMonths = Array.from({ length: 12 }, (_, i) => {
+        let m = nowD.getMonth() - 11 + i;
+        let y = nowD.getFullYear();
+        while (m < 0) { m += 12; y--; }
+        return { year: y, month: m + 1 };
+      });
+
+      // Collect all unique months: range + comp ranges + trend
+      const allMonths = [...range, ...cr0, ...cr1, ...trendMonths];
       const unique = [...new Map(allMonths.map(m => [toMonthStr(m), m])).values()];
       const monthStrs = unique.map(toMonthStr);
 
@@ -1456,6 +1768,18 @@ export default function App() {
 
       setReportData(aggregateRange(range, byMonth));
       setCompData([aggregateRange(cr0, byMonth), aggregateRange(cr1, byMonth)]);
+
+      // Build per-dept trend arrays (chronological, 12 months)
+      const TREND_DEPTS = ["seo", "gbp", "google_ads", "meta_ads", "social", "callrail", "leads"];
+      const builtTrend = {};
+      TREND_DEPTS.forEach(dept => {
+        builtTrend[dept] = trendMonths.map(({ year, month }) => {
+          const key = toMonthStr({ year, month });
+          const d = byMonth[key]?.[dept] || {};
+          return { label: MONTHS[month - 1].slice(0, 3), year, month, ...d };
+        });
+      });
+      setTrendData(builtTrend);
 
       const svcMap = {};
       (svcRows || []).forEach(r => { svcMap[r.department] = r.enabled; });
@@ -1496,12 +1820,12 @@ export default function App() {
       </div>
     );
     switch (activeTab) {
-      case "dashboard":  return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} />;
-      case "seo":        return svcEnabled("seo")        ? <SeoPage       d={reportData.seo}        cd={cd.seo        || {}} /> : <DisabledDept label="SEO" />;
-      case "gbp":        return svcEnabled("gbp")        ? <GbpPage       d={reportData.gbp}        cd={cd.gbp        || {}} /> : <DisabledDept label="Google Business Profile" />;
-      case "google_ads": return svcEnabled("google_ads") ? <GoogleAdsPage d={reportData.google_ads} cd={cd.google_ads || {}} /> : <DisabledDept label="Google Ads" />;
-      case "meta_ads":   return svcEnabled("meta_ads")   ? <MetaAdsPage   d={reportData.meta_ads}   cd={cd.meta_ads   || {}} /> : <DisabledDept label="Meta Ads" />;
-      case "social":     return svcEnabled("social")     ? <SocialPage    d={reportData.social}     cd={cd.social     || {}} /> : <DisabledDept label="Organic Social" />;
+      case "dashboard":  return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} leadTrend={trendData.leads || []} />;
+      case "seo":        return svcEnabled("seo")        ? <SeoPage       d={reportData.seo}        cd={cd.seo        || {}} trend={trendData.seo        || []} /> : <DisabledDept label="SEO" />;
+      case "gbp":        return svcEnabled("gbp")        ? <GbpPage       d={reportData.gbp}        cd={cd.gbp        || {}} trend={trendData.gbp        || []} /> : <DisabledDept label="Google Business Profile" />;
+      case "google_ads": return svcEnabled("google_ads") ? <GoogleAdsPage d={reportData.google_ads} cd={cd.google_ads || {}} trend={trendData.google_ads || []} /> : <DisabledDept label="Google Ads" />;
+      case "meta_ads":   return svcEnabled("meta_ads")   ? <MetaAdsPage   d={reportData.meta_ads}   cd={cd.meta_ads   || {}} trend={trendData.meta_ads   || []} /> : <DisabledDept label="Meta Ads" />;
+      case "social":     return svcEnabled("social")     ? <SocialPage    d={reportData.social}     cd={cd.social     || {}} trend={trendData.social     || []} /> : <DisabledDept label="Organic Social" />;
       case "email":      return svcEnabled("email")      ? <EmailPage     d={reportData.email}      cd={cd.email      || {}} /> : <DisabledDept label="Email" />;
       case "creative":   return svcEnabled("creative")   ? <CreativePage  d={reportData.creative} />                          : <DisabledDept label="Creative" />;
       default:           return <Dashboard data={reportData} cd={cd} services={services} />;
