@@ -55,6 +55,13 @@ const LEADS_MASTER_FIELDS = [
   { key: "facebook_sold",    label: "FB Sold",      type: "number" },
 ];
 
+// ── GBP multi-listing config — Goode Motor Ford only ─────────────────────────
+// listingOnly: client name that gets these columns; all others show N/A
+const GBP_LISTING_SUM_FIELDS = [
+  "profile_views","search_appearances","map_views","website_clicks",
+  "phone_calls","direction_requests","review_count","new_reviews","posts_published",
+];
+
 const BULK_DEPTS = [
   {
     id: "leads", label: "Leads & CRM", color: "#6366f1",
@@ -93,6 +100,7 @@ const BULK_DEPTS = [
   {
     id: "gbp", label: "Google Business", color: "#d97706",
     fields: [
+      // ── Combined / single-listing fields ──
       { key: "profile_views",      label: "Views",         type: "number"  },
       { key: "search_appearances", label: "Searches",      type: "number"  },
       { key: "map_views",          label: "Map Views",     type: "number"  },
@@ -104,6 +112,28 @@ const BULK_DEPTS = [
       { key: "new_reviews",        label: "New Reviews",   type: "number"  },
       { key: "photo_count",        label: "Photos",        type: "number"  },
       { key: "posts_published",    label: "Posts",         type: "number"  },
+      // ── Goode Motor Ford — Ford listing ──
+      { key: "gbp_ford_profile_views",      label: "Ford Views",    type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_search_appearances", label: "Ford Searches", type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_map_views",          label: "Ford Map",      type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_website_clicks",     label: "Ford Clicks",   type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_phone_calls",        label: "Ford Calls",    type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_direction_requests", label: "Ford Dirs",     type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_review_count",       label: "Ford Reviews",  type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_avg_rating",         label: "Ford Rating",   type: "decimal", listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_new_reviews",        label: "Ford New Rev",  type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_ford_posts_published",    label: "Ford Posts",    type: "number",  listingOnly: "Goode Motor Ford" },
+      // ── Goode Motor Ford — Overland listing ──
+      { key: "gbp_overland_profile_views",      label: "OVR Views",    type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_search_appearances", label: "OVR Searches", type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_map_views",          label: "OVR Map",      type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_website_clicks",     label: "OVR Clicks",   type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_phone_calls",        label: "OVR Calls",    type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_direction_requests", label: "OVR Dirs",     type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_review_count",       label: "OVR Reviews",  type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_avg_rating",         label: "OVR Rating",   type: "decimal", listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_new_reviews",        label: "OVR New Rev",  type: "number",  listingOnly: "Goode Motor Ford" },
+      { key: "gbp_overland_posts_published",    label: "OVR Posts",    type: "number",  listingOnly: "Goode Motor Ford" },
     ]
   },
   {
@@ -400,7 +430,19 @@ export default function BulkEditPage() {
 
     // Save primary client
     const primaryExisting = allData[clientId]?.[monthStr]?.[deptId] || {};
-    const primaryUpdated = buildUpdated(primaryExisting);
+    let primaryUpdated = buildUpdated(primaryExisting);
+
+    // ── Auto-compute GBP totals from per-listing data for Goode Motor Ford ──
+    const savingClient = clients.find(c => c.id === clientId);
+    if (deptId === "gbp" && savingClient?.name === "Goode Motor Ford" &&
+        (fieldKey.startsWith("gbp_ford_") || fieldKey.startsWith("gbp_overland_"))) {
+      GBP_LISTING_SUM_FIELDS.forEach(f => {
+        const fordVal    = Number(primaryUpdated[`gbp_ford_${f}`])     || 0;
+        const overlandVal= Number(primaryUpdated[`gbp_overland_${f}`]) || 0;
+        const total = fordVal + overlandVal;
+        if (total > 0) primaryUpdated[f] = total;
+      });
+    }
 
     setAllData(prev => ({
       ...prev,
@@ -446,7 +488,6 @@ export default function BulkEditPage() {
     }
 
     // Cascade to Juneau child stores
-    const savingClient = clients.find(c => c.id === clientId);
     if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey) && (deptId === "leads" || deptId === "social")) {
       const childClients = clients.filter(c => JUNEAU_CHILD_NAMES.includes(c.name));
       await Promise.all(childClients.map(async (child) => {
@@ -478,6 +519,8 @@ export default function BulkEditPage() {
     BULK_DEPTS.forEach(dept => {
       dept.fields.forEach(f => {
         if (dept.id === "leads" && !leadsConfig.active.includes(f.key)) return;
+        // Skip listing-only fields for non-GMF clients in completion count
+        if (f.listingOnly && f.listingOnly !== client.name) return;
         total++;
         const val = allData[client.id]?.[monthStr]?.[dept.id]?.[f.key];
         if (val !== null && val !== undefined && String(val).trim() !== "") filled++;
@@ -613,7 +656,8 @@ export default function BulkEditPage() {
                   <th key={`h_${dept.id}_${f.key}`}
                     style={{
                       position: "sticky", top: 28, zIndex: 50,
-                      background: dept.color + "cc", color: "#fff",
+                      background: f.listingOnly ? dept.color + "99" : dept.color + "cc",
+                      color: "#fff",
                       fontSize: 10, fontWeight: 600,
                       padding: "4px 5px", textAlign: "center",
                       width: 64, minWidth: 64, height: 24,
@@ -622,6 +666,9 @@ export default function BulkEditPage() {
                       whiteSpace: "nowrap",
                     }}>
                     {f.label}
+                    {f.listingOnly && (
+                      <div style={{ fontSize: 8, opacity: 0.7, marginTop: 1 }}>GMF only</div>
+                    )}
                   </th>
                 ))
               )}
@@ -681,7 +728,12 @@ export default function BulkEditPage() {
                         const val = deptData[f.key];
                         const isManualLocked = (deptData._manual_overrides || []).includes(f.key);
                         const isApiSourced = !!deptData._pulled_at && !isManualLocked;
-                        const isDisabled = dept.id === "leads" && !leadsConfig.active.includes(f.key);
+
+                        // Disable: leads fields not in client config
+                        const isLeadsDisabled = dept.id === "leads" && !leadsConfig.active.includes(f.key);
+                        // Disable: listing-only fields for non-matching clients
+                        const isListingDisabled = f.listingOnly && f.listingOnly !== client.name;
+                        const isDisabled = isLeadsDisabled || isListingDisabled;
 
                         let displayField = f;
                         if (dept.id === "leads" && leadsConfig.oemLabel) {
