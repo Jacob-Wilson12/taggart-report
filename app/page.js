@@ -44,6 +44,19 @@ const closePct = (sold, leads) => {
   if (!s || !l || l === 0) return null;
   return Math.round((s / l) * 1000) / 10;
 };
+
+// Multi-listing GBP clients
+const GBP_MULTI_LISTINGS = {
+  "Goode Motor Ford": [
+    { key: "ford",     label: "Goode Motor Ford",    color: "#1d4ed8" },
+    { key: "overland", label: "Goode Motor Overland", color: "#059669" },
+  ],
+};
+const GBP_LISTING_NUMERIC_FIELDS = [
+  "profile_views","search_appearances","map_views",
+  "website_clicks","phone_calls","direction_requests",
+  "review_count","new_reviews","posts_published",
+];
 const DEPT_TABS = [
   { id: "dashboard",  label: "Dashboard" },
   { id: "seo",        label: "🔍 SEO" },
@@ -974,15 +987,17 @@ function SeoPage({ d, cd, trend }) {
 }
 
 /* ─── GBP PAGE ─── */
-function GbpPage({ d, cd, trend }) {
+function GbpPage({ d, cd, trend, clientName }) {
   if (!d) return <NoData label="Google Business data" />;
+
+  const listings = GBP_MULTI_LISTINGS[clientName] || null;
 
   // Views trend
   const viewsTrend = trend
     .filter(t => t.profile_views != null)
     .map(t => ({ label: t.label, views: Number(t.profile_views) || 0 }));
 
-  // Actions trend (calls, directions, web clicks)
+  // Actions trend
   const actionsTrend = trend
     .filter(t => t.phone_calls != null || t.direction_requests != null || t.website_clicks != null)
     .map(t => ({
@@ -994,9 +1009,16 @@ function GbpPage({ d, cd, trend }) {
 
   const hasCharts = viewsTrend.length > 1 || actionsTrend.length > 1;
 
+  // Per-listing stat card helper
+  const listingStat = (listingKey, field) => {
+    const v = d[`gbp_${listingKey}_${field}`];
+    return v != null ? Number(v) : null;
+  };
+
   return (
     <div>
-      <SecWrap title="Key Metrics" sub="Google Business Profile visibility and actions">
+      {/* Combined KPIs */}
+      <SecWrap title="Key Metrics" sub={listings ? "Combined totals across all listings" : "Google Business Profile visibility and actions"}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <KpiCard label="Profile Views"       value={fmt(d.profile_views)}      change={pct(d.profile_views,      cd.profile_views)}      tip="Total times your GBP profile was seen." />
           <KpiCard label="Search Appearances"  value={fmt(d.search_appearances)} change={pct(d.search_appearances, cd.search_appearances)} tip="Times your business appeared in Google Search." />
@@ -1006,6 +1028,80 @@ function GbpPage({ d, cd, trend }) {
           <KpiCard label="Direction Requests"  value={fmt(d.direction_requests)} change={pct(d.direction_requests, cd.direction_requests)} tip="Users who requested directions." />
         </div>
       </SecWrap>
+
+      {/* Per-listing breakdown — only for multi-listing clients */}
+      {listings && listings.some(l => listingStat(l.key, "profile_views") != null) && (
+        <SecWrap title="Listing Breakdown" sub="Performance by individual Google Business Profile">
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            {listings.map(l => {
+              const views    = listingStat(l.key, "profile_views");
+              const searches = listingStat(l.key, "search_appearances");
+              const mapV     = listingStat(l.key, "map_views");
+              const clicks   = listingStat(l.key, "website_clicks");
+              const calls    = listingStat(l.key, "phone_calls");
+              const dirs     = listingStat(l.key, "direction_requests");
+              const rating   = d[`gbp_${l.key}_avg_rating`];
+              const reviews  = listingStat(l.key, "review_count");
+              const newRev   = listingStat(l.key, "new_reviews");
+              const posts    = listingStat(l.key, "posts_published");
+
+              return (
+                <div key={l.key} style={{
+                  flex: 1, minWidth: 300, background: C.white,
+                  border: `2px solid ${l.color}33`, borderRadius: 12,
+                  padding: "18px 20px", boxShadow: C.sh,
+                }}>
+                  {/* Listing header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14,
+                    paddingBottom: 10, borderBottom: `2px solid ${l.color}22` }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: l.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, fontWeight: 700, color: C.t, fontFamily: FS }}>📍 {l.label}</span>
+                  </div>
+
+                  {/* Stats grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                    {[
+                      { label: "Profile Views",    value: views   },
+                      { label: "Web Clicks",       value: clicks,  color: l.color },
+                      { label: "Phone Calls",      value: calls,   color: C.g },
+                      { label: "Directions",       value: dirs    },
+                      { label: "Map Views",        value: mapV    },
+                      { label: "Search Views",     value: searches },
+                    ].map(s => (
+                      <div key={s.label} style={{ textAlign: "center", background: "#f8fafc",
+                        borderRadius: 8, padding: "10px 6px", border: `1px solid ${C.bl2}` }}>
+                        <div style={{ fontSize: 10, color: C.tl, fontWeight: 700, textTransform: "uppercase",
+                          letterSpacing: "0.05em", fontFamily: F, marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: s.color || C.t, fontFamily: FS }}>
+                          {s.value != null ? s.value.toLocaleString() : "—"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Reviews for this listing */}
+                  {(rating != null || reviews != null) && (
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.bl2}`,
+                      display: "flex", gap: 12, alignItems: "center" }}>
+                      {rating != null && (
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 22, fontWeight: 700, color: C.t, fontFamily: FS }}>{parseFloat(rating).toFixed(1)}</div>
+                          <div style={{ color: C.o, fontSize: 14 }}>{"★".repeat(Math.round(rating))}</div>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 10 }}>
+                        {reviews != null && <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{reviews.toLocaleString()} reviews</div>}
+                        {newRev  != null && <div style={{ fontSize: 12, color: C.g,  fontFamily: F, fontWeight: 700 }}>+{newRev} new</div>}
+                        {posts   != null && <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{posts} posts</div>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </SecWrap>
+      )}
 
       {/* Trend charts */}
       {hasCharts && (
@@ -1054,7 +1150,8 @@ function GbpPage({ d, cd, trend }) {
         </SecWrap>
       )}
 
-      {(d.avg_rating != null || d.review_count != null) && (
+      {/* Reviews — only for single-listing clients */}
+      {!listings && (d.avg_rating != null || d.review_count != null) && (
         <SecWrap title="Reviews">
           <Card>
             <div style={{ display: "flex", gap: 32, alignItems: "center", flexWrap: "wrap" }}>
@@ -1822,7 +1919,7 @@ export default function App() {
     switch (activeTab) {
       case "dashboard":  return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} leadTrend={trendData.leads || []} />;
       case "seo":        return svcEnabled("seo")        ? <SeoPage       d={reportData.seo}        cd={cd.seo        || {}} trend={trendData.seo        || []} /> : <DisabledDept label="SEO" />;
-      case "gbp":        return svcEnabled("gbp")        ? <GbpPage       d={reportData.gbp}        cd={cd.gbp        || {}} trend={trendData.gbp        || []} /> : <DisabledDept label="Google Business Profile" />;
+      case "gbp":        return svcEnabled("gbp")        ? <GbpPage       d={reportData.gbp}        cd={cd.gbp        || {}} trend={trendData.gbp        || []} clientName={selectedClient?.name} /> : <DisabledDept label="Google Business Profile" />;
       case "google_ads": return svcEnabled("google_ads") ? <GoogleAdsPage d={reportData.google_ads} cd={cd.google_ads || {}} trend={trendData.google_ads || []} /> : <DisabledDept label="Google Ads" />;
       case "meta_ads":   return svcEnabled("meta_ads")   ? <MetaAdsPage   d={reportData.meta_ads}   cd={cd.meta_ads   || {}} trend={trendData.meta_ads   || []} /> : <DisabledDept label="Meta Ads" />;
       case "social":     return svcEnabled("social")     ? <SocialPage    d={reportData.social}     cd={cd.social     || {}} trend={trendData.social     || []} /> : <DisabledDept label="Organic Social" />;
