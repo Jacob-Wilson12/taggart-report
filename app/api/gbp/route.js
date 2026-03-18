@@ -57,8 +57,15 @@ async function fetchLocationMetrics(accessToken, locationId, startDate, endDate)
   });
 
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || `HTTP ${response.status}`);
+    // Safe parse — response may be HTML (e.g. 404 gateway page) not JSON
+    let errMsg = `HTTP ${response.status}`;
+    try {
+      const errBody = await response.json();
+      errMsg = errBody.error?.message || errMsg;
+    } catch {
+      // Response wasn't JSON — errMsg stays as the HTTP status
+    }
+    throw new Error(errMsg);
   }
 
   const data = await response.json();
