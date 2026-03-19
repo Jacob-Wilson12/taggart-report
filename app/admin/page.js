@@ -223,7 +223,7 @@ const DEPT_FIELDS = {
     { key: "yt_month_comments", label: "YT Comments (Month)",     type: "number",   api: true },
     { key: "yt_total_views",    label: "YT Total Views",          type: "number",   api: true },
     { key: "tiktok_followers",  label: "TikTok Followers",        type: "number",   manual: true },
-    { key: "tiktok_reach",      label: "TikTok Reach",            type: "number",   manual: true },
+    { key: "tiktok_profile_views",      label: "TikTok Profile Views",            type: "number",   manual: true },
     { key: "tiktok_views",      label: "TikTok Video Views",      type: "number",   manual: true },
     { key: "tiktok_likes",      label: "TikTok Likes",            type: "number",   manual: true },
     { key: "posts_published",   label: "Posts Published",         type: "number",   manual: true },
