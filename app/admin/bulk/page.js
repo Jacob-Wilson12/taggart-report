@@ -187,7 +187,7 @@ const BULK_DEPTS = [
       { key: "yt_month_comments", label: "YT Comments",   type: "number" },
       { key: "yt_total_views",    label: "YT Total",      type: "number" },
       { key: "tiktok_followers",  label: "TT Follow",     type: "number" },
-      { key: "tiktok_reach",      label: "TT Reach",      type: "number" },
+      { key: "tiktok_profile_views",      label: "TT Profile Views",      type: "number" },
       { key: "tiktok_views",      label: "TT Views",      type: "number" },
       { key: "tiktok_likes",      label: "TT Likes",      type: "number" },
       { key: "posts_published",   label: "Posts",         type: "number" },
