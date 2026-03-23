@@ -55,7 +55,7 @@ const BENCHMARKS = {
     { key: "posts_published",  label: "Posts / mo",             range: [4, 8],     unit: "",   lowerBetter: false, note: "Consistent posting schedule" },
   ],
   social: [
-    { key: "fb_reach",         label: "FB Monthly Reach",       range: [5000, 20000], unit: "", lowerBetter: false, note: "Varies by audience size" },
+    { key: "fb_visits",         label: "FB Monthly Visits",       range: [5000, 20000], unit: "", lowerBetter: false, note: "Varies by audience size" },
     { key: "ig_reach",         label: "IG Monthly Reach",       range: [3000, 15000], unit: "", lowerBetter: false, note: "Organic IG reach" },
     { key: "posts_published",  label: "Posts / mo (total)",     range: [15, 25],   unit: "",   lowerBetter: false, note: "Across all platforms" },
     { key: "web_clicks",       label: "Social -> Web Clicks",   range: [100, 250], unit: "",   lowerBetter: false, note: "From GA4 Social channel" },
@@ -207,7 +207,7 @@ const DEPT_FIELDS = {
   ],
   social: [
     { key: "fb_followers",      label: "FB Followers",            type: "number",   api: true },
-    { key: "fb_reach",          label: "FB Reach",                type: "number",   api: true },
+    { key: "fb_visits",          label: "FB Visits",                type: "number",   api: true },
     { key: "fb_engagement",     label: "FB Engagement",           type: "number",   api: true },
     { key: "fb_new_followers",  label: "FB New Followers",        type: "number",   api: true },
     { key: "fb_page_views",     label: "FB Page Views",           type: "number",   api: true },
