@@ -223,7 +223,7 @@ const SUM_FIELDS = {
   gbp:        ["profile_views","search_appearances","map_views","website_clicks","phone_calls","direction_requests","new_reviews"],
   google_ads: ["conversions","total_spend","impressions","clicks"],
   meta_ads:   ["conversions","total_spend","reach","impressions"],
-  social:     ["fb_reach","ig_reach","tiktok_profile_views","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","posts_published","videos_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments"],
+  social:     ["fb_visits","ig_reach","tiktok_profile_views","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","posts_published","videos_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments"],
   callrail:   ["total_calls","website_calls","ads_calls","gbp_calls"],
   leads:      ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold","phone_sold",
                "ford_leads","ford_sold","mazda_leads","mazda_sold","vw_leads","vw_sold",
@@ -507,10 +507,10 @@ function Dashboard({ data, cd, services, clientName, leadTrend }) {
   const ecmp   = cd.email        || {};
   const creat  = data.creative   || {};
 
-  const totalReach    = (Number(social.fb_reach) || 0)         + (Number(social.ig_reach) || 0)         + (Number(social.tiktok_profile_views) || 0);
+  const totalReach    = (Number(social.fb_visits) || 0)         + (Number(social.ig_reach) || 0)         + (Number(social.tiktok_profile_views) || 0);
   const totalEngage   = (Number(social.fb_engagement) || 0)    + (Number(social.ig_engagement) || 0)    + (Number(social.tiktok_likes) || 0);
   const newFollowers  = (Number(social.fb_new_followers) || 0) + (Number(social.ig_new_followers) || 0) + (Number(social.tiktok_followers) || 0);
-  const prevReach     = (Number(socmp.fb_reach) || 0)          + (Number(socmp.ig_reach) || 0)          + (Number(socmp.tiktok_profile_views) || 0);
+  const prevReach     = (Number(socmp.fb_visits) || 0)          + (Number(socmp.ig_reach) || 0)          + (Number(socmp.tiktok_profile_views) || 0);
   const prevEngage    = (Number(socmp.fb_engagement) || 0)     + (Number(socmp.ig_engagement) || 0)     + (Number(socmp.tiktok_likes) || 0);
   const prevFollowers = (Number(socmp.fb_new_followers) || 0)  + (Number(socmp.ig_new_followers) || 0)  + (Number(socmp.tiktok_followers) || 0);
 
@@ -1367,16 +1367,16 @@ function MetaAdsPage({ d, cd, trend }) {
 function SocialPage({ d, cd, trend }) {
   if (!d) return <NoData label="Organic Social data" />;
 
-  const totalReach    = (Number(d.fb_reach) || 0)          + (Number(d.ig_reach) || 0)          + (Number(d.tiktok_profile_views) || 0);
+  const totalReach    = (Number(d.fb_visits) || 0)          + (Number(d.ig_reach) || 0)          + (Number(d.tiktok_profile_views) || 0);
   const totalEngage   = (Number(d.fb_engagement) || 0)     + (Number(d.ig_engagement) || 0)     + (Number(d.tiktok_likes) || 0);
   const newFollowers  = (Number(d.fb_new_followers) || 0)  + (Number(d.ig_new_followers) || 0)  + (Number(d.tiktok_followers) || 0);
-  const prevReach     = (Number(cd.fb_reach) || 0)         + (Number(cd.ig_reach) || 0)         + (Number(cd.tiktok_profile_views) || 0);
+  const prevReach     = (Number(cd.fb_visits) || 0)         + (Number(cd.ig_reach) || 0)         + (Number(cd.tiktok_profile_views) || 0);
   const prevEngage    = (Number(cd.fb_engagement) || 0)    + (Number(cd.ig_engagement) || 0)    + (Number(cd.tiktok_likes) || 0);
   const prevFollowers = (Number(cd.fb_new_followers) || 0) + (Number(cd.ig_new_followers) || 0) + (Number(cd.tiktok_followers) || 0);
 
   const platforms = [
     { name: "YouTube",   followers: d.yt_followers,     growth: null,               views: d.yt_month_views, color: "#ff0000", posts: d.yt_month_videos },
-    { name: "Facebook",  followers: d.fb_followers,     growth: d.fb_new_followers,  views: d.fb_reach,       color: "#1877f2", posts: null },
+    { name: "Facebook",  followers: d.fb_followers,     growth: d.fb_new_followers,  views: d.fb_visits,       color: "#1877f2", posts: null },
     { name: "Instagram", followers: d.ig_followers,     growth: d.ig_new_followers,  views: d.ig_reach,       color: "#e1306c", posts: null },
     { name: "TikTok",    followers: d.tiktok_followers, growth: null,               views: d.tiktok_views,   color: "#333",    posts: null },
   ].filter(p => p.followers != null || p.views != null);
@@ -1384,14 +1384,14 @@ function SocialPage({ d, cd, trend }) {
   // Reach trend from historical data
   const reachTrend = trend
     .map(t => {
-      const r = (Number(t.fb_reach) || 0) + (Number(t.ig_reach) || 0) + (Number(t.tiktok_profile_views) || 0);
+      const r = (Number(t.fb_visits) || 0) + (Number(t.ig_reach) || 0) + (Number(t.tiktok_profile_views) || 0);
       return r > 0 ? { label: t.label, reach: r } : null;
     })
     .filter(Boolean);
 
   // Platform reach bar chart for current month
   const platformReach = [
-    { name: "Facebook",  reach: Number(d.fb_reach)      || 0, color: "#1877f2" },
+    { name: "Facebook",  reach: Number(d.fb_visits)      || 0, color: "#1877f2" },
     { name: "Instagram", reach: Number(d.ig_reach)      || 0, color: "#e1306c" },
     { name: "TikTok",    reach: Number(d.tiktok_profile_views)  || 0, color: "#333" },
     { name: "YouTube",   reach: Number(d.yt_month_views)|| 0, color: "#ff0000" },
