@@ -171,7 +171,7 @@ const BULK_DEPTS = [
     id: "social", label: "Organic Social", color: "#c026d3",
     fields: [
       { key: "fb_followers",      label: "FB Follow",     type: "number" },
-      { key: "fb_reach",          label: "FB Reach",      type: "number" },
+      { key: "fb_visits",          label: "FB Visits",      type: "number" },
       { key: "fb_engagement",     label: "FB Engage",     type: "number" },
       { key: "fb_new_followers",  label: "FB New Follow", type: "number" },
       { key: "fb_page_views",     label: "FB Views",      type: "number" },
