@@ -832,10 +832,8 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
         {services.email !== false && (
           <BlueCard icon="✉️" label="Email" accent={DEPT_ACCENT.email} badge={!email.campaigns_sent && !email.total_recipients} onClick={() => setActiveTab("email")}>
             <div style={{ display: "flex", flexWrap: "wrap" }}>
-              <BM l="Campaigns"    v={email.campaigns_sent ? Number(email.campaigns_sent) : null} prior={ecmp.campaigns_sent} />
-              <BM l="Recipients"   v={email.total_recipients ? Number(email.total_recipients) : null} change={pct(email.total_recipients, ecmp.total_recipients)} prior={ecmp.total_recipients} />
-              <BM l="Open Rate"    v={email.avg_open_rate != null ? `${email.avg_open_rate}%` : null} change={pct(email.avg_open_rate, ecmp.avg_open_rate)} prior={ecmp.avg_open_rate != null ? `${ecmp.avg_open_rate}%` : null} />
-              <BM l="Click Rate"   v={email.avg_click_rate != null ? `${email.avg_click_rate}%` : null} change={pct(email.avg_click_rate, ecmp.avg_click_rate)} prior={ecmp.avg_click_rate != null ? `${ecmp.avg_click_rate}%` : null} />
+              <BM l="Campaigns"      v={email.campaigns_sent ? Number(email.campaigns_sent) : null} prior={ecmp.campaigns_sent} />
+              <BM l="Audience Size"  v={email.total_recipients ? Number(email.total_recipients) : null} change={pct(email.total_recipients, ecmp.total_recipients)} prior={ecmp.total_recipients} />
             </div>
           </BlueCard>
         )}
@@ -1477,95 +1475,51 @@ function EmailPage({ d: _d, cd: _cd, seoData, seoDataCmp, trend }) {
   const d = _d || {};
   const cd = _cd || {};
 
-  // Audience / list health
-  const audienceSize     = d.audience_size     != null ? Number(d.audience_size)     : null;
-  const audienceSizePrev = cd.audience_size    != null ? Number(cd.audience_size)    : null;
-  const audienceGrowth   = audienceSize && audienceSizePrev ? audienceSize - audienceSizePrev : null;
+  // Audience size = total recipients across all campaigns
+  const audienceSize     = d.total_recipients != null ? Number(d.total_recipients) : null;
+  const audienceSizePrev = cd.total_recipients != null ? Number(cd.total_recipients) : null;
 
-  // Site visits from SEO form
+  // Site visits from SEO form (GA4 email channel)
   const siteVisits     = seoData?.site_visits_from_email     != null ? Number(seoData.site_visits_from_email)     : null;
   const siteVisitsPrev = seoDataCmp?.site_visits_from_email  != null ? Number(seoDataCmp.site_visits_from_email)  : null;
-
-  // Conversions
-  const conversions     = d.conversions_from_email  != null ? Number(d.conversions_from_email)  : null;
-  const conversionsPrev = cd.conversions_from_email != null ? Number(cd.conversions_from_email) : null;
 
   // Campaign list
   const campaignList = Array.isArray(d.campaign_list) ? d.campaign_list : [];
 
-  // Trend data for charts
-  const openRateTrend = (trend || []).filter(t => t.avg_open_rate != null).map(t => ({ label: t.label, rate: Number(t.avg_open_rate) || 0 }));
-  const visitsTrend   = (trend || []).filter(t => {
-    const seoT = t; // trend already has seo cross-data if available
-    return seoT.site_visits_from_email != null;
-  }).map(t => ({ label: t.label, visits: Number(t.site_visits_from_email) || 0 }));
+  // Trend data for site visits chart
+  const visitsTrend = (trend || []).filter(t => t.site_visits_from_email != null).map(t => ({ label: t.label, visits: Number(t.site_visits_from_email) || 0 }));
 
   return (
     <div>
       {/* Hero */}
       <HeroMetric icon="✉️" label="Campaigns Sent" value={fmt(d.campaigns_sent)} change={pct(d.campaigns_sent, cd.campaigns_sent)}
-        sub={d.total_recipients ? `${Number(d.total_recipients).toLocaleString()} total recipients` : null} />
+        sub={audienceSize ? `${audienceSize.toLocaleString()} total recipients` : null} />
 
-      {/* Campaign Activity */}
-      <SecWrap title="Campaign Activity">
+      {/* This Month */}
+      <SecWrap title="This Month">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <KpiCard label="Campaigns Sent" value={fmt(d.campaigns_sent)} change={pct(d.campaigns_sent, cd.campaigns_sent)} />
-          <KpiCard label="Total Recipients" value={d.total_recipients ? fmt(d.total_recipients) : "—"} change={pct(d.total_recipients, cd.total_recipients)} tip="Total recipients across all campaigns." />
-          <KpiCard label="Avg Open Rate" value={d.avg_open_rate != null ? `${d.avg_open_rate}%` : "—"} color={C.g} change={pct(d.avg_open_rate, cd.avg_open_rate)} tip="Average open rate across campaigns." />
-          <KpiCard label="Avg Click Rate" value={d.avg_click_rate != null ? `${d.avg_click_rate}%` : "—"} color={C.g} change={pct(d.avg_click_rate, cd.avg_click_rate)} tip="Average click rate across campaigns." />
+          <KpiCard label="Audience Size" value={audienceSize ? fmt(audienceSize) : "—"} change={pct(audienceSize, audienceSizePrev)} tip="Total recipients across all campaigns this month." />
+          <KpiCard label="Site Visits from Email" value={fmt(siteVisits)} color={C.g} change={pct(siteVisits, siteVisitsPrev)} tip="GA4 sessions from email campaigns. Enter on SEO form." />
         </div>
       </SecWrap>
 
-      {/* Results */}
-      <SecWrap title="Results">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Site Visits from Email" value={fmt(siteVisits)} color={C.g} change={pct(siteVisits, siteVisitsPrev)} tip="GA4 sessions from email campaigns." />
-          <KpiCard label="Conversions from Email" value={fmt(conversions)} color={C.cyanD} change={pct(conversions, conversionsPrev)} tip="Tracked conversions from email campaigns." />
-        </div>
-      </SecWrap>
-
-      {/* List Health */}
-      <SecWrap title="List Health">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Total List Size" value={audienceSize != null ? audienceSize.toLocaleString() : "—"} color={C.cyanD}
-            sub={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()} this month` : null}
-            tip="Total active email subscribers as of end of month." />
-          <KpiCard label="Monthly Growth" value={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()}` : "—"} color={audienceGrowth != null && audienceGrowth >= 0 ? C.g : C.tl} />
-        </div>
-      </SecWrap>
-
-      {/* Trend Charts */}
+      {/* Trend Chart — site visits from email */}
       <SecWrap title="Trend">
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "stretch" }}>
-            {openRateTrend.length > 1 && (
-              <Card style={{ flex: 1, minWidth: 300, marginBottom: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Open Rate Trend</div>
-                <ResponsiveContainer width="100%" height={160}>
-                  <LineChart data={openRateTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: C.tl }} />
-                    <YAxis tick={{ fontSize: 11, fill: C.tl }} unit="%" />
-                    <Tooltip contentStyle={ttS} />
-                    <Line type="monotone" dataKey="rate" stroke={C.cyan} strokeWidth={2.5} dot={{ r: 3, fill: C.cyan, stroke: C.white, strokeWidth: 2 }} name="Open Rate %" connectNulls />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-            {visitsTrend.length > 1 && (
-              <Card style={{ flex: 1, minWidth: 300, marginBottom: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Site Visits from Email</div>
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={visitsTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: C.tl }} />
-                    <YAxis tick={{ fontSize: 11, fill: C.tl }} allowDecimals={false} />
-                    <Tooltip contentStyle={ttS} />
-                    <Bar dataKey="visits" fill={C.g} radius={[3, 3, 0, 0]} name="Site Visits" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-          </div>
+        {visitsTrend.length > 1 ? (
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Site Visits from Email</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={visitsTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: C.tl }} />
+                <YAxis tick={{ fontSize: 11, fill: C.tl }} allowDecimals={false} />
+                <Tooltip contentStyle={ttS} />
+                <Bar dataKey="visits" fill={C.g} radius={[3, 3, 0, 0]} name="Site Visits" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        ) : <EmptyPlaceholder text="Site visits trend — chart appears with 2+ months of data." />}
       </SecWrap>
 
       {/* Campaigns table */}
