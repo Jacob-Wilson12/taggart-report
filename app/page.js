@@ -1373,7 +1373,7 @@ function SocialPage({ d, cd, trend }) {
     { name: "Instagram", followers: d.ig_followers,     growth: followerGrowth("ig_followers"),      views: d.ig_reach,        viewLabel: "Reach",      color: "#e1306c" },
     { name: "YouTube",   followers: d.yt_followers,     growth: followerGrowth("yt_followers"),      views: d.yt_month_views,  viewLabel: "Views",      color: "#ff0000" },
     { name: "TikTok",    followers: d.tiktok_followers, growth: followerGrowth("tiktok_followers"),  views: d.tiktok_views,    viewLabel: "Video Views",color: "#333" },
-  ].filter(p => p.followers != null || p.views != null);
+  ];
 
   return (
     <div>
@@ -1382,12 +1382,12 @@ function SocialPage({ d, cd, trend }) {
         sub="Combined views and reach across all platforms" />
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
         <KpiCard label="Total Published"  value={totalPublished ? fmt(totalPublished) : "—"} change={pct(totalPublished, prevPublished)} tip="Posts and videos published across all platforms." />
-        {d.web_clicks != null && <KpiCard label="Website Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} tip="Clicks from social to your website (GA4)." />}
+        <KpiCard label="Website Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} tip="Clicks from social to your website (GA4)." />
       </div>
 
       {/* Published channel breakdown */}
-      {publishedChannels.length > 0 && (
-        <SecWrap title="Published by Platform">
+      <SecWrap title="Published by Channel">
+        {publishedChannels.length > 0 ? (
           <Card style={{ marginBottom: 0 }}>
             <div style={{ height: 8, borderRadius: 4, overflow: "hidden", display: "flex", gap: 2, marginBottom: 12 }}>
               {publishedChannels.map(s => (
@@ -1406,11 +1406,11 @@ function SocialPage({ d, cd, trend }) {
               ))}
             </div>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="No published content data entered for this period." />}
+      </SecWrap>
 
-      {viewsTrend.length > 1 && (
-        <SecWrap title="Views Trend" sub="Combined views across all platforms">
+      <SecWrap title="Views Trend" sub="Combined views across all platforms">
+        {viewsTrend.length > 1 ? (
           <Card style={{ marginBottom: 0 }}>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={viewsTrend}>
@@ -1422,11 +1422,10 @@ function SocialPage({ d, cd, trend }) {
               </BarChart>
             </ResponsiveContainer>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="Monthly views trend — chart appears with 2+ months of data." />}
+      </SecWrap>
 
-      {platforms.length > 0 && (
-        <SecWrap title="Platform Breakdown">
+      <SecWrap title="Platform Breakdown">
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {platforms.map((p, i) => (
               <div key={i} style={{ flex: 1, minWidth: 160, background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "16px 18px", boxShadow: C.sh }}>
@@ -1434,23 +1433,20 @@ function SocialPage({ d, cd, trend }) {
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: p.color }} />
                   <span style={{ fontSize: 14, fontWeight: 700, color: C.t, fontFamily: FS }}>{p.name}</span>
                 </div>
-                {p.followers != null && (
-                  <div style={{ marginBottom: 6 }}>
-                    <div style={{ fontSize: 10, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F }}>Followers</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: C.t, fontFamily: FS }}>{Number(p.followers).toLocaleString()}</div>
-                  </div>
-                )}
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 10, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F }}>Followers</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: C.t, fontFamily: FS }}>{p.followers != null ? Number(p.followers).toLocaleString() : "—"}</div>
+                </div>
                 {p.growth != null && p.growth !== 0 && (
                   <div style={{ fontSize: 12, color: p.growth > 0 ? C.g : C.r, fontWeight: 700, fontFamily: F }}>
                     {p.growth > 0 ? "+" : ""}{p.growth.toLocaleString()} this month
                   </div>
                 )}
-                {p.views != null && <div style={{ fontSize: 12, color: C.tl, fontFamily: F, marginTop: 4 }}>{p.viewLabel}: {Number(p.views).toLocaleString()}</div>}
+                <div style={{ fontSize: 12, color: C.tl, fontFamily: F, marginTop: 4 }}>{p.viewLabel}: {p.views != null ? Number(p.views).toLocaleString() : "—"}</div>
               </div>
             ))}
           </div>
         </SecWrap>
-      )}
 
       {d.top_video && (
         <SecWrap title="Top Performing Video">
@@ -1521,30 +1517,25 @@ function EmailPage({ d, cd, seoData, seoDataCmp, trend }) {
       </SecWrap>
 
       {/* Results */}
-      {(siteVisits != null || conversions != null) && (
-        <SecWrap title="Results">
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {siteVisits != null && <KpiCard label="Site Visits from Email" value={fmt(siteVisits)} color={C.g} change={pct(siteVisits, siteVisitsPrev)} tip="GA4 sessions from email campaigns." />}
-            {conversions != null && <KpiCard label="Conversions from Email" value={fmt(conversions)} color={C.cyanD} change={pct(conversions, conversionsPrev)} tip="Tracked conversions from email campaigns." />}
-          </div>
-        </SecWrap>
-      )}
+      <SecWrap title="Results">
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <KpiCard label="Site Visits from Email" value={fmt(siteVisits)} color={C.g} change={pct(siteVisits, siteVisitsPrev)} tip="GA4 sessions from email campaigns." />
+          <KpiCard label="Conversions from Email" value={fmt(conversions)} color={C.cyanD} change={pct(conversions, conversionsPrev)} tip="Tracked conversions from email campaigns." />
+        </div>
+      </SecWrap>
 
       {/* List Health */}
-      {audienceSize != null && (
-        <SecWrap title="List Health">
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total List Size" value={audienceSize.toLocaleString()} color={C.cyanD}
-              sub={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()} this month` : null}
-              tip="Total active email subscribers as of end of month." />
-            {audienceGrowth != null && <KpiCard label="Monthly Growth" value={`${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()}`} color={audienceGrowth >= 0 ? C.g : C.r} />}
-          </div>
-        </SecWrap>
-      )}
+      <SecWrap title="List Health">
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <KpiCard label="Total List Size" value={audienceSize != null ? audienceSize.toLocaleString() : "—"} color={C.cyanD}
+            sub={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()} this month` : null}
+            tip="Total active email subscribers as of end of month." />
+          <KpiCard label="Monthly Growth" value={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()}` : "—"} color={audienceGrowth != null && audienceGrowth >= 0 ? C.g : C.tl} />
+        </div>
+      </SecWrap>
 
       {/* Trend Charts */}
-      {(openRateTrend.length > 1 || visitsTrend.length > 1) && (
-        <SecWrap title="Trend">
+      <SecWrap title="Trend">
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "stretch" }}>
             {openRateTrend.length > 1 && (
               <Card style={{ flex: 1, minWidth: 300, marginBottom: 0 }}>
@@ -1575,12 +1566,11 @@ function EmailPage({ d, cd, seoData, seoDataCmp, trend }) {
               </Card>
             )}
           </div>
-        </SecWrap>
-      )}
+      </SecWrap>
 
       {/* Campaigns table */}
-      {campaignList.length > 0 && (
-        <SecWrap title="Campaigns This Month">
+      <SecWrap title="Campaigns This Month">
+        {campaignList.length > 0 ? (
           <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F }}>
               <thead>
@@ -1601,8 +1591,8 @@ function EmailPage({ d, cd, seoData, seoDataCmp, trend }) {
               </tbody>
             </table>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="No campaigns entered for this period." />}
+      </SecWrap>
 
       <WorkDone text={d.work_completed} />
       <WinsLosses wins={d.wins} losses={d.losses} />
@@ -1622,9 +1612,10 @@ function CreativePage({ d, trend }) {
     { key: "ad_creative",   label: "Ad Sets",        color: "#059669" },
     { key: "email_headers", label: "Email Headers",  color: "#D97706" },
     { key: "print",         label: "Print",          color: "#6B7280" },
-  ].filter(t => d[t.key] != null && Number(d[t.key]) > 0);
+  ];
+  const assetTypesWithData = assetTypes.filter(t => d[t.key] != null && Number(d[t.key]) > 0);
 
-  const totalFromParts = assetTypes.reduce((a, t) => a + (Number(d[t.key]) || 0), 0);
+  const totalFromParts = assetTypesWithData.reduce((a, t) => a + (Number(d[t.key]) || 0), 0);
   const totalAssets    = Number(d.total_assets) || totalFromParts;
 
   // All asset type keys for stacked chart
@@ -1651,23 +1642,23 @@ function CreativePage({ d, trend }) {
   return (
     <div>
       <HeroMetric icon="🎨" label="Total Assets Delivered" value={fmt(totalAssets)} color={C.cyanD}
-        sub={assetTypes.length > 0 ? assetTypes.map(t => `${d[t.key]} ${t.label.toLowerCase()}`).join(", ") : null} />
+        sub={assetTypesWithData.length > 0 ? assetTypesWithData.map(t => `${d[t.key]} ${t.label.toLowerCase()}`).join(", ") : null} />
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
         {assetTypes.map(t => (
           <KpiCard key={t.key} label={t.label} value={fmt(d[t.key])} color={t.color} />
         ))}
       </div>
 
-      {assetTypes.length > 1 && totalAssets > 0 && (
-        <SecWrap title="Deliverable Breakdown">
+      <SecWrap title="Deliverable Breakdown">
+        {assetTypesWithData.length > 1 && totalAssets > 0 ? (
           <Card style={{ marginBottom: 0 }}>
             <div style={{ height: 10, borderRadius: 5, overflow: "hidden", display: "flex", gap: 2, marginBottom: 14 }}>
-              {assetTypes.map(t => (
+              {assetTypesWithData.map(t => (
                 <div key={t.key} style={{ width: `${Math.round((Number(d[t.key]) / totalAssets) * 100)}%`, background: t.color, borderRadius: 4 }} />
               ))}
             </div>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-              {assetTypes.map(t => (
+              {assetTypesWithData.map(t => (
                 <div key={t.key} style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 2, background: t.color, flexShrink: 0 }} />
                   <div style={{ fontFamily: F }}>
@@ -1678,11 +1669,11 @@ function CreativePage({ d, trend }) {
               ))}
             </div>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="No asset breakdown data entered for this period." />}
+      </SecWrap>
 
-      {creativeTrend.length > 1 && (
-        <SecWrap title="Monthly Assets Delivered">
+      <SecWrap title="Monthly Assets Delivered">
+        {creativeTrend.length > 1 ? (
           <Card style={{ marginBottom: 0 }}>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={creativeTrend}>
@@ -1697,8 +1688,8 @@ function CreativePage({ d, trend }) {
               </BarChart>
             </ResponsiveContainer>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="Monthly trend — chart appears with 2+ months of data." />}
+      </SecWrap>
 
       <WorkDone text={d.work_completed} />
       <NextMonth text={d.next_month} />
