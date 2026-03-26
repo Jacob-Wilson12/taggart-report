@@ -96,15 +96,7 @@ const DEPT_BENCH_LABELS = {
   gbp: "📍 Google Business Profile", social: "🎬 Organic Social", email: "✉️ Email",
 };
 
-const LIVE_APIS = {
-  seo:       { label: "Search Console", endpoint: "/api/search-console" },
-  ga4:       { label: "GA4",            endpoint: "/api/ga4" },
-  google_ads:{ label: "Google Ads",     endpoint: "/api/google-ads" },
-  callrail:  { label: "CallRail",       endpoint: "/api/callrail" },
-  meta_ads:  { label: "Meta Ads",       endpoint: "/api/meta-ads" },
-  social:    { label: "Social",         endpoint: "/api/social" },
-  gbp:       { label: "GBP",            endpoint: "/api/gbp" },
-};
+const LIVE_APIS = {};
 
 const UPLOAD_DEPTS = ["email", "creative", "social", "seo", "meta_ads", "google_ads"];
 
