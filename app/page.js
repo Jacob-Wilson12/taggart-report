@@ -318,6 +318,38 @@ function BM({ l, v, pre = "", suf = "", change, invert, prior }) {
 }
 
 function BlueCard({ icon, label, badge, children, onClick }) {
+  if (badge) {
+    /* ── No data state: dimmed card with centered message ── */
+    return (
+      <div onClick={onClick} style={{
+        background: `linear-gradient(135deg, ${C.bc}, ${C.bl})`,
+        borderRadius: 12, padding: "18px 22px",
+        border: `1px solid ${C.bb}`, overflow: "hidden",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        cursor: onClick ? "pointer" : "default",
+        opacity: 0.6,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <span style={{ fontSize: 18 }}>{icon}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: FS }}>{label}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0 4px" }}>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.45)", fontFamily: F, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            No data entered yet
+          </span>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+        </div>
+        <div style={{ textAlign: "center", paddingTop: 6 }}>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: F }}>
+            Click to open → enter data in admin panel
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Normal state: full metrics ── */
   return (
     <div onClick={onClick} style={{
       background: `linear-gradient(135deg, ${C.bc}, ${C.bl})`,
@@ -329,12 +361,6 @@ function BlueCard({ icon, label, badge, children, onClick }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 18 }}>{icon}</span>
         <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: FS }}>{label}</span>
-        {badge && (
-          <span style={{ marginLeft: "auto", fontSize: 9, background: "rgba(255,255,255,0.15)",
-            color: "rgba(255,255,255,0.5)", padding: "2px 7px", borderRadius: 4, fontWeight: 700, fontFamily: F }}>
-            NO DATA
-          </span>
-        )}
       </div>
       {children}
     </div>
