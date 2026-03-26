@@ -323,7 +323,7 @@ export default function ImportPage() {
           <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>Excel Data Import</span>
           <span style={{ background: "rgba(0,201,232,0.2)", color: "#00c9e8", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>ADMIN ONLY</span>
         </div>
-        <a href="/admin" style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, textDecoration: "none", fontWeight: 600 }}><- Admin Panel</a>
+        <a href="/admin" style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, textDecoration: "none", fontWeight: 600 }}>Back to Admin</a>
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px" }}>
@@ -420,7 +420,7 @@ export default function ImportPage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setStep("upload"); setPreview(null); }}
                 style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, color: C.t }}>
-                <- Back
+                Back
               </button>
               <button onClick={handleImport}
                 style={{ background: C.g, color: "#fff", border: "none", borderRadius: 8, padding: "10px 28px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
