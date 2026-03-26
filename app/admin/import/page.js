@@ -135,9 +135,8 @@ function parseSheet(rows, colMap) {
     Object.entries(colMap).forEach(([colIdx, { dept, key }]) => {
       const raw = row[parseInt(colIdx)];
       const val = parseVal(raw, key);
-      if (val != null) {
-        records.push({ clientName: currentClient, monthStr, dept, key, val });
-      }
+      // Always push including nulls -- blank cell clears the field in Supabase
+      records.push({ clientName: currentClient, monthStr, dept, key, val });
     });
   });
   return records;
@@ -199,22 +198,25 @@ export default function ImportPage() {
 
         // Build stats
         const clientNames = Object.keys(grouped);
-        let totalCells = 0, totalRows = 0;
+        let totalCells = 0, totalBlanks = 0, totalRows = 0;
         const byClient = {};
         clientNames.forEach(cn => {
           const months = Object.keys(grouped[cn]);
-          let cells = 0;
+          let cells = 0, blanks = 0;
           months.forEach(m => {
             Object.values(grouped[cn][m]).forEach(deptData => {
-              cells += Object.keys(deptData).length;
+              Object.values(deptData).forEach(v => {
+                if (v !== null) cells++; else blanks++;
+              });
             });
           });
           totalCells += cells;
+          totalBlanks += blanks;
           totalRows += months.length;
-          byClient[cn] = { months: months.length, cells };
+          byClient[cn] = { months: months.length, cells, blanks };
         });
 
-        setPreview({ grouped, byClient, totalCells, totalRows, clientNames });
+        setPreview({ grouped, byClient, totalCells, totalBlanks, totalRows, clientNames });
         setStep("preview");
       } catch (err) {
         setParseError(err.message);
@@ -265,13 +267,20 @@ export default function ImportPage() {
           const existingData = existing?.data || {};
           const manualOverrides = new Set(existingData._manual_overrides || []);
 
-          // Merge: existing wins for manually locked fields, import wins otherwise
+          // Merge: import wins for all fields unless manually locked
+          // null values from blank cells will clear the existing field
           const merged = { ...existingData };
-          let importedCount = 0;
+          let importedCount = 0, clearedCount = 0;
           Object.entries(newData).forEach(([key, val]) => {
             if (!manualOverrides.has(key)) {
-              merged[key] = val;
-              importedCount++;
+              if (val === null && existingData[key] != null) {
+                // Blank cell clears an existing value
+                merged[key] = null;
+                clearedCount++;
+              } else {
+                merged[key] = val;
+                if (val !== null) importedCount++;
+              }
             }
           });
 
@@ -293,7 +302,7 @@ export default function ImportPage() {
             addLog(`x ${clientName} . ${monthStr} . ${dept}: ${upsertErr.message}`, "error");
             error++;
           } else {
-            addLog(`v ${clientName} . ${monthStr} . ${dept} (${importedCount} fields)`, "success");
+            addLog(`v ${clientName} . ${monthStr} . ${dept} (${importedCount} fields${clearedCount > 0 ? `, ${clearedCount} cleared` : ""})`, "success");
             upserted++;
           }
           setCounts({ upserted, skipped, error });
@@ -363,12 +372,13 @@ export default function ImportPage() {
               {[
                 { label: "Clients", value: preview.clientNames.length, color: C.navy },
                 { label: "Month Rows", value: preview.totalRows, color: C.cyanD },
-                { label: "Data Cells", value: preview.totalCells.toLocaleString(), color: C.g },
+                { label: "Values to Import", value: preview.totalCells.toLocaleString(), color: C.g },
+                { label: "Blanks (will clear)", value: preview.totalBlanks.toLocaleString(), color: C.o },
                 { label: "File", value: fileName, color: C.tl },
               ].map((s, i) => (
-                <div key={i} style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 18px", flex: 1, minWidth: 140 }}>
+                <div key={i} style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 18px", flex: 1, minWidth: 120 }}>
                   <div style={{ fontSize: 10, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{s.label}</div>
-                  <div style={{ fontSize: i === 3 ? 11 : 22, fontWeight: 700, color: s.color, wordBreak: "break-all" }}>{s.value}</div>
+                  <div style={{ fontSize: i === 4 ? 11 : 22, fontWeight: 700, color: s.color, wordBreak: "break-all" }}>{s.value}</div>
                 </div>
               ))}
             </div>
@@ -381,7 +391,7 @@ export default function ImportPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F, fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#f8fafc" }}>
-                    {["Client", "Months of Data", "Data Cells", "Status"].map(h => (
+                    {["Client", "Months", "Values", "Blanks (clears)", "Status"].map(h => (
                       <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: `1px solid ${C.bd}` }}>{h}</th>
                     ))}
                   </tr>
@@ -391,7 +401,8 @@ export default function ImportPage() {
                     <tr key={cn} style={{ borderBottom: `1px solid ${C.bl2}` }}>
                       <td style={{ padding: "10px 16px", fontWeight: 600, color: C.t }}>{cn}</td>
                       <td style={{ padding: "10px 16px", color: C.t }}>{preview.byClient[cn].months}</td>
-                      <td style={{ padding: "10px 16px", color: C.t }}>{preview.byClient[cn].cells.toLocaleString()}</td>
+                      <td style={{ padding: "10px 16px", color: C.g, fontWeight: 600 }}>{preview.byClient[cn].cells.toLocaleString()}</td>
+                      <td style={{ padding: "10px 16px", color: C.o, fontWeight: 600 }}>{preview.byClient[cn].blanks.toLocaleString()}</td>
                       <td style={{ padding: "10px 16px" }}>
                         <span style={{ background: C.gL, color: "#166534", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Ready</span>
                       </td>
@@ -413,7 +424,7 @@ export default function ImportPage() {
               </button>
               <button onClick={handleImport}
                 style={{ background: C.g, color: "#fff", border: "none", borderRadius: 8, padding: "10px 28px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
-                Import {preview.totalCells.toLocaleString()} Data Points
+                Import {preview.totalCells.toLocaleString()} Values + Clear {preview.totalBlanks.toLocaleString()} Blanks
               </button>
             </div>
           </div>
