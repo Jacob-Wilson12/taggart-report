@@ -135,7 +135,7 @@ function parseSheet(rows, colMap) {
     Object.entries(colMap).forEach(([colIdx, { dept, key }]) => {
       const raw = row[parseInt(colIdx)];
       const val = parseVal(raw, key);
-      // Always push including nulls -- blank cell clears the field in Supabase
+      // Always push including nulls so we can show gap counts in preview
       records.push({ clientName: currentClient, monthStr, dept, key, val });
     });
   });
@@ -267,20 +267,17 @@ export default function ImportPage() {
           const existingData = existing?.data || {};
           const manualOverrides = new Set(existingData._manual_overrides || []);
 
-          // Merge: import wins for all fields unless manually locked
-          // null values from blank cells will clear the existing field
+          // Merge: import wins for non-null values unless manually locked
+          // Blank cells (null) are skipped entirely -- existing data is preserved
           const merged = { ...existingData };
           let importedCount = 0, clearedCount = 0;
           Object.entries(newData).forEach(([key, val]) => {
             if (!manualOverrides.has(key)) {
-              if (val === null && existingData[key] != null) {
-                // Blank cell clears an existing value
-                merged[key] = null;
-                clearedCount++;
-              } else {
+              if (val !== null) {
                 merged[key] = val;
-                if (val !== null) importedCount++;
+                importedCount++;
               }
+              // null = blank cell in spreadsheet, skip it, keep existing value
             }
           });
 
@@ -302,7 +299,7 @@ export default function ImportPage() {
             addLog(`x ${clientName} . ${monthStr} . ${dept}: ${upsertErr.message}`, "error");
             error++;
           } else {
-            addLog(`v ${clientName} . ${monthStr} . ${dept} (${importedCount} fields${clearedCount > 0 ? `, ${clearedCount} cleared` : ""})`, "success");
+            addLog(`v ${clientName} . ${monthStr} . ${dept} (${importedCount} fields)`, "success");
             upserted++;
           }
           setCounts({ upserted, skipped, error });
@@ -373,7 +370,7 @@ export default function ImportPage() {
                 { label: "Clients", value: preview.clientNames.length, color: C.navy },
                 { label: "Month Rows", value: preview.totalRows, color: C.cyanD },
                 { label: "Values to Import", value: preview.totalCells.toLocaleString(), color: C.g },
-                { label: "Blanks (will clear)", value: preview.totalBlanks.toLocaleString(), color: C.o },
+                { label: "Blanks (skipped)", value: preview.totalBlanks.toLocaleString(), color: C.tl },
                 { label: "File", value: fileName, color: C.tl },
               ].map((s, i) => (
                 <div key={i} style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 18px", flex: 1, minWidth: 120 }}>
@@ -391,7 +388,7 @@ export default function ImportPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F, fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#f8fafc" }}>
-                    {["Client", "Months", "Values", "Blanks (clears)", "Status"].map(h => (
+                    {["Client", "Months", "Values", "Blanks (skipped)", "Status"].map(h => (
                       <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: `1px solid ${C.bd}` }}>{h}</th>
                     ))}
                   </tr>
@@ -413,8 +410,8 @@ export default function ImportPage() {
             </div>
 
             <div style={{ background: C.oL, border: `1px solid ${C.o}44`, borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#92400e" }}>
-              ! This will upsert data into Supabase. Existing <strong>manually-locked fields</strong> are protected.
-              All other fields will be overwritten with values from the spreadsheet.
+              ! This will upsert data into Supabase. <strong>Blank cells are skipped</strong> -- existing data is never deleted.
+              Manually locked fields are also protected. Only cells with values in the spreadsheet will write.
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
@@ -424,7 +421,7 @@ export default function ImportPage() {
               </button>
               <button onClick={handleImport}
                 style={{ background: C.g, color: "#fff", border: "none", borderRadius: 8, padding: "10px 28px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
-                Import {preview.totalCells.toLocaleString()} Values + Clear {preview.totalBlanks.toLocaleString()} Blanks
+                Import {preview.totalCells.toLocaleString()} Values
               </button>
             </div>
           </div>
