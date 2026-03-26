@@ -240,15 +240,20 @@ const DEPT_FIELDS = {
   ],
   // ── EMAIL: simplified to CRM-available fields + campaign list + audience_size ──
   email: [
-    { key: "campaigns_sent",    label: "Campaigns Sent",          type: "number" },
-    { key: "audience_size",     label: "Audience Size",           type: "number",   hint: "Enter total as of end of month — growth calculated vs prior month" },
+    { key: "campaigns_sent",          label: "Campaigns Sent",            type: "number" },
+    { key: "total_recipients",        label: "Total Recipients",          type: "number",   hint: "Total recipients across all campaigns" },
+    { key: "avg_open_rate",           label: "Avg Open Rate (%)",         type: "number",   hint: "Average open rate across campaigns" },
+    { key: "avg_click_rate",          label: "Avg Click Rate (%)",        type: "number",   hint: "Average click rate across campaigns" },
+    { key: "audience_size",           label: "Total List Size",           type: "number",   hint: "Enter total as of end of month — growth calculated vs prior month" },
+    { key: "unsubscribe_rate",        label: "Unsubscribe Rate (%)",      type: "number",   optional: true, hint: "Internal metric — not shown to clients" },
     // ── NOTE: Site Visits from Email is entered on the SEO form by David (GA4 Email channel) ──
-    // ── Campaign list: repeatable rows of name + date ──
-    { key: "campaign_list",     label: "Campaigns This Month",    type: "campaign_list" },
-    { key: "work_completed",    label: "Work Completed",          type: "textarea" },
-    { key: "wins",              label: "Wins",                    type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",            label: "Losses / Watch Items",    type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    // ── NOTE: Conversions from Email is entered below ──
+    { key: "conversions_from_email",  label: "Conversions from Email",    type: "number",   hint: "Tracked conversions from email campaigns" },
+    { key: "campaign_list",           label: "Campaigns This Month",      type: "campaign_list" },
+    { key: "work_completed",          label: "Work Completed",            type: "textarea" },
+    { key: "wins",                    label: "Wins",                      type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",                  label: "Losses / Watch Items",      type: "textarea", optional: true, hint: "One per line" },
+    { key: "next_month",              label: "What's Coming Next Month",  type: "textarea", hint: "One per line" },
   ],
   creative: [
     { key: "total_assets",    label: "Total Assets Delivered",    type: "number" },

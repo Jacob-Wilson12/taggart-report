@@ -329,22 +329,18 @@ function BlueCard({ icon, label, badge, children, onClick, accent = C.cyan }) {
         border: `1px dashed ${C.bd}`, borderLeft: `3px dashed ${accent}`,
         overflow: "hidden", boxShadow: C.sh,
         cursor: onClick ? "pointer" : "default",
-        opacity: 0.7,
+        opacity: 0.8,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-          <span style={{ fontSize: 18 }}>{icon}</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: C.t, fontFamily: FS }}>{label}</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 18 }}>{icon}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.t, fontFamily: FS }}>{label}</span>
+          </div>
+          {onClick && <span style={{ fontSize: 11, color: C.cyanD, fontWeight: 600, fontFamily: F }}>View details →</span>}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0 4px" }}>
-          <div style={{ flex: 1, height: 1, background: C.bl2 }} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: C.tl, fontFamily: F, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+        <div style={{ textAlign: "center", padding: "16px 0 8px" }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: C.tl, fontFamily: F }}>
             No data for this period yet
-          </span>
-          <div style={{ flex: 1, height: 1, background: C.bl2 }} />
-        </div>
-        <div style={{ textAlign: "center", paddingTop: 6 }}>
-          <span style={{ fontSize: 11, color: C.tl, fontFamily: F }}>
-            Data will appear here once reported
           </span>
         </div>
       </div>
@@ -826,13 +822,12 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
 
         {/* Email */}
         {services.email !== false && (
-          <BlueCard icon="✉️" label="Email" accent={DEPT_ACCENT.email} badge={!email.campaigns_sent && !audienceSize} onClick={() => setActiveTab("email")}>
+          <BlueCard icon="✉️" label="Email" accent={DEPT_ACCENT.email} badge={!email.campaigns_sent && !email.total_recipients} onClick={() => setActiveTab("email")}>
             <div style={{ display: "flex", flexWrap: "wrap" }}>
               <BM l="Campaigns"    v={email.campaigns_sent ? Number(email.campaigns_sent) : null} prior={ecmp.campaigns_sent} />
-              <BM l="Audience"     v={audienceSize}
-                change={audienceGrowth != null ? null : undefined}
-                prior={audienceSizePrev} />
-              <BM l="Site Visits"  v={seoEmailVisits} change={pct(seoEmailVisits, seoEmailVisitsPrev)} prior={seoEmailVisitsPrev} />
+              <BM l="Recipients"   v={email.total_recipients ? Number(email.total_recipients) : null} change={pct(email.total_recipients, ecmp.total_recipients)} prior={ecmp.total_recipients} />
+              <BM l="Open Rate"    v={email.avg_open_rate != null ? `${email.avg_open_rate}%` : null} change={pct(email.avg_open_rate, ecmp.avg_open_rate)} prior={ecmp.avg_open_rate != null ? `${ecmp.avg_open_rate}%` : null} />
+              <BM l="Click Rate"   v={email.avg_click_rate != null ? `${email.avg_click_rate}%` : null} change={pct(email.avg_click_rate, ecmp.avg_click_rate)} prior={ecmp.avg_click_rate != null ? `${ecmp.avg_click_rate}%` : null} />
             </div>
           </BlueCard>
         )}
@@ -1472,10 +1467,10 @@ function SocialPage({ d, cd, trend }) {
 }
 
 /* ─── EMAIL PAGE ─── */
-function EmailPage({ d, cd, seoData, seoDataCmp }) {
+function EmailPage({ d, cd, seoData, seoDataCmp, trend }) {
   if (!d) return <NoData label="Email data" />;
 
-  // Audience size growth
+  // Audience / list health
   const audienceSize     = d.audience_size     != null ? Number(d.audience_size)     : null;
   const audienceSizePrev = cd.audience_size    != null ? Number(cd.audience_size)    : null;
   const audienceGrowth   = audienceSize && audienceSizePrev ? audienceSize - audienceSizePrev : null;
@@ -1484,24 +1479,95 @@ function EmailPage({ d, cd, seoData, seoDataCmp }) {
   const siteVisits     = seoData?.site_visits_from_email     != null ? Number(seoData.site_visits_from_email)     : null;
   const siteVisitsPrev = seoDataCmp?.site_visits_from_email  != null ? Number(seoDataCmp.site_visits_from_email)  : null;
 
+  // Conversions
+  const conversions     = d.conversions_from_email  != null ? Number(d.conversions_from_email)  : null;
+  const conversionsPrev = cd.conversions_from_email != null ? Number(cd.conversions_from_email) : null;
+
   // Campaign list
   const campaignList = Array.isArray(d.campaign_list) ? d.campaign_list : [];
 
+  // Trend data for charts
+  const openRateTrend = (trend || []).filter(t => t.avg_open_rate != null).map(t => ({ label: t.label, rate: Number(t.avg_open_rate) || 0 }));
+  const visitsTrend   = (trend || []).filter(t => {
+    const seoT = t; // trend already has seo cross-data if available
+    return seoT.site_visits_from_email != null;
+  }).map(t => ({ label: t.label, visits: Number(t.site_visits_from_email) || 0 }));
+
   return (
     <div>
-      <HeroMetric icon="✉️" label="Campaigns Sent" value={fmt(d.campaigns_sent)}
-        sub={audienceSize != null ? `${audienceSize.toLocaleString()} subscribers` : null} />
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="Audience Size"  color={C.cyanD}
-          value={audienceSize != null ? audienceSize.toLocaleString() : "—"}
-          sub={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()} vs prior month` : null}
-          tip="Total active email subscribers as of end of month." />
-        <KpiCard label="Site Visits from Email" color={C.g}
-          value={siteVisits != null ? fmt(siteVisits) : "—"}
-          change={pct(siteVisits, siteVisitsPrev)}
-          tip="GA4 sessions from email campaigns via UTM links." />
-      </div>
+      {/* Hero */}
+      <HeroMetric icon="✉️" label="Campaigns Sent" value={fmt(d.campaigns_sent)} change={pct(d.campaigns_sent, cd.campaigns_sent)}
+        sub={d.total_recipients ? `${Number(d.total_recipients).toLocaleString()} total recipients` : null} />
 
+      {/* Campaign Activity */}
+      <SecWrap title="Campaign Activity">
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <KpiCard label="Campaigns Sent" value={fmt(d.campaigns_sent)} change={pct(d.campaigns_sent, cd.campaigns_sent)} />
+          <KpiCard label="Total Recipients" value={d.total_recipients ? fmt(d.total_recipients) : "—"} change={pct(d.total_recipients, cd.total_recipients)} tip="Total recipients across all campaigns." />
+          <KpiCard label="Avg Open Rate" value={d.avg_open_rate != null ? `${d.avg_open_rate}%` : "—"} color={C.g} change={pct(d.avg_open_rate, cd.avg_open_rate)} tip="Average open rate across campaigns." />
+          <KpiCard label="Avg Click Rate" value={d.avg_click_rate != null ? `${d.avg_click_rate}%` : "—"} color={C.g} change={pct(d.avg_click_rate, cd.avg_click_rate)} tip="Average click rate across campaigns." />
+        </div>
+      </SecWrap>
+
+      {/* Results */}
+      {(siteVisits != null || conversions != null) && (
+        <SecWrap title="Results">
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {siteVisits != null && <KpiCard label="Site Visits from Email" value={fmt(siteVisits)} color={C.g} change={pct(siteVisits, siteVisitsPrev)} tip="GA4 sessions from email campaigns." />}
+            {conversions != null && <KpiCard label="Conversions from Email" value={fmt(conversions)} color={C.cyanD} change={pct(conversions, conversionsPrev)} tip="Tracked conversions from email campaigns." />}
+          </div>
+        </SecWrap>
+      )}
+
+      {/* List Health */}
+      {audienceSize != null && (
+        <SecWrap title="List Health">
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <KpiCard label="Total List Size" value={audienceSize.toLocaleString()} color={C.cyanD}
+              sub={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()} this month` : null}
+              tip="Total active email subscribers as of end of month." />
+            {audienceGrowth != null && <KpiCard label="Monthly Growth" value={`${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()}`} color={audienceGrowth >= 0 ? C.g : C.r} />}
+          </div>
+        </SecWrap>
+      )}
+
+      {/* Trend Charts */}
+      {(openRateTrend.length > 1 || visitsTrend.length > 1) && (
+        <SecWrap title="Trend">
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "stretch" }}>
+            {openRateTrend.length > 1 && (
+              <Card style={{ flex: 1, minWidth: 300, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Open Rate Trend</div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart data={openRateTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: C.tl }} />
+                    <YAxis tick={{ fontSize: 11, fill: C.tl }} unit="%" />
+                    <Tooltip contentStyle={ttS} />
+                    <Line type="monotone" dataKey="rate" stroke={C.cyan} strokeWidth={2.5} dot={{ r: 3, fill: C.cyan, stroke: C.white, strokeWidth: 2 }} name="Open Rate %" connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+            {visitsTrend.length > 1 && (
+              <Card style={{ flex: 1, minWidth: 300, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.t, marginBottom: 8, fontFamily: F }}>Site Visits from Email</div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={visitsTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: C.tl }} />
+                    <YAxis tick={{ fontSize: 11, fill: C.tl }} allowDecimals={false} />
+                    <Tooltip contentStyle={ttS} />
+                    <Bar dataKey="visits" fill={C.g} radius={[3, 3, 0, 0]} name="Site Visits" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+          </div>
+        </SecWrap>
+      )}
+
+      {/* Campaigns table */}
       {campaignList.length > 0 && (
         <SecWrap title="Campaigns This Month">
           <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
@@ -1550,10 +1616,26 @@ function CreativePage({ d, trend }) {
   const totalFromParts = assetTypes.reduce((a, t) => a + (Number(d[t.key]) || 0), 0);
   const totalAssets    = Number(d.total_assets) || totalFromParts;
 
-  // Trend from last 12 months
+  // All asset type keys for stacked chart
+  const allAssetKeys = [
+    { key: "videos",        label: "Videos",        color: "#7C3AED" },
+    { key: "graphics",      label: "Graphics",      color: "#2563EB" },
+    { key: "banners",       label: "Banners",       color: "#0891B2" },
+    { key: "ad_creative",   label: "Ad Sets",       color: "#059669" },
+    { key: "email_headers", label: "Email",         color: "#D97706" },
+    { key: "print",         label: "Print",         color: "#6B7280" },
+  ];
+
+  // Trend from last 12 months — stacked by type
   const creativeTrend = trend
-    ? trend.filter(t => t.total_assets != null).map(t => ({ label: t.label, assets: Number(t.total_assets) || 0 }))
+    ? trend.filter(t => t.total_assets != null).map(t => {
+        const row = { label: t.label };
+        allAssetKeys.forEach(a => { row[a.key] = Number(t[a.key]) || 0; });
+        row.total = Number(t.total_assets) || 0;
+        return row;
+      })
     : [];
+  const hasStackedData = creativeTrend.some(t => allAssetKeys.some(a => t[a.key] > 0));
 
   return (
     <div>
@@ -1589,15 +1671,18 @@ function CreativePage({ d, trend }) {
       )}
 
       {creativeTrend.length > 1 && (
-        <SecWrap title="Assets Trend">
+        <SecWrap title="Monthly Assets Delivered">
           <Card style={{ marginBottom: 0 }}>
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={creativeTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.bl2} />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: C.tl }} />
                 <YAxis tick={{ fontSize: 10, fill: C.tl }} allowDecimals={false} />
                 <Tooltip contentStyle={ttS} />
-                <Bar dataKey="assets" fill={C.p} radius={[3, 3, 0, 0]} name="Assets" />
+                {hasStackedData
+                  ? allAssetKeys.map(a => <Bar key={a.key} dataKey={a.key} stackId="assets" fill={a.color} name={a.label} />)
+                  : <Bar dataKey="total" fill={C.p} radius={[3, 3, 0, 0]} name="Total Assets" />
+                }
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -1872,7 +1957,7 @@ export default function App() {
       case "google_ads": return svcEnabled("google_ads") ? <GoogleAdsPage d={reportData.google_ads} cd={cd.google_ads || {}} trend={trendData.google_ads || []} /> : <DisabledDept label="Google Ads" />;
       case "meta_ads":   return svcEnabled("meta_ads")   ? <MetaAdsPage   d={reportData.meta_ads}   cd={cd.meta_ads   || {}} trend={trendData.meta_ads   || []} /> : <DisabledDept label="Meta Ads" />;
       case "social":     return svcEnabled("social")     ? <SocialPage    d={reportData.social}     cd={cd.social     || {}} trend={trendData.social     || []} /> : <DisabledDept label="Organic Social" />;
-      case "email":      return svcEnabled("email")      ? <EmailPage     d={reportData.email}      cd={cd.email      || {}} seoData={reportData.seo || {}} seoDataCmp={cd.seo || {}} /> : <DisabledDept label="Email" />;
+      case "email":      return svcEnabled("email")      ? <EmailPage     d={reportData.email}      cd={cd.email      || {}} seoData={reportData.seo || {}} seoDataCmp={cd.seo || {}} trend={trendData.email || []} /> : <DisabledDept label="Email" />;
       case "creative":   return svcEnabled("creative")   ? <CreativePage  d={reportData.creative}   trend={trendData.creative || []} /> : <DisabledDept label="Creative" />;
       default:           return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} leadTrend={trendData.leads || []} setActiveTab={setActiveTab} isMobile={isMobile} />;
     }
