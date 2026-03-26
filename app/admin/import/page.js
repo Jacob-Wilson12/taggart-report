@@ -213,21 +213,18 @@ export default function ImportPage() {
         const seoRowsRaw = XLSX.utils.sheet_to_json(seoSheet, { header: 1, defval: null, raw: true });
         const socialRows = XLSX.utils.sheet_to_json(socialSheet, { header: 1, defval: null, raw: true });
 
-        // Use raw: true for numbers but raw: false for dates in col 1
-        // Merge: use raw values but replace col 1 with parsed date from non-raw read
         const mergedSeo = seoRowsRaw.map((row, i) => {
           const r = [...row];
-          r[1] = seoRows[i]?.[1]; // use date-parsed value for month col
+          r[1] = seoRows[i]?.[1];
           return r;
         });
 
         const seoRecords    = parseSheet(mergedSeo, SEO_COL_MAP);
         const socialRecords = parseSheet(socialRows, SOCIAL_COL_MAP);
-        const allRecords    = [...seoRecords, ...socialRecords];
-        const grouped       = groupRecords(allRecords);
+        const grouped       = groupRecords([...seoRecords, ...socialRecords]);
+        const clientNames   = Object.keys(grouped);
 
-        // Build stats
-        const clientNames = Object.keys(grouped);
+        // Build basic stats (before compare)
         let totalCells = 0, totalBlanks = 0, totalRows = 0;
         const byClient = {};
         clientNames.forEach(cn => {
@@ -235,19 +232,71 @@ export default function ImportPage() {
           let cells = 0, blanks = 0;
           months.forEach(m => {
             Object.values(grouped[cn][m]).forEach(deptData => {
-              Object.values(deptData).forEach(v => {
-                if (v !== null) cells++; else blanks++;
-              });
+              Object.values(deptData).forEach(v => { if (v !== null) cells++; else blanks++; });
             });
           });
-          totalCells += cells;
-          totalBlanks += blanks;
-          totalRows += months.length;
-          byClient[cn] = { months: months.length, cells, blanks };
+          totalCells += cells; totalBlanks += blanks; totalRows += months.length;
+          byClient[cn] = { months: months.length, cells, blanks, new: 0, changed: 0, same: 0 };
         });
 
-        setPreview({ grouped, byClient, totalCells, totalBlanks, totalRows, clientNames });
+        setPreview({ grouped, byClient, totalCells, totalBlanks, totalRows, clientNames, comparing: true });
         setStep("preview");
+
+        // Fetch current Supabase data for comparison
+        (async () => {
+          try {
+            const { data: clientRows } = await supabase.from("clients").select("id,name").eq("active", true);
+            const clientIdMap = {};
+            (clientRows || []).forEach(c => { clientIdMap[c.name] = c.id; });
+
+            // Collect all month strings across all clients
+            const allMonths = [...new Set(clientNames.flatMap(cn => Object.keys(grouped[cn])))];
+            const allClientIds = clientNames.map(cn => clientIdMap[cn]).filter(Boolean);
+
+            const { data: existingRows } = await supabase
+              .from("report_data")
+              .select("client_id,month,department,data")
+              .in("client_id", allClientIds)
+              .in("month", allMonths);
+
+            // Build lookup: clientId -> month -> dept -> data
+            const existing = {};
+            (existingRows || []).forEach(r => {
+              const cid = r.client_id;
+              const m = r.month.substring(0, 10);
+              if (!existing[cid]) existing[cid] = {};
+              if (!existing[cid][m]) existing[cid][m] = {};
+              existing[cid][m][r.department] = r.data || {};
+            });
+
+            // Compute diff per client
+            const updatedByClient = { ...byClient };
+            clientNames.forEach(cn => {
+              const clientId = clientIdMap[cn];
+              let newCount = 0, changedCount = 0, sameCount = 0;
+              Object.entries(grouped[cn]).forEach(([month, depts]) => {
+                Object.entries(depts).forEach(([dept, fields]) => {
+                  const cur = existing[clientId]?.[month]?.[dept] || {};
+                  const manualOverrides = new Set(cur._manual_overrides || []);
+                  Object.entries(fields).forEach(([key, val]) => {
+                    if (val === null) return; // blank cell, skip for diff
+                    if (manualOverrides.has(key)) return; // locked, won't change
+                    const curVal = cur[key];
+                    if (curVal == null || curVal === "") newCount++;
+                    else if (String(curVal) !== String(val)) changedCount++;
+                    else sameCount++;
+                  });
+                });
+              });
+              updatedByClient[cn] = { ...updatedByClient[cn], new: newCount, changed: changedCount, same: sameCount };
+            });
+
+            setPreview(prev => ({ ...prev, byClient: updatedByClient, comparing: false }));
+          } catch {
+            setPreview(prev => ({ ...prev, comparing: false }));
+          }
+        })();
+
       } catch (err) {
         setParseError(err.message);
       }
@@ -436,31 +485,52 @@ export default function ImportPage() {
 
             {/* Per-client breakdown */}
             <div style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, overflow: "hidden", marginBottom: 24 }}>
-              <div style={{ padding: "12px 18px", borderBottom: `1px solid ${C.bd}`, fontSize: 12, fontWeight: 700, color: C.t, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Data to import
+              <div style={{ padding: "12px 18px", borderBottom: `1px solid ${C.bd}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.t, textTransform: "uppercase", letterSpacing: "0.05em" }}>Data to import</span>
+                {preview.comparing && (
+                  <span style={{ fontSize: 12, color: C.cyanD, fontFamily: F }}>Comparing with current data...</span>
+                )}
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F, fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#f8fafc" }}>
-                    {["Client", "Months", "Values", "Blanks (skipped)", "Status"].map(h => (
-                      <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: `1px solid ${C.bd}` }}>{h}</th>
+                    {["Client", "Months", "New Fields", "Changed (differs from API)", "Same", "Blanks", "Status"].map(h => (
+                      <th key={h} style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: `1px solid ${C.bd}`, whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.clientNames.map(cn => (
-                    <tr key={cn} style={{ borderBottom: `1px solid ${C.bl2}` }}>
-                      <td style={{ padding: "10px 16px", fontWeight: 600, color: C.t }}>{cn}</td>
-                      <td style={{ padding: "10px 16px", color: C.t }}>{preview.byClient[cn].months}</td>
-                      <td style={{ padding: "10px 16px", color: C.g, fontWeight: 600 }}>{preview.byClient[cn].cells.toLocaleString()}</td>
-                      <td style={{ padding: "10px 16px", color: C.o, fontWeight: 600 }}>{preview.byClient[cn].blanks.toLocaleString()}</td>
-                      <td style={{ padding: "10px 16px" }}>
-                        <span style={{ background: C.gL, color: "#166534", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Ready</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {preview.clientNames.map(cn => {
+                    const r = preview.byClient[cn];
+                    return (
+                      <tr key={cn} style={{ borderBottom: `1px solid ${C.bl2}` }}>
+                        <td style={{ padding: "10px 14px", fontWeight: 600, color: C.t }}>{cn}</td>
+                        <td style={{ padding: "10px 14px", color: C.t }}>{r.months}</td>
+                        <td style={{ padding: "10px 14px", color: C.g, fontWeight: 600 }}>
+                          {preview.comparing ? "..." : r.new.toLocaleString()}
+                        </td>
+                        <td style={{ padding: "10px 14px", fontWeight: r.changed > 0 ? 700 : 400,
+                          color: r.changed > 0 ? C.o : C.tl }}>
+                          {preview.comparing ? "..." : r.changed > 0 ? `${r.changed.toLocaleString()} will update` : "-"}
+                        </td>
+                        <td style={{ padding: "10px 14px", color: C.tl }}>
+                          {preview.comparing ? "..." : r.same.toLocaleString()}
+                        </td>
+                        <td style={{ padding: "10px 14px", color: C.tl }}>{r.blanks.toLocaleString()}</td>
+                        <td style={{ padding: "10px 14px" }}>
+                          <span style={{ background: C.gL, color: "#166534", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>Ready</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
+              <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.bl2}`, fontSize: 11, color: C.tl, fontFamily: F }}>
+                <strong>New</strong> = filling empty field &nbsp;|&nbsp;
+                <strong style={{ color: C.o }}>Changed</strong> = spreadsheet differs from current API/imported value (spreadsheet wins) &nbsp;|&nbsp;
+                <strong>Same</strong> = values match, no change &nbsp;|&nbsp;
+                <strong>Blanks</strong> = empty in spreadsheet (skipped, except Social dept)
+              </div>
             </div>
 
             <div style={{ background: C.oL, border: `1px solid ${C.o}44`, borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#92400e" }}>
