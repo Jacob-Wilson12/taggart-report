@@ -45,7 +45,6 @@ const BENCHMARKS = {
     { key: "cost_per_lead",    label: "Cost Per Lead",          range: [25, 40],   unit: "$",  lowerBetter: true,  note: "Industry avg $25-40" },
     { key: "engagement_rate",  label: "Engagement Rate",        range: [2, 4],     unit: "%",  lowerBetter: false, note: "Above 4% is excellent" },
     { key: "frequency",        label: "Ad Frequency",           range: [1.5, 3.0], unit: "",   lowerBetter: false, note: "Watch for fatigue above 3.5" },
-    { key: "video_view_rate",  label: "Video View Rate",        range: [25, 35],   unit: "%",  lowerBetter: false, note: "Completion rate for video ads" },
   ],
   gbp: [
     { key: "avg_rating",       label: "Average Rating",         range: [4.2, 4.5], unit: "★",  lowerBetter: false, note: "Above 4.5 is excellent" },
@@ -55,17 +54,14 @@ const BENCHMARKS = {
     { key: "posts_published",  label: "Posts / mo",             range: [4, 8],     unit: "",   lowerBetter: false, note: "Consistent posting schedule" },
   ],
   social: [
-    { key: "fb_visits",         label: "FB Monthly Visits",       range: [5000, 20000], unit: "", lowerBetter: false, note: "Varies by audience size" },
+    { key: "fb_visits",        label: "FB Monthly Visits",      range: [5000, 20000], unit: "", lowerBetter: false, note: "Varies by audience size" },
     { key: "ig_reach",         label: "IG Monthly Reach",       range: [3000, 15000], unit: "", lowerBetter: false, note: "Organic IG reach" },
-    { key: "posts_published",  label: "Posts / mo (total)",     range: [15, 25],   unit: "",   lowerBetter: false, note: "Across all platforms" },
+    { key: "total_published",  label: "Posts / mo (total)",     range: [15, 25],   unit: "",   lowerBetter: false, note: "Across all platforms" },
     { key: "web_clicks",       label: "Social -> Web Clicks",   range: [100, 250], unit: "",   lowerBetter: false, note: "From GA4 Social channel" },
   ],
   email: [
-    { key: "avg_open_rate",    label: "Open Rate",              range: [20, 25],   unit: "%",  lowerBetter: false, note: "Automotive avg 20-25%" },
-    { key: "avg_click_rate",   label: "Click Rate",             range: [2, 4],     unit: "%",  lowerBetter: false, note: "Strong CTA performance" },
-    { key: "unsubscribe_rate", label: "Unsubscribe Rate",       range: [0.2, 0.5], unit: "%",  lowerBetter: true,  note: "Healthy list retention" },
     { key: "campaigns_sent",   label: "Campaigns / mo",         range: [2, 4],     unit: "",   lowerBetter: false, note: "Right frequency for auto" },
-    { key: "list_size",        label: "List Size",              range: [2000, 5000],unit: "",  lowerBetter: false, note: "Single-point dealer avg" },
+    { key: "audience_size",    label: "Audience Size",          range: [2000, 5000],unit: "",  lowerBetter: false, note: "Single-point dealer avg" },
   ],
 };
 
@@ -135,6 +131,8 @@ const DEPT_FIELDS = {
     { key: "direct_sessions",       label: "Direct Sessions",             type: "number",   manual: true, hint: "From GA4 - Direct channel" },
     { key: "paid_sessions",         label: "Paid Sessions",               type: "number",   manual: true, hint: "From GA4 - Paid channel" },
     { key: "social_sessions",       label: "Social Sessions",             type: "number",   manual: true, hint: "From GA4 - Social channel" },
+    // ── NEW: Site Visits from Email — entered by SEO person from GA4 ──
+    { key: "site_visits_from_email",label: "Site Visits from Email",      type: "number",   manual: true, hint: "GA4 → Acquisition → Traffic → Email channel sessions" },
     { key: "vdp_views",             label: "VDP Views",                   type: "number",   api: true },
     { key: "direction_requests",    label: "Direction Requests",          type: "number",   manual: true },
     { key: "chat_conversations",    label: "Chat Conversations",          type: "number",   manual: true },
@@ -145,7 +143,8 @@ const DEPT_FIELDS = {
     { key: "bounce_rate",           label: "Bounce Rate (%)",             type: "decimal",  api: true,    hint: "From GA4" },
     { key: "avg_session_duration",  label: "Avg Session Duration (sec)",  type: "number",   api: true,    hint: "From GA4, in seconds" },
     { key: "organic_traffic_pct",   label: "Organic % of Traffic",        type: "decimal",  api: true,    hint: "From GA4 channel breakdown" },
-    { key: "top_query",             label: "Top Performing Query",        type: "text",     api: true },
+    { key: "top_queries",           label: "Top Queries (up to 10)",      type: "top_queries", manual: true, optional: true },
+    { key: "top_query",             label: "Top Performing Query (legacy)",type: "text",     api: true,    optional: true },
     { key: "tracked_keywords",      label: "Tracked Keywords",            type: "keywords", manual: true, optional: true, hint: "Enter keywords + target positions" },
     { key: "page_links",            label: "Page Links (SEO)",            type: "links",    manual: true },
     { key: "work_completed",        label: "Work Completed",              type: "textarea", manual: true },
@@ -187,11 +186,13 @@ const DEPT_FIELDS = {
     { key: "losses",           label: "Losses / Watch Items",     type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
+  // ── META ADS: added monthly_budget field ──
   meta_ads: [
     { key: "conversions",          label: "Total Conversions",        type: "number" },
     { key: "impressions",          label: "Impressions",              type: "number" },
     { key: "cost_per_lead",        label: "Cost Per Lead ($)",        type: "decimal" },
     { key: "total_spend",          label: "Total Spend ($)",          type: "decimal" },
+    { key: "monthly_budget",       label: "Monthly Budget ($)",       type: "decimal", hint: "Used for budget pacing bar" },
     { key: "reach",                label: "Reach",                    type: "number" },
     { key: "cpc",                  label: "Avg CPC ($)",              type: "decimal" },
     { key: "ctr",                  label: "CTR (%)",                  type: "decimal" },
@@ -205,50 +206,49 @@ const DEPT_FIELDS = {
     { key: "losses",               label: "Losses / Watch Items",     type: "textarea", optional: true, hint: "One per line" },
     { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
+  // ── SOCIAL: removed old published fields, added per-channel published fields + simplified followers ──
   social: [
-    { key: "fb_followers",      label: "FB Followers",            type: "number",   api: true },
-    { key: "fb_visits",          label: "FB Visits",                type: "number",   api: true },
-    { key: "fb_engagement",     label: "FB Engagement",           type: "number",   api: true },
-    { key: "fb_new_followers",  label: "FB New Followers",        type: "number",   api: true },
-    { key: "fb_page_views",     label: "FB Page Views",           type: "number",   api: true },
-    { key: "ig_followers",      label: "IG Followers",            type: "number",   api: true },
-    { key: "ig_reach",          label: "IG Reach",                type: "number",   api: true },
-    { key: "ig_impressions",    label: "IG Impressions",          type: "number",   api: true },
-    { key: "ig_profile_views",  label: "IG Profile Views",        type: "number",   api: true },
-    { key: "ig_new_followers",  label: "IG New Followers",        type: "number",   api: true },
-    { key: "yt_followers",      label: "YT Subscribers",          type: "number",   api: true },
-    { key: "yt_month_views",    label: "YT Views (Month)",        type: "number",   api: true },
-    { key: "yt_month_videos",   label: "YT Videos Published",     type: "number",   api: true },
-    { key: "yt_month_likes",    label: "YT Likes (Month)",        type: "number",   api: true },
-    { key: "yt_month_comments", label: "YT Comments (Month)",     type: "number",   api: true },
-    { key: "yt_total_views",    label: "YT Total Views",          type: "number",   api: true },
-    { key: "tiktok_followers",  label: "TikTok Followers",        type: "number",   manual: true },
-    { key: "tiktok_profile_views",      label: "TikTok Profile Views",            type: "number",   manual: true },
-    { key: "tiktok_views",      label: "TikTok Video Views",      type: "number",   manual: true },
-    { key: "tiktok_likes",      label: "TikTok Likes",            type: "number",   manual: true },
-    { key: "posts_published",   label: "Posts Published",         type: "number",   manual: true },
-    { key: "videos_published",  label: "Videos Published",        type: "number",   api: true },
-    { key: "web_clicks",        label: "Social -> Website Clicks",type: "number",   api: true },
-    { key: "top_video",         label: "Top Performing Video",    type: "text",     manual: true },
-    { key: "top_video_views",   label: "Top Video Views (Month)", type: "number",   api: true },
-    { key: "work_completed",    label: "Work Completed",          type: "textarea", manual: true },
+    { key: "fb_followers",         label: "FB Followers",             type: "number",   api: true,    hint: "Enter total as of end of month — growth auto-calculated" },
+    { key: "fb_visits",            label: "FB Visits",                type: "number",   api: true },
+    { key: "fb_engagement",        label: "FB Engagement",            type: "number",   api: true },
+    { key: "fb_page_views",        label: "FB Page Views",            type: "number",   api: true },
+    { key: "ig_followers",         label: "IG Followers",             type: "number",   api: true,    hint: "Enter total as of end of month — growth auto-calculated" },
+    { key: "ig_reach",             label: "IG Reach",                 type: "number",   api: true },
+    { key: "ig_impressions",       label: "IG Impressions",           type: "number",   api: true },
+    { key: "ig_profile_views",     label: "IG Profile Views",         type: "number",   api: true },
+    { key: "yt_followers",         label: "YT Subscribers",           type: "number",   api: true,    hint: "Enter total as of end of month — growth auto-calculated" },
+    { key: "yt_month_views",       label: "YT Views (Month)",         type: "number",   api: true },
+    { key: "yt_month_likes",       label: "YT Likes (Month)",         type: "number",   api: true },
+    { key: "yt_month_comments",    label: "YT Comments (Month)",      type: "number",   api: true },
+    { key: "yt_total_views",       label: "YT Total Views",           type: "number",   api: true },
+    { key: "tiktok_followers",     label: "TikTok Followers",         type: "number",   manual: true, hint: "Enter total as of end of month — growth auto-calculated" },
+    { key: "tiktok_profile_views", label: "TikTok Profile Views",     type: "number",   manual: true },
+    { key: "tiktok_views",         label: "TikTok Video Views",       type: "number",   manual: true },
+    { key: "tiktok_likes",         label: "TikTok Likes",             type: "number",   manual: true },
+    // ── NEW per-channel published fields (replaces posts_published + videos_published + yt_month_videos) ──
+    { key: "fb_published",         label: "FB Published",             type: "number",   manual: true, hint: "Posts/videos published to Facebook this month" },
+    { key: "ig_published",         label: "IG Published",             type: "number",   manual: true, hint: "Posts/videos published to Instagram this month" },
+    { key: "yt_long_form_published",label: "YT Long Form Published",  type: "number",   manual: true, hint: "Standard YouTube videos (not Shorts)" },
+    { key: "yt_shorts_published",  label: "YT Shorts Published",      type: "number",   manual: true, hint: "YouTube Shorts specifically" },
+    { key: "tiktok_published",     label: "TikTok Published",         type: "number",   manual: true, hint: "TikTok videos published this month" },
+    { key: "top_video",            label: "Top Performing Video",     type: "text",     manual: true },
+    { key: "top_video_views",      label: "Top Video Views (Month)",  type: "number",   api: true },
+    { key: "work_completed",       label: "Work Completed",           type: "textarea", manual: true },
+    { key: "wins",                 label: "Wins",                     type: "textarea", optional: true, hint: "One per line" },
+    { key: "losses",               label: "Losses / Watch Items",     type: "textarea", optional: true, hint: "One per line" },
+    { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+  ],
+  // ── EMAIL: simplified to CRM-available fields + campaign list + audience_size ──
+  email: [
+    { key: "campaigns_sent",    label: "Campaigns Sent",          type: "number" },
+    { key: "audience_size",     label: "Audience Size",           type: "number",   hint: "Enter total as of end of month — growth auto-calculated" },
+    // ── NOTE: Site Visits from Email is entered on the SEO form by David (GA4 Email channel) ──
+    // ── Campaign list: repeatable rows of name + date ──
+    { key: "campaign_list",     label: "Campaigns This Month",    type: "campaign_list" },
+    { key: "work_completed",    label: "Work Completed",          type: "textarea" },
     { key: "wins",              label: "Wins",                    type: "textarea", optional: true, hint: "One per line" },
     { key: "losses",            label: "Losses / Watch Items",    type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",        label: "What's Coming Next Month",type: "textarea", hint: "One per line" },
-  ],
-  email: [
-    { key: "campaigns_sent",   label: "Campaigns Sent",          type: "number" },
-    { key: "total_recipients", label: "Total Recipients",        type: "number" },
-    { key: "avg_open_rate",    label: "Avg Open Rate (%)",       type: "decimal" },
-    { key: "avg_click_rate",   label: "Avg Click Rate (%)",      type: "decimal" },
-    { key: "site_visits",      label: "Site Visits from Email",  type: "number" },
-    { key: "conversions",      label: "Conversions from Email",  type: "number" },
-    { key: "unsubscribe_rate", label: "Unsubscribe Rate (%)",    type: "decimal" },
-    { key: "list_size",        label: "Total List Size",         type: "number" },
-    { key: "work_completed",   label: "Work Completed",          type: "textarea" },
-    { key: "wins",             label: "Wins",                    type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",           label: "Losses / Watch Items",    type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "next_month",        label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
   ],
   creative: [
     { key: "total_assets",    label: "Total Assets Delivered",    type: "number" },
@@ -322,8 +322,6 @@ const GBP_LISTING_SUM_FIELDS = [
 ];
 
 // ── CallRail -> GBP phone_calls cascade helper ───────────────────────────────
-// For Goode Motor Ford: writes to gbp_ford_phone_calls and recomputes top-level sum
-// For all other clients: writes directly to phone_calls
 async function cascadeCallRailToGbp(supabaseClient, clientId, clientName, month, gbpCalls, userId) {
   const { data: existingGbp } = await supabaseClient.from("report_data").select("data")
     .eq("client_id", clientId).eq("month", month).eq("department", "gbp").single();
@@ -334,7 +332,6 @@ async function cascadeCallRailToGbp(supabaseClient, clientId, clientName, month,
   let updatedGbp = { ...gbpData, _callrail_synced_at: new Date().toISOString() };
 
   if (clientName === "Goode Motor Ford") {
-    // Write to ford listing field, recompute combined total
     if (!gbpOverrides.has("gbp_ford_phone_calls")) {
       updatedGbp.gbp_ford_phone_calls = gbpCalls;
       const overland = Number(updatedGbp.gbp_overland_phone_calls) || 0;
@@ -457,6 +454,139 @@ function LinksField({ value, onChange, disabled }) {
           <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." style={{ flex: 2, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} onKeyDown={e => e.key === "Enter" && addLink()} />
           <button onClick={addLink} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 6, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Add</button>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── CAMPAIGN LIST FIELD (new for Email) ─── */
+function CampaignListField({ value, onChange, disabled }) {
+  const campaigns = Array.isArray(value) ? value : [];
+  const [newName, setNewName] = useState("");
+  const [newDate, setNewDate] = useState("");
+
+  const addCampaign = () => {
+    if (!newName.trim()) return;
+    onChange([...campaigns, { name: newName.trim(), date_sent: newDate || "" }]);
+    setNewName(""); setNewDate("");
+  };
+  const removeCampaign = (i) => onChange(campaigns.filter((_, idx) => idx !== i));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {campaigns.length > 0 && (
+        <div style={{ border: `1px solid ${C.bd}`, borderRadius: 8, overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 36px", padding: "6px 10px", background: "#f8fafc", borderBottom: `1px solid ${C.bd}` }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F }}>Campaign</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F }}>Date Sent</span>
+            <span />
+          </div>
+          {campaigns.map((c, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 140px 36px", padding: "8px 10px", borderBottom: i < campaigns.length - 1 ? `1px solid ${C.bl2}` : "none", background: i % 2 === 0 ? C.white : "#fafafa", alignItems: "center" }}>
+              <span style={{ fontSize: 13, color: C.t, fontFamily: F, fontWeight: 500 }}>{c.name}</span>
+              <span style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{c.date_sent || "—"}</span>
+              {!disabled && (
+                <button onClick={() => removeCampaign(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 14, padding: 0, textAlign: "center" }}>x</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {!disabled && (
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addCampaign()}
+            placeholder='Campaign name (e.g. "Presidents Day Sale")'
+            style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }}
+          />
+          <input
+            type="date"
+            value={newDate}
+            onChange={e => setNewDate(e.target.value)}
+            style={{ width: 140, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }}
+          />
+          <button onClick={addCampaign} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>Add</button>
+        </div>
+      )}
+      {campaigns.length === 0 && disabled && (
+        <div style={{ fontSize: 12, color: C.tl, fontFamily: F, fontStyle: "italic" }}>No campaigns entered for this period</div>
+      )}
+    </div>
+  );
+}
+
+/* ─── TOP QUERIES FIELD (new for SEO — replaces single top_query for client view) ─── */
+function TopQueriesField({ value, onChange, disabled }) {
+  const queries = Array.isArray(value) ? value : [];
+  const [newQuery, setNewQuery] = useState("");
+  const [newClicks, setNewClicks] = useState("");
+  const [newImpressions, setNewImpressions] = useState("");
+  const [newPosition, setNewPosition] = useState("");
+
+  const addQuery = () => {
+    if (!newQuery.trim()) return;
+    onChange([...queries, {
+      query: newQuery.trim(),
+      clicks: newClicks ? Number(newClicks) : null,
+      impressions: newImpressions ? Number(newImpressions) : null,
+      position: newPosition ? Number(newPosition) : null,
+    }]);
+    setNewQuery(""); setNewClicks(""); setNewImpressions(""); setNewPosition("");
+  };
+  const removeQuery = (i) => onChange(queries.filter((_, idx) => idx !== i));
+
+  const MAX_QUERIES = 10;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>
+        Enter up to {MAX_QUERIES} top organic queries from Search Console. Clicks and Position required; Impressions optional.
+      </div>
+      {queries.length > 0 && (
+        <div style={{ border: `1px solid ${C.bd}`, borderRadius: 8, overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 90px 80px 36px", padding: "6px 10px", background: "#f8fafc", borderBottom: `1px solid ${C.bd}` }}>
+            {["Query", "Clicks", "Impressions", "Position", ""].map(h => (
+              <span key={h} style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F }}>{h}</span>
+            ))}
+          </div>
+          {queries.map((q, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 70px 90px 80px 36px", padding: "7px 10px", borderBottom: i < queries.length - 1 ? `1px solid ${C.bl2}` : "none", background: i % 2 === 0 ? C.white : "#fafafa", alignItems: "center" }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: C.t, fontFamily: F }}>{q.query}</span>
+              <span style={{ fontSize: 12, color: C.t, fontFamily: F }}>{q.clicks?.toLocaleString() ?? "—"}</span>
+              <span style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{q.impressions?.toLocaleString() ?? "—"}</span>
+              <span style={{ fontSize: 12, color: C.t, fontFamily: F }}>
+                {q.position != null ? (
+                  <span style={{
+                    background: q.position <= 3 ? "#ecfdf5" : q.position <= 10 ? "#e6f9fc" : "#f0f2f5",
+                    color: q.position <= 3 ? "#059669" : q.position <= 10 ? C.cyanD : C.tl,
+                    padding: "1px 6px", borderRadius: 4, fontSize: 11, fontWeight: 700,
+                  }}>{q.position.toFixed(1)}</span>
+                ) : "—"}
+              </span>
+              {!disabled && (
+                <button onClick={() => removeQuery(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 14, padding: 0 }}>x</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {!disabled && queries.length < MAX_QUERIES && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px 90px auto", gap: 6, alignItems: "center" }}>
+          <input value={newQuery} onChange={e => setNewQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && addQuery()} placeholder="e.g. ford dealer twin falls"
+            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          <input type="number" value={newClicks} onChange={e => setNewClicks(e.target.value)} placeholder="Clicks"
+            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          <input type="number" value={newImpressions} onChange={e => setNewImpressions(e.target.value)} placeholder="Impressions (opt)"
+            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          <input type="number" step="0.1" value={newPosition} onChange={e => setNewPosition(e.target.value)} placeholder="Position"
+            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          <button onClick={addQuery} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>Add</button>
+        </div>
+      )}
+      {queries.length >= MAX_QUERIES && !disabled && (
+        <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>Maximum of {MAX_QUERIES} queries reached.</div>
       )}
     </div>
   );
@@ -861,10 +991,61 @@ function TrafficChannelPreview({ data }) {
   );
 }
 
+/* ─── PUBLISHED BREAKDOWN PREVIEW (Social admin) ─── */
+function PublishedBreakdownPreview({ data }) {
+  const fb     = Number(data.fb_published)          || 0;
+  const ig     = Number(data.ig_published)          || 0;
+  const ytLong = Number(data.yt_long_form_published) || 0;
+  const ytShort= Number(data.yt_shorts_published)   || 0;
+  const tt     = Number(data.tiktok_published)       || 0;
+  const total  = fb + ig + ytLong + ytShort + tt;
+  if (total === 0) return null;
+
+  const PLATFORM_COLORS = {
+    fb: "#1877F2", ig: "#E1306C", ytLong: "#FF0000", ytShort: "#FF6B6B", tt: "#69C9D0",
+  };
+  const segments = [
+    { key: "fb",     label: "Facebook",     value: fb,      color: PLATFORM_COLORS.fb },
+    { key: "ig",     label: "Instagram",    value: ig,      color: PLATFORM_COLORS.ig },
+    { key: "ytLong", label: "YT Long Form", value: ytLong,  color: PLATFORM_COLORS.ytLong },
+    { key: "ytShort",label: "YT Shorts",    value: ytShort, color: PLATFORM_COLORS.ytShort },
+    { key: "tt",     label: "TikTok",       value: tt,      color: PLATFORM_COLORS.tt },
+  ].filter(s => s.value > 0);
+
+  return (
+    <div style={{ gridColumn: "1 / -1", background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 18px", marginTop: 4 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>
+        Published Breakdown - Total: {total} pieces
+      </div>
+      <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", height: 8, marginBottom: 10, gap: 2 }}>
+        {segments.map(s => (
+          <div key={s.key} style={{ width: `${Math.round((s.value / total) * 100)}%`, background: s.color, borderRadius: 3 }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+        {segments.map(s => (
+          <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: C.tl }}>{s.label}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.t }}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+      {(ytLong > 0 || ytShort > 0) && (
+        <div style={{ marginTop: 8, fontSize: 11, color: C.tl, fontFamily: F }}>
+          YouTube total: <strong style={{ color: C.t }}>{ytLong + ytShort}</strong> ({ytLong} long form + {ytShort} shorts)
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── FIELD INPUT ─── */
 const FieldInput = ({ field, value, onChange, disabled, scData }) => {
-  if (field.type === "links")    return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
-  if (field.type === "keywords") return <TrackedKeywordsField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} scData={scData} />;
+  if (field.type === "links")         return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
+  if (field.type === "keywords")      return <TrackedKeywordsField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} scData={scData} />;
+  if (field.type === "campaign_list") return <CampaignListField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
+  if (field.type === "top_queries")   return <TopQueriesField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
   const base = { width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box", background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t, cursor: disabled ? "not-allowed" : "text" };
   if (field.type === "textarea") return (
     <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`} style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
@@ -878,7 +1059,6 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  // ── NEW: listing tab state ──
   const [listingTab, setListingTab] = useState("ford");
 
   const isGoode        = dept.id === "leads" && clientName === GOODE_MOTOR_GROUP;
@@ -886,7 +1066,6 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   const isJuneau       = !!oemLabel;
   const isJuneauSource = isJuneau && clientName === JUNEAU_LEAD_SOURCE;
   const isJuneauChild  = isJuneau && !isJuneauSource;
-  // ── NEW: multi-listing GBP detection ──
   const isMultiGBP      = dept.id === "gbp" && !!GBP_MULTI_LISTINGS[clientName];
   const multiGBPListings= isMultiGBP ? GBP_MULTI_LISTINGS[clientName] : null;
 
@@ -938,13 +1117,27 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     manualFields.forEach(f => {
       const v = data[f.key];
       let hasVal = false;
-      if (f.type === "keywords" || f.type === "links") hasVal = Array.isArray(v) && v.length > 0;
+      if (f.type === "keywords" || f.type === "links" || f.type === "campaign_list" || f.type === "top_queries") hasVal = Array.isArray(v) && v.length > 0;
       else hasVal = v !== undefined && v !== null && String(v).trim() !== "";
       if (hasVal) existingOverrides.add(f.key);
       else existingOverrides.delete(f.key);
     });
 
     const savePayload = { ...data, _manual_overrides: Array.from(existingOverrides) };
+
+    // ── Auto-compute total_published for Social from per-channel fields ──
+    if (dept.id === "social") {
+      const totalPublished = (Number(savePayload.fb_published) || 0)
+        + (Number(savePayload.ig_published) || 0)
+        + (Number(savePayload.yt_long_form_published) || 0)
+        + (Number(savePayload.yt_shorts_published) || 0)
+        + (Number(savePayload.tiktok_published) || 0);
+      if (totalPublished > 0) {
+        savePayload.total_published = totalPublished;
+        // Also set yt_month_videos for backward compat
+        savePayload.yt_month_videos = (Number(savePayload.yt_long_form_published) || 0) + (Number(savePayload.yt_shorts_published) || 0);
+      }
+    }
 
     // ── Auto-compute GBP combined totals from per-listing fields ──
     if (isMultiGBP && multiGBPListings) {
@@ -964,7 +1157,6 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
 
     setData(savePayload);
 
-    // ── Cascade CallRail gbp_calls -> GBP phone_calls ──
     if (dept.id === "callrail") {
       const gbpCalls = savePayload.gbp_calls ?? null;
       await cascadeCallRailToGbp(supabase, clientId, clientName, month, gbpCalls, user.id);
@@ -988,17 +1180,20 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     if (onSaved) onSaved(dept.id);
   };
 
-  const FULL_WIDTH_TYPES = new Set(["textarea","links","keywords"]);
+  const FULL_WIDTH_TYPES = new Set(["textarea","links","keywords","campaign_list","top_queries"]);
   const SECTION_STARTS = {
     work_completed:   { label: "Work Summary",             icon: "📋" },
     wins:             { label: "Highlights & Watch Items", icon: "✨" },
     tracked_keywords: { label: "Keyword Tracking",         icon: "🔑" },
+    top_queries:      { label: "Top Queries (client view)",icon: "🔍" },
     page_links:       { label: "Page Links",               icon: "🔗" },
+    campaign_list:    { label: "Campaign Log",             icon: "📧" },
+    fb_published:     { label: "Published by Channel",     icon: "📱" },
   };
 
   const hasFieldContent = (field) => {
     const v = data[field.key];
-    if (field.type === "keywords" || field.type === "links") return Array.isArray(v) && v.length > 0;
+    if (field.type === "keywords" || field.type === "links" || field.type === "campaign_list" || field.type === "top_queries") return Array.isArray(v) && v.length > 0;
     if (field.type === "textarea") return typeof v === "string" && v.trim().length > 0;
     return v !== null && v !== undefined && String(v).trim() !== "";
   };
@@ -1033,6 +1228,16 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       {dept.id === "gbp" && data._callrail_synced_at && !manualOverrides.has("phone_calls") && (
         <div style={{ background: "#e6f9fc", border: "1px solid #a5f3fc", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
           Phone Calls synced from CallRail - {new Date(data._callrail_synced_at).toLocaleDateString()}
+        </div>
+      )}
+      {dept.id === "email" && (
+        <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
+          💡 Site Visits from Email is entered on the <strong>SEO form</strong> by David — GA4 → Acquisition → Traffic Acquisition → Email channel sessions.
+        </div>
+      )}
+      {dept.id === "social" && (
+        <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
+          💡 Enter total follower counts as of end of month — growth is auto-calculated vs prior month. Enter published counts per channel — Total Published is auto-calculated.
         </div>
       )}
       {isJuneauSource && <div style={{ background: C.gL, border: `1px solid ${C.g}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>Saving here syncs Total, Website, Facebook & Phone leads to all Juneau stores.</div>}
@@ -1100,12 +1305,13 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       </div>
 
       {dept.id === "seo" && <TrafficChannelPreview data={data} />}
+      {dept.id === "social" && <PublishedBreakdownPreview data={data} />}
 
       {UPLOAD_DEPTS.includes(dept.id) && editable && (
         <UploadSection clientId={clientId} deptId={dept.id} month={month} />
       )}
 
-      {/* ── Multi-listing GBP entry (Goode Motor Ford) ── */}
+      {/* ── Multi-listing GBP entry ── */}
       {isMultiGBP && multiGBPListings && (
         <div style={{ marginTop: 24, borderTop: `1px solid ${C.bd}`, paddingTop: 20 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14, fontFamily: F }}>
@@ -1121,34 +1327,21 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                 📍 {l.label}
               </button>
             ))}
-            <div style={{ marginLeft: "auto", fontSize: 11, color: C.tl, fontFamily: F,
-              background: C.cyanL, padding: "4px 10px", borderRadius: 6, color: C.cyanD }}>
+            <div style={{ marginLeft: "auto", fontSize: 11, color: C.cyanD, fontFamily: F, background: C.cyanL, padding: "4px 10px", borderRadius: 6 }}>
               Combined totals auto-computed on Save
             </div>
           </div>
           {multiGBPListings.filter(l => l.key === listingTab).map(l => (
             <div key={l.key} style={{ background: "#f8fafc", borderRadius: 10, padding: 16, border: `2px solid ${l.color}33` }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: l.color, fontFamily: F, marginBottom: 14 }}>
-                {l.label}
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: l.color, fontFamily: F, marginBottom: 14 }}>{l.label}</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
                 {GBP_LISTING_FIELDS_ADMIN.map(field => {
                   const fKey = `gbp_${l.key}_${field.key}`;
                   return (
                     <div key={fKey} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                       <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>{field.label}</label>
-                      <input
-                        type="number"
-                        step={field.type === "decimal" ? "0.01" : "1"}
-                        value={data[fKey] ?? ""}
-                        onChange={e => handleChange(fKey, e.target.value)}
-                        disabled={!editable}
-                        placeholder="0"
-                        style={{ padding: "9px 12px", borderRadius: 7, border: `1px solid ${C.bd}`,
-                          fontSize: 13, fontFamily: F, outline: "none",
-                          background: editable ? C.white : "#f8fafc",
-                          color: editable ? C.t : C.tl }}
-                      />
+                      <input type="number" step={field.type === "decimal" ? "0.01" : "1"} value={data[fKey] ?? ""} onChange={e => handleChange(fKey, e.target.value)} disabled={!editable} placeholder="0"
+                        style={{ padding: "9px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", background: editable ? C.white : "#f8fafc", color: editable ? C.t : C.tl }} />
                     </div>
                   );
                 })}
@@ -1334,7 +1527,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
     const d = row?.data || {};
     const filled = fields.filter(f => {
       const v = d[f.key];
-      if (f.type === "keywords" || f.type === "links") return Array.isArray(v) && v.length > 0;
+      if (f.type === "keywords" || f.type === "links" || f.type === "campaign_list" || f.type === "top_queries") return Array.isArray(v) && v.length > 0;
       return v !== null && v !== undefined && String(v).trim() !== "";
     }).length;
     setDeptCompletion(prev => ({ ...prev, [deptId]: { filled, total: fields.length } }));
