@@ -270,16 +270,20 @@ export default function ImportPage() {
           // Merge: import wins for non-null values unless manually locked
           // Blank cells (null) are skipped entirely -- existing data is preserved
           const merged = { ...existingData };
+          const importedFields = new Set(existingData._imported_fields || []);
           let importedCount = 0, clearedCount = 0;
           Object.entries(newData).forEach(([key, val]) => {
             if (!manualOverrides.has(key)) {
               if (val !== null) {
                 merged[key] = val;
+                importedFields.add(key);
                 importedCount++;
               }
               // null = blank cell in spreadsheet, skip it, keep existing value
             }
           });
+
+          merged._imported_fields = Array.from(importedFields);
 
           merged._imported_at = new Date().toISOString();
 
