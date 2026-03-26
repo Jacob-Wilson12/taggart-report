@@ -92,173 +92,156 @@ const DEPT_BENCH_LABELS = {
   gbp: "📍 Google Business Profile", social: "🎬 Organic Social", email: "✉️ Email",
 };
 
-const LIVE_APIS = {
-  seo:       { label: "Search Console", endpoint: "/api/search-console" },
-  ga4:       { label: "GA4",            endpoint: "/api/ga4" },
-  google_ads:{ label: "Google Ads",     endpoint: "/api/google-ads" },
-  callrail:  { label: "CallRail",       endpoint: "/api/callrail" },
-  meta_ads:  { label: "Meta Ads",       endpoint: "/api/meta-ads" },
-  social:    { label: "Social",         endpoint: "/api/social" },
-  gbp:       { label: "GBP",            endpoint: "/api/gbp" },
-};
 
 const UPLOAD_DEPTS = ["email", "creative", "social", "seo", "meta_ads", "google_ads"];
 
 const DEPT_FIELDS = {
   leads: [
-    { key: "total_leads",      label: "Total Leads",         type: "number" },
-    { key: "website_leads",    label: "Website Leads",       type: "number" },
-    { key: "third_party",      label: "Third Party Leads",   type: "number" },
-    { key: "facebook_leads",   label: "Facebook Leads",      type: "number" },
-    { key: "total_sold",       label: "Total Sold",          type: "number" },
-    { key: "website_sold",     label: "Website Sold",        type: "number" },
-    { key: "third_party_sold", label: "Third Party Sold",    type: "number" },
-    { key: "facebook_sold",    label: "Facebook Sold",       type: "number" },
-    { key: "phone_sold",       label: "Phone Sold",          type: "number" },
-    { key: "notes",            label: "Notes",               type: "textarea", optional: true },
+    { key: "total_leads",      label: "Total Leads",         type: "number",   section: "Lead Sources",  hint: "Total leads from all sources combined" },
+    { key: "website_leads",    label: "Website Leads",       type: "number",   section: "Lead Sources",  hint: "Leads from dealer website forms" },
+    { key: "third_party",      label: "Third Party Leads",   type: "number",   section: "Lead Sources",  hint: "Leads from AutoTrader, Cars.com, CarGurus, etc." },
+    { key: "facebook_leads",   label: "Facebook Leads",      type: "number",   section: "Lead Sources",  hint: "Leads from Facebook/Meta lead forms" },
+    { key: "total_sold",       label: "Total Sold",          type: "number",   section: "Sales",         hint: "Total units sold from all lead sources" },
+    { key: "website_sold",     label: "Website Sold",        type: "number",   section: "Sales",         hint: "Units sold from website leads" },
+    { key: "third_party_sold", label: "Third Party Sold",    type: "number",   section: "Sales",         hint: "Units sold from third-party leads" },
+    { key: "facebook_sold",    label: "Facebook Sold",       type: "number",   section: "Sales",         hint: "Units sold from Facebook leads" },
+    { key: "phone_sold",       label: "Phone Sold",          type: "number",   section: "Sales",         hint: "Units sold from phone call leads" },
+    { key: "notes",            label: "Notes",               type: "textarea", section: "Notes",         optional: true },
   ],
   callrail: [
-    { key: "total_calls",   label: "Total Calls",        type: "number" },
-    { key: "website_calls", label: "Calls from Website", type: "number" },
-    { key: "ads_calls",     label: "Calls from Ads",     type: "number" },
-    { key: "gbp_calls",     label: "Calls from GBP",     type: "number" },
-    { key: "notes",         label: "Notes",              type: "textarea", optional: true },
+    { key: "total_calls",   label: "Total Calls",        type: "number",   section: "Call Volume",  hint: "CallRail → Total calls for the month" },
+    { key: "website_calls", label: "Calls from Website", type: "number",   section: "Call Volume",  hint: "CallRail → Calls attributed to website" },
+    { key: "ads_calls",     label: "Calls from Ads",     type: "number",   section: "Call Volume",  hint: "CallRail → Calls attributed to Google/Meta ads" },
+    { key: "gbp_calls",     label: "Calls from GBP",     type: "number",   section: "Call Volume",  hint: "CallRail → Calls attributed to Google Business Profile. Auto-syncs to GBP dept on save." },
+    { key: "notes",         label: "Notes",              type: "textarea", section: "Notes",        optional: true },
   ],
   seo: [
-    { key: "phone_calls",           label: "Phone Calls (SEO)",          type: "number",   manual: true },
-    { key: "form_submissions",      label: "Form Submissions",            type: "number",   api: true },
-    { key: "organic_sessions",      label: "Organic Sessions",            type: "number",   api: true },
-    { key: "direct_sessions",       label: "Direct Sessions",             type: "number",   manual: true, hint: "From GA4 - Direct channel" },
-    { key: "paid_sessions",         label: "Paid Sessions",               type: "number",   manual: true, hint: "From GA4 - Paid channel" },
-    { key: "social_sessions",       label: "Social Sessions",             type: "number",   manual: true, hint: "From GA4 - Social channel" },
-    // ── NEW: Site Visits from Email — entered by SEO person from GA4 ──
-    { key: "site_visits_from_email",label: "Site Visits from Email",      type: "number",   manual: true, hint: "GA4 → Acquisition → Traffic → Email channel sessions" },
-    { key: "vdp_views",             label: "VDP Views",                   type: "number",   api: true },
-    { key: "direction_requests",    label: "Direction Requests",          type: "number",   manual: true },
-    { key: "chat_conversations",    label: "Chat Conversations",          type: "number",   manual: true },
-    { key: "ctr",                   label: "CTR (%)",                     type: "decimal",  api: true },
-    { key: "impressions",           label: "Impressions",                 type: "number",   api: true },
-    { key: "page1_keywords",        label: "Page 1 Keywords",             type: "number",   api: true },
-    { key: "avg_position",          label: "Avg Position",                type: "decimal",  api: true },
-    { key: "bounce_rate",           label: "Bounce Rate (%)",             type: "decimal",  api: true,    hint: "From GA4" },
-    { key: "avg_session_duration",  label: "Avg Session Duration (sec)",  type: "number",   api: true,    hint: "From GA4, in seconds" },
-    { key: "organic_traffic_pct",   label: "Organic % of Traffic",        type: "decimal",  api: true,    hint: "From GA4 channel breakdown" },
-    { key: "top_queries",           label: "Top Queries (up to 10)",      type: "top_queries", manual: true, optional: true },
-    { key: "top_query",             label: "Top Performing Query (legacy)",type: "text",     api: true,    optional: true },
-    { key: "tracked_keywords",      label: "Tracked Keywords",            type: "keywords", manual: true, optional: true, hint: "Enter keywords + target positions" },
-    { key: "page_links",            label: "Page Links (SEO)",            type: "links",    manual: true },
-    { key: "work_completed",        label: "Work Completed",              type: "textarea", manual: true },
-    { key: "wins",                  label: "Wins",                        type: "textarea", manual: true, optional: true, hint: "One per line" },
-    { key: "losses",                label: "Losses / Watch Items",        type: "textarea", manual: true, optional: true, hint: "One per line" },
-    { key: "next_month",            label: "What's Coming Next Month",    type: "textarea", manual: true, hint: "One per line" },
+    { key: "organic_sessions",      label: "Organic Sessions",           type: "number",   section: "Traffic",             hint: "GA4 → Acquisition → Traffic acquisition → Organic Search sessions" },
+    { key: "direct_sessions",       label: "Direct Sessions",            type: "number",   section: "Traffic",             hint: "GA4 → Acquisition → Traffic acquisition → Direct sessions" },
+    { key: "paid_sessions",         label: "Paid Sessions",              type: "number",   section: "Traffic",             hint: "GA4 → Acquisition → Traffic acquisition → Paid Search sessions" },
+    { key: "social_sessions",       label: "Social Sessions",            type: "number",   section: "Traffic",             hint: "GA4 → Acquisition → Traffic acquisition → Organic Social sessions" },
+    { key: "site_visits_from_email",label: "Site Visits from Email",     type: "number",   section: "Traffic",             hint: "GA4 → Acquisition → Traffic acquisition → Email sessions" },
+    { key: "impressions",           label: "Impressions",                type: "number",   section: "Search Performance",  hint: "Search Console → Performance → Total impressions" },
+    { key: "ctr",                   label: "CTR (%)",                    type: "decimal",  section: "Search Performance",  hint: "Search Console → Performance → Average CTR" },
+    { key: "avg_position",          label: "Avg Position",               type: "decimal",  section: "Search Performance",  hint: "Search Console → Performance → Average position" },
+    { key: "page1_keywords",        label: "Page 1 Keywords",            type: "number",   section: "Search Performance",  hint: "Search Console → Count of queries with average position ≤ 10" },
+    { key: "organic_traffic_pct",   label: "Organic % of Traffic",       type: "decimal",  section: "Search Performance",  hint: "GA4 → % of total sessions from Organic Search" },
+    { key: "form_submissions",      label: "Form Submissions",           type: "number",   section: "Conversions",         hint: "GA4 → Conversions or form tracking tool" },
+    { key: "vdp_views",             label: "VDP Views",                  type: "number",   section: "Conversions",         hint: "Dealer website analytics → Vehicle Detail Page views" },
+    { key: "bounce_rate",           label: "Bounce Rate (%)",            type: "decimal",  section: "Conversions",         hint: "GA4 → Reports → Engagement → Bounce rate %" },
+    { key: "avg_session_duration",  label: "Avg Session Duration (sec)", type: "number",   section: "Conversions",         hint: "GA4 → Reports → Engagement → Average session duration (enter in seconds)" },
+    { key: "top_queries",           label: "Top Queries (up to 10)",     type: "top_queries", section: "Top Queries",      optional: true },
+    { key: "top_query",             label: "Top Query (legacy)",         type: "text",     section: "Top Queries",         optional: true, hint: "Legacy field — use Top Queries table above instead" },
+    { key: "tracked_keywords",      label: "Tracked Keywords",           type: "keywords", section: "Tracked Keywords",    optional: true, hint: "Enter keywords + target positions to track ranking progress" },
+    { key: "page_links",            label: "Page Links",                 type: "links",    section: "Tracked Keywords" },
+    { key: "work_completed",        label: "Work Completed",             type: "textarea", section: "Summary" },
+    { key: "wins",                  label: "Wins",                       type: "textarea", section: "Summary",             optional: true, hint: "One per line" },
+    { key: "losses",                label: "Losses / Watch Items",       type: "textarea", section: "Summary",             optional: true, hint: "One per line" },
+    { key: "next_month",            label: "What's Coming Next Month",   type: "textarea", section: "Summary",             hint: "One per line" },
   ],
   gbp: [
-    { key: "profile_views",      label: "Profile Views",          type: "number",   api: true },
-    { key: "search_appearances", label: "Search Appearances",     type: "number",   api: true },
-    { key: "map_views",          label: "Map Views",              type: "number",   api: true },
-    { key: "website_clicks",     label: "Website Clicks",         type: "number",   api: true },
-    { key: "phone_calls",        label: "Phone Calls",            type: "number",   synced: true, hint: "Synced from CallRail -> GBP calls" },
-    { key: "direction_requests", label: "Direction Requests",     type: "number",   api: true },
-    { key: "review_count",       label: "Total Reviews",          type: "number",   manual: true },
-    { key: "avg_rating",         label: "Average Rating",         type: "decimal",  manual: true },
-    { key: "new_reviews",        label: "New Reviews This Month", type: "number",   manual: true },
-    { key: "photo_count",        label: "Photos on Profile",      type: "number",   manual: true },
-    { key: "posts_published",    label: "Posts Published",        type: "number",   manual: true },
-    { key: "work_completed",     label: "Work Completed",         type: "textarea", manual: true },
-    { key: "wins",               label: "Wins",                   type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",             label: "Losses / Watch Items",   type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",         label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "profile_views",      label: "Profile Views",          type: "number",   section: "Visibility",        hint: "Google Business → Performance → Profile views" },
+    { key: "search_appearances", label: "Search Appearances",     type: "number",   section: "Visibility",        hint: "Google Business → Performance → Searches shown in" },
+    { key: "map_views",          label: "Map Views",              type: "number",   section: "Visibility",        hint: "Google Business → Performance → Maps views" },
+    { key: "website_clicks",     label: "Website Clicks",         type: "number",   section: "Customer Actions",  hint: "Google Business → Performance → Website clicks" },
+    { key: "phone_calls",        label: "Phone Calls",            type: "number",   section: "Customer Actions",  synced: true, hint: "Auto-synced from CallRail → GBP calls. Do not edit manually." },
+    { key: "direction_requests", label: "Direction Requests",     type: "number",   section: "Customer Actions",  hint: "Google Business → Performance → Direction requests" },
+    { key: "review_count",       label: "Total Reviews",          type: "number",   section: "Reviews",           hint: "Google Business → Reviews → Total review count" },
+    { key: "avg_rating",         label: "Average Rating",         type: "decimal",  section: "Reviews",           hint: "Google Business → Reviews → Average star rating (e.g. 4.7)" },
+    { key: "new_reviews",        label: "New Reviews This Month", type: "number",   section: "Reviews",           hint: "Count of new reviews received this month" },
+    { key: "photo_count",        label: "Photos on Profile",      type: "number",   section: "Activity",          hint: "Google Business → Photos → Total photo count" },
+    { key: "posts_published",    label: "Posts Published",        type: "number",   section: "Activity",          hint: "Count of GBP posts published this month" },
+    { key: "work_completed",     label: "Work Completed",         type: "textarea", section: "Summary" },
+    { key: "wins",               label: "Wins",                   type: "textarea", section: "Summary",           optional: true, hint: "One per line" },
+    { key: "losses",             label: "Losses / Watch Items",   type: "textarea", section: "Summary",           optional: true, hint: "One per line" },
+    { key: "next_month",         label: "What's Coming Next Month", type: "textarea", section: "Summary",         hint: "One per line" },
   ],
   google_ads: [
-    { key: "conversions",      label: "Total Conversions",        type: "number" },
-    { key: "impressions",      label: "Impressions",              type: "number" },
-    { key: "clicks",           label: "Total Clicks",             type: "number" },
-    { key: "cost_per_lead",    label: "Cost Per Lead ($)",        type: "decimal" },
-    { key: "total_spend",      label: "Total Spend ($)",          type: "decimal" },
-    { key: "budget",           label: "Monthly Budget ($)",       type: "decimal" },
-    { key: "ctr",              label: "CTR (%)",                  type: "decimal" },
-    { key: "cpc",              label: "Avg CPC ($)",              type: "decimal" },
-    { key: "impression_share", label: "Impression Share (%)",     type: "decimal" },
-    { key: "quality_score",    label: "Avg Quality Score",        type: "decimal", hint: "1-10 scale" },
-    { key: "top_campaign",     label: "Top Performing Campaign",  type: "text" },
-    { key: "work_completed",   label: "Work Completed",           type: "textarea" },
-    { key: "wins",             label: "Wins",                     type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",           label: "Losses / Watch Items",     type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",       label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "conversions",      label: "Total Conversions",        type: "number",   section: "Performance",    hint: "Google Ads → Campaigns → Conversions column" },
+    { key: "clicks",           label: "Total Clicks",             type: "number",   section: "Performance",    hint: "Google Ads → Campaigns → Clicks column" },
+    { key: "impressions",      label: "Impressions",              type: "number",   section: "Performance",    hint: "Google Ads → Campaigns → Impressions column" },
+    { key: "cost_per_lead",    label: "Cost Per Lead ($)",        type: "decimal",  section: "Performance",    hint: "Google Ads → Campaigns → Cost/conv. column" },
+    { key: "total_spend",      label: "Total Spend ($)",          type: "decimal",  section: "Budget & Cost",  hint: "Google Ads → Campaigns → Cost column (total for month)" },
+    { key: "budget",           label: "Monthly Budget ($)",       type: "decimal",  section: "Budget & Cost",  hint: "Monthly budget allocated — used for budget pacing bar" },
+    { key: "cpc",              label: "Avg CPC ($)",              type: "decimal",  section: "Budget & Cost",  hint: "Google Ads → Campaigns → Avg. CPC column" },
+    { key: "ctr",              label: "CTR (%)",                  type: "decimal",  section: "Budget & Cost",  hint: "Google Ads → Campaigns → CTR column" },
+    { key: "quality_score",    label: "Avg Quality Score",        type: "decimal",  section: "Quality",        hint: "Google Ads → Keywords → Quality Score column (average, 1-10 scale)" },
+    { key: "impression_share", label: "Impression Share (%)",     type: "decimal",  section: "Quality",        hint: "Google Ads → Campaigns → Search impr. share column" },
+    { key: "top_campaign",     label: "Top Performing Campaign",  type: "text",     section: "Quality",        hint: "Name of best-performing campaign this month" },
+    { key: "work_completed",   label: "Work Completed",           type: "textarea", section: "Summary" },
+    { key: "wins",             label: "Wins",                     type: "textarea", section: "Summary",        optional: true, hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",     type: "textarea", section: "Summary",        optional: true, hint: "One per line" },
+    { key: "next_month",       label: "What's Coming Next Month", type: "textarea", section: "Summary",        hint: "One per line" },
   ],
-  // ── META ADS: added monthly_budget field ──
   meta_ads: [
-    { key: "conversions",          label: "Total Conversions",        type: "number" },
-    { key: "impressions",          label: "Impressions",              type: "number" },
-    { key: "cost_per_lead",        label: "Cost Per Lead ($)",        type: "decimal" },
-    { key: "total_spend",          label: "Total Spend ($)",          type: "decimal" },
-    { key: "monthly_budget",       label: "Monthly Budget ($)",       type: "decimal", hint: "Used for budget pacing bar" },
-    { key: "reach",                label: "Reach",                    type: "number" },
-    { key: "cpc",                  label: "Avg CPC ($)",              type: "decimal" },
-    { key: "ctr",                  label: "CTR (%)",                  type: "decimal" },
-    { key: "frequency",            label: "Frequency",                type: "decimal" },
-    { key: "engagement_rate",      label: "Engagement Rate (%)",      type: "decimal" },
-    { key: "video_view_rate",      label: "Video View Rate (%)",      type: "decimal", hint: "% of video ads watched to completion" },
-    { key: "lead_form_completion", label: "Lead Form Completion (%)", type: "decimal" },
-    { key: "top_ad",               label: "Top Performing Ad",        type: "text" },
-    { key: "work_completed",       label: "Work Completed",           type: "textarea" },
-    { key: "wins",                 label: "Wins",                     type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",               label: "Losses / Watch Items",     type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "conversions",          label: "Total Conversions",        type: "number",   section: "Performance",    hint: "Meta Ads Manager → Campaigns → Results column" },
+    { key: "cost_per_lead",        label: "Cost Per Lead ($)",        type: "decimal",  section: "Performance",    hint: "Meta Ads Manager → Campaigns → Cost per result" },
+    { key: "reach",                label: "Reach",                    type: "number",   section: "Performance",    hint: "Meta Ads Manager → Campaigns → Reach column" },
+    { key: "impressions",          label: "Impressions",              type: "number",   section: "Performance",    hint: "Meta Ads Manager → Campaigns → Impressions column" },
+    { key: "total_spend",          label: "Total Spend ($)",          type: "decimal",  section: "Budget & Cost",  hint: "Meta Ads Manager → Campaigns → Amount spent (total)" },
+    { key: "monthly_budget",       label: "Monthly Budget ($)",       type: "decimal",  section: "Budget & Cost",  hint: "Monthly budget allocated — used for budget pacing bar" },
+    { key: "cpc",                  label: "Avg CPC ($)",              type: "decimal",  section: "Budget & Cost",  hint: "Meta Ads Manager → Campaigns → CPC column" },
+    { key: "ctr",                  label: "CTR (%)",                  type: "decimal",  section: "Budget & Cost",  hint: "Meta Ads Manager → Campaigns → CTR column" },
+    { key: "frequency",            label: "Frequency",                type: "decimal",  section: "Engagement",     hint: "Meta Ads Manager → Campaigns → Frequency column" },
+    { key: "engagement_rate",      label: "Engagement Rate (%)",      type: "decimal",  section: "Engagement",     hint: "Meta Ads Manager → Engagement rate %" },
+    { key: "video_view_rate",      label: "Video View Rate (%)",      type: "decimal",  section: "Engagement",     hint: "Meta Ads Manager → Video plays → ThruPlay rate %" },
+    { key: "lead_form_completion", label: "Lead Form Completion (%)", type: "decimal",  section: "Engagement",     hint: "Meta Ads Manager → Lead form completion rate %" },
+    { key: "top_ad",               label: "Top Performing Ad",        type: "text",     section: "Engagement",     hint: "Name or description of best-performing ad this month" },
+    { key: "work_completed",       label: "Work Completed",           type: "textarea", section: "Summary" },
+    { key: "wins",                 label: "Wins",                     type: "textarea", section: "Summary",        optional: true, hint: "One per line" },
+    { key: "losses",               label: "Losses / Watch Items",     type: "textarea", section: "Summary",        optional: true, hint: "One per line" },
+    { key: "next_month",           label: "What's Coming Next Month", type: "textarea", section: "Summary",        hint: "One per line" },
   ],
-  // ── SOCIAL: removed old published fields, added per-channel published fields + simplified followers ──
   social: [
-    { key: "fb_followers",         label: "FB Followers",             type: "number",   api: true,    hint: "Enter total as of end of month — growth auto-calculated" },
-    { key: "fb_visits",            label: "FB Visits",                type: "number",   api: true },
-    { key: "fb_engagement",        label: "FB Engagement",            type: "number",   api: true },
-    { key: "fb_page_views",        label: "FB Page Views",            type: "number",   api: true },
-    { key: "ig_followers",         label: "IG Followers",             type: "number",   api: true,    hint: "Enter total as of end of month — growth auto-calculated" },
-    { key: "ig_reach",             label: "IG Reach",                 type: "number",   api: true },
-    { key: "ig_impressions",       label: "IG Impressions",           type: "number",   api: true },
-    { key: "ig_profile_views",     label: "IG Profile Views",         type: "number",   api: true },
-    { key: "yt_followers",         label: "YT Subscribers",           type: "number",   api: true,    hint: "Enter total as of end of month — growth auto-calculated" },
-    { key: "yt_month_views",       label: "YT Views (Month)",         type: "number",   api: true },
-    { key: "yt_month_likes",       label: "YT Likes (Month)",         type: "number",   api: true },
-    { key: "yt_month_comments",    label: "YT Comments (Month)",      type: "number",   api: true },
-    { key: "yt_total_views",       label: "YT Total Views",           type: "number",   api: true },
-    { key: "tiktok_followers",     label: "TikTok Followers",         type: "number",   manual: true, hint: "Enter total as of end of month — growth auto-calculated" },
-    { key: "tiktok_profile_views", label: "TikTok Profile Views",     type: "number",   manual: true },
-    { key: "tiktok_views",         label: "TikTok Video Views",       type: "number",   manual: true },
-    { key: "tiktok_likes",         label: "TikTok Likes",             type: "number",   manual: true },
-    // ── NEW per-channel published fields (replaces posts_published + videos_published + yt_month_videos) ──
-    { key: "fb_published",         label: "FB Published",             type: "number",   manual: true, hint: "Posts/videos published to Facebook this month" },
-    { key: "ig_published",         label: "IG Published",             type: "number",   manual: true, hint: "Posts/videos published to Instagram this month" },
-    { key: "yt_long_form_published",label: "YT Long Form Published",  type: "number",   manual: true, hint: "Standard YouTube videos (not Shorts)" },
-    { key: "yt_shorts_published",  label: "YT Shorts Published",      type: "number",   manual: true, hint: "YouTube Shorts specifically" },
-    { key: "tiktok_published",     label: "TikTok Published",         type: "number",   manual: true, hint: "TikTok videos published this month" },
-    { key: "top_video",            label: "Top Performing Video",     type: "text",     manual: true },
-    { key: "top_video_views",      label: "Top Video Views (Month)",  type: "number",   api: true },
-    { key: "work_completed",       label: "Work Completed",           type: "textarea", manual: true },
-    { key: "wins",                 label: "Wins",                     type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",               label: "Losses / Watch Items",     type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",           label: "What's Coming Next Month", type: "textarea", hint: "One per line" },
+    { key: "fb_followers",          label: "FB Followers",             type: "number",   section: "Facebook",   hint: "Facebook Page → Total followers (end of month) — growth auto-calculated" },
+    { key: "fb_visits",             label: "FB Visits",                type: "number",   section: "Facebook",   hint: "Facebook Page → Insights → Page visits" },
+    { key: "fb_engagement",         label: "FB Engagement",            type: "number",   section: "Facebook",   hint: "Facebook Page → Insights → Engagement count" },
+    { key: "fb_page_views",         label: "FB Page Views",            type: "number",   section: "Facebook",   hint: "Facebook Page → Insights → Page views" },
+    { key: "fb_published",          label: "FB Published",             type: "number",   section: "Facebook",   hint: "Count of posts/videos published to Facebook this month" },
+    { key: "ig_followers",          label: "IG Followers",             type: "number",   section: "Instagram",  hint: "Instagram → Profile → Total followers (end of month) — growth auto-calculated" },
+    { key: "ig_reach",              label: "IG Reach",                 type: "number",   section: "Instagram",  hint: "Instagram → Insights → Accounts reached" },
+    { key: "ig_impressions",        label: "IG Impressions",           type: "number",   section: "Instagram",  hint: "Instagram → Insights → Impressions" },
+    { key: "ig_profile_views",      label: "IG Profile Views",         type: "number",   section: "Instagram",  hint: "Instagram → Insights → Profile visits" },
+    { key: "ig_published",          label: "IG Published",             type: "number",   section: "Instagram",  hint: "Count of posts/reels published to Instagram this month" },
+    { key: "yt_followers",          label: "YT Subscribers",           type: "number",   section: "YouTube",    hint: "YouTube Studio → Dashboard → Total subscribers (end of month) — growth auto-calculated" },
+    { key: "yt_month_views",        label: "YT Views (Month)",         type: "number",   section: "YouTube",    hint: "YouTube Studio → Analytics → Views (this month)" },
+    { key: "yt_month_likes",        label: "YT Likes (Month)",         type: "number",   section: "YouTube",    hint: "YouTube Studio → Analytics → Likes (this month)" },
+    { key: "yt_month_comments",     label: "YT Comments (Month)",      type: "number",   section: "YouTube",    hint: "YouTube Studio → Analytics → Comments (this month)" },
+    { key: "yt_total_views",        label: "YT Total Views",           type: "number",   section: "YouTube",    hint: "YouTube Studio → Dashboard → Total channel views (all time)" },
+    { key: "yt_long_form_published",label: "YT Long Form Published",   type: "number",   section: "YouTube",    hint: "Count of standard YouTube videos uploaded this month (not Shorts)" },
+    { key: "yt_shorts_published",   label: "YT Shorts Published",      type: "number",   section: "YouTube",    hint: "Count of YouTube Shorts uploaded this month" },
+    { key: "tiktok_followers",      label: "TikTok Followers",         type: "number",   section: "TikTok",     hint: "TikTok → Profile → Total followers (end of month) — growth auto-calculated" },
+    { key: "tiktok_profile_views",  label: "TikTok Profile Views",     type: "number",   section: "TikTok",     hint: "TikTok → Analytics → Profile views" },
+    { key: "tiktok_views",          label: "TikTok Video Views",       type: "number",   section: "TikTok",     hint: "TikTok → Analytics → Video views (this month)" },
+    { key: "tiktok_likes",          label: "TikTok Likes",             type: "number",   section: "TikTok",     hint: "TikTok → Analytics → Likes (this month)" },
+    { key: "tiktok_published",      label: "TikTok Published",         type: "number",   section: "TikTok",     hint: "Count of TikTok videos published this month" },
+    { key: "top_video",             label: "Top Performing Video",     type: "text",     section: "Highlights", hint: "Title or description of best-performing video this month" },
+    { key: "top_video_views",       label: "Top Video Views",          type: "number",   section: "Highlights", hint: "View count of the top performing video" },
+    { key: "web_clicks",            label: "Website Clicks",           type: "number",   section: "Highlights", hint: "Total clicks to website from all social platforms" },
+    { key: "work_completed",        label: "Work Completed",           type: "textarea", section: "Summary" },
+    { key: "wins",                  label: "Wins",                     type: "textarea", section: "Summary",    optional: true, hint: "One per line" },
+    { key: "losses",                label: "Losses / Watch Items",     type: "textarea", section: "Summary",    optional: true, hint: "One per line" },
+    { key: "next_month",            label: "What's Coming Next Month", type: "textarea", section: "Summary",    hint: "One per line" },
   ],
-  // ── EMAIL: simplified to CRM-available fields + campaign list + audience_size ──
   email: [
-    { key: "campaigns_sent",          label: "Campaigns Sent",            type: "number" },
-    { key: "total_recipients",        label: "Audience Size",             type: "number",   hint: "Total recipients across all campaigns this month" },
-    // ── NOTE: Site Visits from Email is entered on the SEO form (GA4 Email channel) ──
-    { key: "campaign_list",           label: "Campaigns This Month",      type: "campaign_list" },
-    { key: "work_completed",          label: "Work Completed",            type: "textarea" },
-    { key: "wins",                    label: "Wins",                      type: "textarea", optional: true, hint: "One per line" },
-    { key: "losses",                  label: "Losses / Watch Items",      type: "textarea", optional: true, hint: "One per line" },
-    { key: "next_month",              label: "What's Coming Next Month",  type: "textarea", hint: "One per line" },
+    { key: "campaigns_sent",   label: "Campaigns Sent",       type: "number",        section: "Campaign Data",  hint: "Total email campaigns sent this month" },
+    { key: "total_recipients", label: "Audience Size",         type: "number",        section: "Campaign Data",  hint: "Total recipients across all campaigns this month" },
+    { key: "campaign_list",    label: "Campaigns This Month",  type: "campaign_list", section: "Campaign Data" },
+    { key: "work_completed",   label: "Work Completed",        type: "textarea",      section: "Summary" },
+    { key: "wins",             label: "Wins",                  type: "textarea",      section: "Summary",        optional: true, hint: "One per line" },
+    { key: "losses",           label: "Losses / Watch Items",  type: "textarea",      section: "Summary",        optional: true, hint: "One per line" },
+    { key: "next_month",       label: "What's Coming Next Month", type: "textarea",   section: "Summary",        hint: "One per line" },
   ],
   creative: [
-    { key: "total_assets",    label: "Total Assets Delivered",    type: "number" },
-    { key: "videos",          label: "Videos",                    type: "number" },
-    { key: "graphics",        label: "Graphics / Statics",        type: "number" },
-    { key: "banners",         label: "Banners",                   type: "number" },
-    { key: "print",           label: "Print Pieces",              type: "number" },
-    { key: "ad_creative",     label: "Ad Creative Sets",          type: "number" },
-    { key: "email_headers",   label: "Email Headers / Templates", type: "number" },
-    { key: "work_completed",  label: "Work Completed",            type: "textarea" },
-    { key: "next_month",      label: "What's Coming Next Month",  type: "textarea", hint: "One per line" },
+    { key: "total_assets",    label: "Total Assets Delivered",    type: "number",   section: "Assets Delivered", hint: "Auto-sum of all asset types below, or enter total manually" },
+    { key: "videos",          label: "Videos",                    type: "number",   section: "Assets Delivered", hint: "Video assets produced this month" },
+    { key: "graphics",        label: "Graphics / Statics",        type: "number",   section: "Assets Delivered", hint: "Static graphics produced (social posts, display ads, etc.)" },
+    { key: "banners",         label: "Banners",                   type: "number",   section: "Assets Delivered", hint: "Banner ads or web banners produced" },
+    { key: "print",           label: "Print Pieces",              type: "number",   section: "Assets Delivered", hint: "Print materials produced (flyers, mailers, etc.)" },
+    { key: "ad_creative",     label: "Ad Creative Sets",          type: "number",   section: "Assets Delivered", hint: "Ad creative sets built for Google/Meta campaigns" },
+    { key: "email_headers",   label: "Email Headers / Templates", type: "number",   section: "Assets Delivered", hint: "Email headers or templates designed" },
+    { key: "work_completed",  label: "Work Completed",            type: "textarea", section: "Summary" },
+    { key: "next_month",      label: "What's Coming Next Month",  type: "textarea", section: "Summary",         hint: "One per line" },
   ],
 };
 
@@ -829,154 +812,18 @@ function UploadSection({ clientId, deptId, month }) {
 }
 
 /* ─── BACKFILL MODAL ─── */
-function BackfillModal({ clients, onClose }) {
-  const backfillMonths = getBackfillMonths();
-  const apiDepts = Object.entries(LIVE_APIS);
-  const total = clients.length * backfillMonths.length * apiDepts.length;
-  const [mode, setMode] = useState("missing");
-  const [running, setRunning] = useState(false);
-  const [done, setDone] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [currentLabel, setCurrentLabel] = useState("");
-  const [log, setLog] = useState([]);
-  const [counts, setCounts] = useState({ success: 0, skipped: 0, error: 0 });
-  const addLog = (msg, type = "info") => setLog(prev => [...prev.slice(-49), { msg, type, ts: new Date().toLocaleTimeString() }]);
-
-  const handleRun = async () => {
-    setRunning(true); setLog([]); setProgress(0); setCounts({ success: 0, skipped: 0, error: 0 });
-    let completed = 0, success = 0, skipped = 0, error = 0;
-    let existingSet = new Set();
-    if (mode === "missing") {
-      const { data: existingRows } = await supabase.from("report_data").select("client_id, month, department").in("client_id", clients.map(c => c.id));
-      existingSet = new Set((existingRows || []).map(r => `${r.client_id}_${r.month}_${r.department}`));
-    }
-    for (const client of clients) {
-      for (const { year, month } of backfillMonths) {
-        const monthStr = `${year}-${String(month).padStart(2, "0")}-01`;
-        for (const [deptId, api] of apiDepts) {
-          const label = `${client.name} · ${MONTHS[month - 1]} ${year} · ${api.label}`;
-          setCurrentLabel(label);
-          const key = `${client.id}_${monthStr}_${deptId}`;
-          if (mode === "missing" && existingSet.has(key)) {
-            skipped++; addLog(`- ${label} · already exists`, "skip");
-            completed++; setProgress(completed); setCounts({ success, skipped, error }); continue;
-          }
-          try {
-            const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${year}&month=${month}&save=true`);
-            const json = await res.json();
-            if (json.success && json.saved) { success++; addLog(`✓ ${label}`, "success"); existingSet.add(key); }
-            else if (json.error?.includes("No ") && json.error?.includes("integration")) { skipped++; addLog(`- ${client.name} · No integration`, "skip"); }
-            else { error++; addLog(`! ${label}: ${json.error || "failed"}`, "error"); }
-          } catch (e) { error++; addLog(`x ${label}: ${e.message}`, "error"); }
-          completed++; setProgress(completed); setCounts({ success, skipped, error });
-          await sleep(200);
-        }
-      }
-    }
-    setRunning(false); setDone(true); setCurrentLabel("");
-    addLog(`Done - ${success} saved, ${skipped} skipped, ${error} errors`, "done");
-  };
-
-  const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
-
+function BackfillModal({ onClose }) {
+  // API backfill removed — all data is manual entry
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ background: C.white, borderRadius: 16, width: "100%", maxWidth: 680, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${C.bd}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.t, fontFamily: F }}>Historical Data Backfill</h3>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: C.tl, fontFamily: F }}>{clients.length} clients x {backfillMonths.length} months x {apiDepts.length} APIs = {total} max requests</p>
-          </div>
-          {!running && <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.tl }}>x</button>}
-        </div>
-        <div style={{ padding: 24, flex: 1, overflow: "auto" }}>
-          {!running && !done && (
-            <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-              {[
-                { id: "missing", label: "Fill Missing Only", desc: "Skips months that already have data.", color: C.g, bg: C.gL },
-                { id: "full",    label: "Full Refresh",      desc: "Re-pulls everything. Use to fix bad data.", color: C.o, bg: C.oL },
-              ].map(m => (
-                <button key={m.id} onClick={() => setMode(m.id)}
-                  style={{ flex: 1, background: mode === m.id ? m.bg : C.white, border: `2px solid ${mode === m.id ? m.color : C.bd}`, borderRadius: 10, padding: "14px 16px", cursor: "pointer", textAlign: "left" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: mode === m.id ? m.color : C.t, fontFamily: F, marginBottom: 4 }}>{m.label}</div>
-                  <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>{m.desc}</div>
-                </button>
-              ))}
-            </div>
-          )}
-          {(running || done) && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.t, fontFamily: F }}>{done ? "Complete" : "Running..."}</span>
-                <span style={{ fontSize: 13, color: C.tl, fontFamily: F }}>{progress} / {total} ({pct}%)</span>
-              </div>
-              <div style={{ background: C.bl2, borderRadius: 6, height: 10, marginBottom: 12 }}>
-                <div style={{ background: done ? C.g : C.cyan, borderRadius: 6, height: 10, width: `${pct}%`, transition: "width 0.3s" }} />
-              </div>
-              {currentLabel && <div style={{ fontSize: 12, color: C.tl, fontFamily: F, marginBottom: 12 }}>↻ {currentLabel}</div>}
-              <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-                {[{ label: "Saved", value: counts.success, color: C.g }, { label: "Skipped", value: counts.skipped, color: C.tl }, { label: "Errors", value: counts.error, color: C.r }].map(s => (
-                  <div key={s.label} style={{ background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 16px", flex: 1, textAlign: "center" }}>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: s.color, fontFamily: F }}>{s.value}</div>
-                    <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {log.length > 0 && (
-            <div style={{ background: "#0c1a2e", borderRadius: 10, padding: 14, maxHeight: 240, overflow: "auto", fontFamily: "monospace", fontSize: 11, lineHeight: 1.8 }}>
-              {log.map((entry, i) => (
-                <div key={i} style={{ color: entry.type === "success" ? "#6ee7b7" : entry.type === "error" ? "#fca5a5" : entry.type === "skip" ? "#9ca3af" : entry.type === "done" ? C.cyan : "#e5e7eb" }}>
-                  <span style={{ color: "#6b7280", marginRight: 8 }}>{entry.ts}</span>{entry.msg}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.bd}`, display: "flex", justifyContent: "flex-end", gap: 10 }}>
-          {!running && !done && (
-            <>
-              <button onClick={onClose} style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, color: C.t }}>Cancel</button>
-              <button onClick={handleRun} style={{ background: mode === "full" ? C.o : C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
-                {mode === "missing" ? "Fill Missing Data" : "Run Full Refresh"}
-              </button>
-            </>
-          )}
-          {done && <button onClick={onClose} style={{ background: C.g, color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Done</button>}
-          {running && <div style={{ fontSize: 13, color: C.tl, fontFamily: F, alignSelf: "center" }}>Do not close this tab...</div>}
-        </div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+      <div style={{ background: "#fff", borderRadius: 12, padding: 32, maxWidth: 400, fontFamily: F }}>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: C.t }}>API Backfill Removed</div>
+        <div style={{ fontSize: 13, color: C.tl, marginBottom: 20 }}>All data entry is now manual. API integrations have been removed.</div>
+        <button onClick={onClose} style={{ background: C.cyan, color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Close</button>
       </div>
     </div>
   );
 }
-
-/* ─── API PULL BUTTON ─── */
-const ApiPullButton = ({ deptId, clientId, year, monthIdx, onPulled }) => {
-  const api = LIVE_APIS[deptId];
-  const [pulling, setPulling] = useState(false);
-  const [result, setResult] = useState(null);
-  const [msg, setMsg] = useState("");
-  if (!api) return null;
-  const handlePull = async () => {
-    setPulling(true); setResult(null); setMsg("");
-    try {
-      const res = await fetch(`${api.endpoint}?client_id=${clientId}&year=${year}&month=${monthIdx + 1}&save=true`);
-      const json = await res.json();
-      if (json.success && json.saved) { setResult("success"); setMsg(json.data._pulled_at ? `Pulled at ${new Date(json.data._pulled_at).toLocaleTimeString()}` : ""); if (onPulled) onPulled(deptId); }
-      else { setResult("error"); setMsg(json.error || json.save_error || "Unknown error"); }
-    } catch (e) { setResult("error"); setMsg(e.message); }
-    setPulling(false);
-  };
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <button onClick={handlePull} disabled={pulling} style={{ background: result === "success" ? C.gL : result === "error" ? C.rL : C.cyanL, color: result === "success" ? "#166534" : result === "error" ? C.r : C.cyanD, border: `1px solid ${result === "success" ? "#bbf7d0" : result === "error" ? "#fecaca" : C.cyan + "44"}`, borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: pulling ? "not-allowed" : "pointer", fontFamily: F, opacity: pulling ? 0.7 : 1 }}>
-        {pulling ? "Pulling..." : result === "success" ? `Pulled from ${api.label}` : result === "error" ? `Retry ${api.label}` : `Pull from ${api.label}`}
-      </button>
-      {msg && <span style={{ fontSize: 11, color: result === "error" ? C.r : C.tl, fontFamily: F }}>{msg}</span>}
-    </div>
-  );
-};
 
 /* ─── TRAFFIC CHANNEL PREVIEW ─── */
 function TrafficChannelPreview({ data }) {
@@ -1094,7 +941,16 @@ function InfoBanner({ children, variant = "info" }) {
   );
 }
 
-function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole, userDept, onSaved, allClients, onApiPulled, serviceEnabled }) {
+function SectionHeader({ title }) {
+  return (
+    <div style={{ gridColumn: "1 / -1", marginTop: 16, marginBottom: 4, paddingBottom: 6, borderBottom: `2px solid ${C.bd}`, display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ width: 3, height: 14, background: C.cyan, borderRadius: 2 }} />
+      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: C.tl, fontFamily: F }}>{title}</span>
+    </div>
+  );
+}
+
+function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole, userDept, onSaved, allClients, serviceEnabled }) {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1111,8 +967,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
 
   const fields     = isGoode ? LEADS_FIELDS_GOODE : isJuneau ? leadsFieldsJuneau(oemLabel) : (DEPT_FIELDS[dept.id] || []);
   const editable   = canEdit(userRole, userDept, dept.id);
-  const apiFields  = fields.filter(f => f.api);
-  const manualFields = fields.filter(f => !f.api);
+  // All fields are manual entry now
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1137,17 +992,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     return () => window.removeEventListener("keydown", handler);
   }, [editable, saving]);
 
-  const handleApiPulled = useCallback(async (deptId) => {
-    if (deptId === dept.id) { await load(); setSaved(false); }
-    if (deptId === "callrail") {
-      const { data: crRow } = await supabase.from("report_data").select("data")
-        .eq("client_id", clientId).eq("month", month).eq("department", "callrail").single();
-      const gbpCalls = crRow?.data?.gbp_calls ?? null;
-      const { data: { user } } = await supabase.auth.getUser();
-      await cascadeCallRailToGbp(supabase, clientId, clientName, month, gbpCalls, user.id);
-    }
-    if (onApiPulled) onApiPulled(deptId);
-  }, [dept.id, clientId, month, load, onApiPulled]);
+
 
   const handleChange = (key, val) => { setData(prev => ({ ...prev, [key]: val })); setSaved(false); };
 
@@ -1166,17 +1011,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     const { data: { user } } = await supabase.auth.getUser();
     const ts = { last_updated_by: user.id, last_updated_at: new Date().toISOString() };
 
-    const existingOverrides = new Set(data._manual_overrides || []);
-    manualFields.forEach(f => {
-      const v = data[f.key];
-      let hasVal = false;
-      if (f.type === "keywords" || f.type === "links" || f.type === "campaign_list" || f.type === "top_queries") hasVal = Array.isArray(v) && v.length > 0;
-      else hasVal = v !== undefined && v !== null && String(v).trim() !== "";
-      if (hasVal) existingOverrides.add(f.key);
-      else existingOverrides.delete(f.key);
-    });
-
-    const savePayload = { ...data, _manual_overrides: Array.from(existingOverrides) };
+    const savePayload = { ...data };
 
     // ── Auto-compute total_published for Social from per-channel fields ──
     if (dept.id === "social") {
@@ -1235,15 +1070,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   saveRef.current = handleSave;
 
   const FULL_WIDTH_TYPES = new Set(["textarea","links","keywords","campaign_list","top_queries"]);
-  const SECTION_STARTS = {
-    work_completed:   { label: "Work Summary",             icon: "📋" },
-    wins:             { label: "Highlights & Watch Items", icon: "✨" },
-    tracked_keywords: { label: "Keyword Tracking",         icon: "🔑" },
-    top_queries:      { label: "Top Queries (client view)",icon: "🔍" },
-    page_links:       { label: "Page Links",               icon: "🔗" },
-    campaign_list:    { label: "Campaign Log",             icon: "📧" },
-    fb_published:     { label: "Published by Channel",     icon: "📱" },
-  };
+  // Section headers derived from field.section property
 
   const hasFieldContent = (field) => {
     const v = data[field.key];
@@ -1254,30 +1081,17 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
 
   const filledCount   = fields.filter(f => !f.optional && hasFieldContent(f)).length;
   const requiredTotal = fields.filter(f => !f.optional).length;
-  const pulledAt      = data._pulled_at ? new Date(data._pulled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
-  const manualOverrides = new Set(data._manual_overrides || []);
+  // Track which sections have been rendered to insert headers
 
   if (loading) return <div style={{ padding: 24, textAlign: "center", color: C.tl, fontFamily: F, fontSize: 13 }}>Loading...</div>;
 
   return (
     <div>
-      {LIVE_APIS[dept.id] && (
-        <div style={{ background: pulledAt ? C.gL : C.cyanL, border: `1px solid ${pulledAt ? "#bbf7d0" : C.cyan + "44"}`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontSize: 12, color: pulledAt ? "#166534" : C.cyanD, fontFamily: F }}>
-            {pulledAt ? `Last pulled: ${pulledAt}` : "No API data yet - click Pull to fetch"}
-          </div>
-          <ApiPullButton deptId={dept.id} clientId={clientId} year={year} monthIdx={monthIdx} onPulled={handleApiPulled} />
-        </div>
-      )}
-      {manualOverrides.size > 0 && (
-        <InfoBanner variant="warn">
-          {manualOverrides.size} field{manualOverrides.size !== 1 ? "s are" : " is"} manually locked - API pulls will not overwrite them.
-        </InfoBanner>
-      )}
+      {/* Department-specific info banners */}
       {dept.id === "callrail" && (
         <InfoBanner variant="sync">Saving CallRail data will automatically sync GBP Calls to Google Business Profile phone calls.</InfoBanner>
       )}
-      {dept.id === "gbp" && data._callrail_synced_at && !manualOverrides.has("phone_calls") && (
+      {dept.id === "gbp" && data._callrail_synced_at && (
         <InfoBanner variant="sync">Phone Calls synced from CallRail - {new Date(data._callrail_synced_at).toLocaleDateString()}</InfoBanner>
       )}
       {dept.id === "email" && (
@@ -1303,46 +1117,24 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
 
       {!editable && <div style={{ background: C.oL, border: `1px solid ${C.o}22`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.o, fontFamily: F }}>View only - you can edit {userDept} data only.</div>}
 
-      {apiFields.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.cyanD, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: F }}>
-            Auto-filled by API {pulledAt && <span style={{ fontWeight: 400, color: C.tl, textTransform: "none", letterSpacing: 0 }}>- editable if needed</span>}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14, background: C.cyanL, borderRadius: 10, padding: 16, border: `1px solid ${C.cyan}22` }}>
-            {apiFields.map(field => (
-              <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: C.cyanD, fontFamily: F }}>{field.label}</label>
-                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable} scData={data} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-        {(apiFields.length > 0 ? manualFields : fields).map(field => {
+        {fields.map((field, idx) => {
           const isSharedField = isJuneauChild && SHARED_KEYS.includes(field.key);
           const isFullWidth   = FULL_WIDTH_TYPES.has(field.type);
-          const isLocked      = manualOverrides.has(field.key);
-          const isSynced      = field.synced && !isLocked;
-          const sectionStart  = SECTION_STARTS[field.key];
+          const isSynced      = field.synced;
+          const prevSection   = idx > 0 ? fields[idx - 1].section : null;
+          const showSection   = field.section && field.section !== prevSection;
           return (
             <React.Fragment key={field.key}>
-              {sectionStart && (
-                <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, marginTop: 8, paddingBottom: 10, borderBottom: `2px solid ${C.bl2}` }}>
-                  <span style={{ fontSize: 15 }}>{sectionStart.icon}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.07em", fontFamily: F }}>{sectionStart.label}</span>
-                </div>
-              )}
+              {showSection && <SectionHeader title={field.section} />}
               <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto", ...(isSynced ? { background: "#e6f9fc", borderRadius: 8, padding: "10px 12px", border: "1px solid #a5f3fc" } : {}) }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
                   {field.label}
                   {field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>optional</span>}
                   {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>synced</span>}
-                  {isSynced && <span style={{ color: C.cyanD, fontWeight: 700, marginLeft: 6, fontSize: 11 }}>🔗 Synced from CallRail</span>}
-                  {isLocked && <span style={{ color: "#92400e", fontWeight: 600, marginLeft: 6, fontSize: 10 }}>locked</span>}
-                  {field.hint && !isSynced && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4, fontSize: 11 }}>({field.hint})</span>}
+                  {isSynced && <span style={{ color: C.cyanD, fontWeight: 700, marginLeft: 6, fontSize: 11 }}>🔗 from CallRail</span>}
                 </label>
+                {field.hint && <div style={{ fontSize: 11, color: C.tl, fontFamily: F, marginTop: -2 }}>{field.hint}</div>}
                 <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField || isSynced} scData={data} />
               </div>
             </React.Fragment>
@@ -1538,10 +1330,6 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
   const [deptCompletion, setDeptCompletion] = useState({});
-  const [pullingAll, setPullingAll] = useState(false);
-  const [pullAllResult, setPullAllResult] = useState("");
-  const [pullingLastMonth, setPullingLastMonth] = useState(false);
-  const [pullLastMonthResult, setPullLastMonthResult] = useState("");
   const [serviceStates, setServiceStates] = useState({});
 
   const month = `${year}-${String(monthIdx + 1).padStart(2, "0")}-01`;
@@ -1587,40 +1375,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
     else if (existing.status === "draft") { await supabase.from("monthly_reports").update({ status: "in_progress" }).eq("client_id", client.id).eq("month", month); setReportStatus("in_progress"); }
   }, [client.id, month, refreshCompletion]);
 
-  const handlePullAll = async () => {
-    setPullingAll(true); setPullAllResult(""); setPullLastMonthResult("");
-    const apiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id] && getServiceEnabled(d.id));
-    const results = [];
-    for (const dept of apiDepts) {
-      const api = LIVE_APIS[dept.id];
-      try {
-        const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${year}&month=${monthIdx + 1}&save=true`);
-        const json = await res.json();
-        if (json.success && json.saved) { results.push(`✓ ${dept.label}`); await refreshCompletion(dept.id); }
-        else results.push(`! ${dept.label}: ${json.error || "failed"}`);
-      } catch (e) { results.push(`x ${dept.label}: ${e.message}`); }
-    }
-    setPullAllResult(results.join(" · ")); setPullingAll(false);
-  };
-
-  const handlePullLastMonth = async () => {
-    const now = new Date();
-    const lmDate = now.getMonth() === 0 ? { year: now.getFullYear() - 1, month: 12 } : { year: now.getFullYear(), month: now.getMonth() };
-    setPullingLastMonth(true); setPullLastMonthResult(""); setPullAllResult("");
-    const apiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id] && getServiceEnabled(d.id));
-    const results = [];
-    for (const dept of apiDepts) {
-      const api = LIVE_APIS[dept.id];
-      try {
-        const res = await fetch(`${api.endpoint}?client_id=${client.id}&year=${lmDate.year}&month=${lmDate.month}&save=true`);
-        const json = await res.json();
-        results.push(json.success && json.saved ? `✓ ${dept.label}` : `! ${dept.label}: ${json.error || "failed"}`);
-      } catch (e) { results.push(`x ${dept.label}: ${e.message}`); }
-    }
-    for (const dept of apiDepts) { await refreshCompletion(dept.id); }
-    setPullLastMonthResult(`${MONTHS[lmDate.month - 1]} ${lmDate.year}: ${results.join(" · ")}`);
-    setPullingLastMonth(false);
-  };
+  // API pull functions removed — all data is manual entry
 
   const handlePublish = async () => {
     if (!canPublish(userRole)) return;
@@ -1647,7 +1402,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   };
 
   const activeDeptObj = DEPARTMENTS.find(d => d.id === activeDept);
-  const enabledApiDepts = DEPARTMENTS.filter(d => LIVE_APIS[d.id] && getServiceEnabled(d.id));
+  // API pull removed — all manual entry
 
   return (
     <div>
@@ -1671,12 +1426,6 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
           <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ padding: "8px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, background: C.white, cursor: "pointer" }}>
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={handlePullAll} disabled={pullingAll || pullingLastMonth} style={{ background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: (pullingAll || pullingLastMonth) ? "not-allowed" : "pointer", fontFamily: F, opacity: (pullingAll || pullingLastMonth) ? 0.7 : 1 }}>
-            {pullingAll ? "Pulling..." : `Pull All APIs (${enabledApiDepts.length})`}
-          </button>
-          <button onClick={handlePullLastMonth} disabled={pullingAll || pullingLastMonth} style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: (pullingAll || pullingLastMonth) ? "not-allowed" : "pointer", fontFamily: F, opacity: (pullingAll || pullingLastMonth) ? 0.7 : 1, whiteSpace: "nowrap" }}>
-            {pullingLastMonth ? "Pulling..." : "Last Month"}
-          </button>
           {userRole !== "viewer" && reportStatus !== "published" && (
             <button onClick={handleMarkReview} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}44`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F }}>Mark Ready for Review</button>
           )}
@@ -1687,8 +1436,6 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
           )}
         </div>
       </div>
-      {pullAllResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166834", fontFamily: F }}>{pullAllResult}</div>}
-      {pullLastMonthResult && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#166834", fontFamily: F }}>{pullLastMonthResult}</div>}
       {publishError && <div style={{ background: C.rL, border: "1px solid #fecaca", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.r, fontFamily: F }}>{publishError}</div>}
       {reportStatus === "published" && <div style={{ background: C.gL, border: "1px solid #bbf7d0", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: "#166834", fontFamily: F }}>This report is live. Clients can see it now.</div>}
       <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -1698,13 +1445,11 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
             const isActive = activeDept === dept.id;
             const enabled = getServiceEnabled(dept.id);
             const pct = comp ? Math.round((comp.filled / comp.total) * 100) : null;
-            const hasApi = !!LIVE_APIS[dept.id];
             return (
               <div key={dept.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <button onClick={() => setActiveDept(dept.id)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 8, border: "none", cursor: "pointer", background: isActive ? C.navy : C.white, color: isActive ? "#fff" : enabled ? C.t : C.tl, fontFamily: F, fontSize: 13, fontWeight: isActive ? 700 : 500, boxShadow: isActive ? "none" : C.sh, textAlign: "left", opacity: enabled ? 1 : 0.5 }}>
                   <span>{dept.icon} {dept.label}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    {hasApi && enabled && <span style={{ fontSize: 9, color: C.cyan, fontWeight: 700, background: isActive ? "rgba(0,201,232,0.2)" : "transparent", padding: "1px 4px", borderRadius: 3 }}>API</span>}
                     {!enabled && <span style={{ fontSize: 9, color: C.tl, fontWeight: 700 }}>OFF</span>}
                     {pct !== null && enabled && <span style={{ fontSize: 10, fontWeight: 700, color: pct === 100 ? (isActive ? "#6ee7b7" : C.g) : (isActive ? "#fca5a5" : C.tl) }}>{pct}%</span>}
                   </div>
@@ -1742,7 +1487,6 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
                 userDept={userDept}
                 onSaved={handleSaved}
                 allClients={allClients}
-                onApiPulled={refreshCompletion}
                 serviceEnabled={getServiceEnabled(activeDept)}
               />
             </>
@@ -1774,10 +1518,7 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
   const filtered = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
   const statusCounts = { draft: 0, in_progress: 0, review: 0, published: 0 };
   clients.forEach(c => { const s = statuses[`${c.id}_${lastMonth}`] || "draft"; statusCounts[s]++; });
-  const backfillMonths = getBackfillMonths();
-  const apiCount = Object.keys(LIVE_APIS).length;
-  const totalBackfillRequests = clients.length * backfillMonths.length * apiCount;
-  const estMinutes = Math.round(totalBackfillRequests * 0.2 / 60);
+  // API backfill removed
 
   return (
     <div>
@@ -1789,15 +1530,6 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
           </div>
         ))}
       </div>
-      {userRole === "admin" && (
-        <div style={{ background: C.navy, borderRadius: 12, padding: "18px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 4, fontFamily: F }}>Historical Data Backfill</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: F }}>Pull all API data for all clients from Jan 2024 to last month - ~{totalBackfillRequests} requests - ~{estMinutes} min</div>
-          </div>
-          <button onClick={onBackfill} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>Run Backfill</button>
-        </div>
-      )}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <input type="text" placeholder="Search clients..." value={search} onChange={e => setSearch(e.target.value)}
           style={{ width: "100%", maxWidth: 320, padding: "10px 14px", borderRadius: 8, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box" }} />
