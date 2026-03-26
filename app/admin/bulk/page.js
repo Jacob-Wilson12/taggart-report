@@ -247,7 +247,7 @@ function getAllMonths() {
 const ALL_MONTHS = getAllMonths();
 
 // ── Inline editable cell ──────────────────────────────────────────────────────
-function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, value, isManualLocked, isApiSourced, disabled, onSave }) {
+function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, value, isManualLocked, isApiSourced, isImported, disabled, onSave }) {
   const [editing, setEditing] = useState(false);
   const [localVal, setLocalVal] = useState("");
   const inputRef = useRef();
@@ -257,6 +257,7 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
   const bgColor = editing
     ? "#fffbeb"
     : isManualLocked && hasValue ? "#fff"
+    : isImported && hasValue ? "#f0fdf4"
     : isApiSourced && hasValue ? "#eff6ff"
     : "#f8fafc";
 
@@ -320,7 +321,7 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
             <div style={{
               position: "absolute", top: 3, left: 3,
               width: 4, height: 4, borderRadius: "50%",
-              background: isManualLocked ? deptColor : isApiSourced ? "#93c5fd" : "transparent",
+              background: isManualLocked ? deptColor : isImported ? "#10b981" : isApiSourced ? "#93c5fd" : "transparent",
               opacity: 0.7,
             }} />
           )}
@@ -579,6 +580,7 @@ export default function BulkEditPage() {
           <div style={{ display: "flex", gap: 10, fontSize: 10, color: "rgba(255,255,255,0.6)" }}>
             {[
               { bg: "#eff6ff", bd: "#93c5fd", label: "API data" },
+              { bg: "#f0fdf4", bd: "#10b981", label: "Imported" },
               { bg: "#fff",    bd: "#d0d5dd", label: "Manual (locked)" },
               { bg: "#f8fafc", bd: "#e4e7ec", label: "Empty" },
               { bg: "#fffbeb", bd: "#fde68a", label: "Editing" },
@@ -728,6 +730,7 @@ export default function BulkEditPage() {
                         const val = deptData[f.key];
                         const isManualLocked = (deptData._manual_overrides || []).includes(f.key);
                         const isApiSourced = !!deptData._pulled_at && !isManualLocked;
+                        const isImported = (deptData._imported_fields || []).includes(f.key) && !isManualLocked;
 
                         // Disable: leads fields not in client config
                         const isLeadsDisabled = dept.id === "leads" && !leadsConfig.active.includes(f.key);
@@ -753,6 +756,7 @@ export default function BulkEditPage() {
                             value={val}
                             isManualLocked={isManualLocked}
                             isApiSourced={isApiSourced}
+                            isImported={isImported}
                             disabled={isDisabled}
                             onSave={handleCellSave}
                           />
