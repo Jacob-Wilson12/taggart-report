@@ -408,58 +408,69 @@ const tdS = {
   borderBottom: `1px solid ${C.bl2}`, fontFamily: F,
 };
 
+function EmptyPlaceholder({ text }) {
+  return (
+    <div style={{ padding: "16px 14px", fontSize: 13, fontFamily: F, color: C.tl, fontStyle: "italic", background: "#f8fafc", borderRadius: 8, border: `1px dashed ${C.bd}` }}>
+      {text || "Nothing entered yet."}
+    </div>
+  );
+}
+
 function WinsLosses({ wins, losses }) {
   const w = lines(wins), l = lines(losses);
-  if (!w.length && !l.length) return null;
   return (
     <SecWrap title="Wins & Watch Items">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
-        {w.map((x, i) => (
-          <div key={i} style={{ background: C.gL, border: `1px solid ${C.gB}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, fontFamily: F, color: "#065f46", lineHeight: 1.5 }}>
-            ✅ {x}
-          </div>
-        ))}
-        {l.map((x, i) => (
-          <div key={i} style={{ background: C.rL, border: `1px solid ${C.rB}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, fontFamily: F, color: "#991b1b", lineHeight: 1.5 }}>
-            ⚠️ {x}
-          </div>
-        ))}
-      </div>
+      {(!w.length && !l.length) ? <EmptyPlaceholder text="No wins or watch items entered for this period." /> : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10 }}>
+          {w.map((x, i) => (
+            <div key={i} style={{ background: C.gL, border: `1px solid ${C.gB}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, fontFamily: F, color: "#065f46", lineHeight: 1.5 }}>
+              ✅ {x}
+            </div>
+          ))}
+          {l.map((x, i) => (
+            <div key={i} style={{ background: C.rL, border: `1px solid ${C.rB}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, fontFamily: F, color: "#991b1b", lineHeight: 1.5 }}>
+              ⚠️ {x}
+            </div>
+          ))}
+        </div>
+      )}
     </SecWrap>
   );
 }
 
 function WorkDone({ text }) {
   const items = lines(text);
-  if (!items.length) return null;
   return (
-    <SecWrap title="Work Completed">
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {items.map((it, i) => (
-          <div key={i} style={{ background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 8,
-            padding: "10px 14px", fontSize: 13, fontFamily: F, display: "flex", alignItems: "flex-start", gap: 8, lineHeight: 1.5 }}>
-            <span style={{ color: C.cyanD, fontWeight: 700, flexShrink: 0 }}>✓</span>{it}
-          </div>
-        ))}
-      </div>
+    <SecWrap title="Work Completed This Month">
+      {!items.length ? <EmptyPlaceholder text="No work items entered for this period." /> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {items.map((it, i) => (
+            <div key={i} style={{ background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 8,
+              padding: "10px 14px", fontSize: 13, fontFamily: F, display: "flex", alignItems: "flex-start", gap: 8, lineHeight: 1.5 }}>
+              <span style={{ color: C.cyanD, fontWeight: 700, flexShrink: 0 }}>✓</span>{it}
+            </div>
+          ))}
+        </div>
+      )}
     </SecWrap>
   );
 }
 
 function NextMonth({ text }) {
   const items = lines(text);
-  if (!items.length) return null;
   return (
     <SecWrap title="What's Coming Next Month">
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {items.map((it, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10,
-            fontSize: 13, fontFamily: F, padding: "8px 12px", background: "#f8fafc",
-            borderRadius: 8, border: `1px solid ${C.bd}`, lineHeight: 1.5 }}>
-            <span style={{ color: C.cyan, fontWeight: 700, flexShrink: 0 }}>→</span>{it}
-          </div>
-        ))}
-      </div>
+      {!items.length ? <EmptyPlaceholder text="No upcoming items entered yet." /> : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {items.map((it, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10,
+              fontSize: 13, fontFamily: F, padding: "8px 12px", background: "#f8fafc",
+              borderRadius: 8, border: `1px solid ${C.bd}`, lineHeight: 1.5 }}>
+              <span style={{ color: C.cyan, fontWeight: 700, flexShrink: 0 }}>→</span>{it}
+            </div>
+          ))}
+        </div>
+      )}
     </SecWrap>
   );
 }
@@ -1043,8 +1054,8 @@ function GbpPage({ d, cd, trend, clientName }) {
         <KpiCard label="Calls"               value={fmt(d.phone_calls)}        change={pct(d.phone_calls,        cd.phone_calls)}        color={C.g} tip="Calls made directly from the GBP listing." />
         <KpiCard label="Direction Requests"  value={fmt(d.direction_requests)} change={pct(d.direction_requests, cd.direction_requests)} tip="Users who requested directions." />
         <KpiCard label="Searches"            value={fmt(d.search_appearances)} change={pct(d.search_appearances, cd.search_appearances)} tip="Times your business appeared in Google Search." />
-        {d.avg_rating  != null && <KpiCard label="Avg Rating"   value={`${parseFloat(d.avg_rating).toFixed(1)} ★`} />}
-        {d.new_reviews != null && <KpiCard label="New Reviews"  value={`+${d.new_reviews}`} color={C.g} change={pct(d.new_reviews, cd.new_reviews)} />}
+        <KpiCard label="Avg Rating"   value={d.avg_rating != null ? `${parseFloat(d.avg_rating).toFixed(1)} ★` : "—"} />
+        <KpiCard label="New Reviews"  value={d.new_reviews != null ? `+${d.new_reviews}` : "—"} color={C.g} change={pct(d.new_reviews, cd.new_reviews)} />
       </div>
 
       {listings && listings.some(l => listingStat(l.key, "profile_views") != null) && (
