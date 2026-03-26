@@ -464,28 +464,37 @@ export default function BulkEditPage() {
       alert(`Save failed: ${saveError.message}`);
     }
 
-    // ── Cascade CallRail gbp_calls → GBP phone_calls ──
+    // ── Cascade CallRail gbp_calls -> GBP phone_calls ──
+    // For Goode Motor Ford: writes to gbp_ford_phone_calls + recomputes combined total
+    // For all other clients: writes directly to phone_calls
     if (deptId === "callrail" && fieldKey === "gbp_calls") {
       const gbpExisting = allData[clientId]?.[monthStr]?.["gbp"] || {};
       const gbpOverrides = new Set(gbpExisting._manual_overrides || []);
-      if (!gbpOverrides.has("phone_calls")) {
-        const updatedGbp = {
-          ...gbpExisting,
-          phone_calls: finalVal,
-          _callrail_synced_at: new Date().toISOString(),
-        };
-        setAllData(prev => ({
-          ...prev,
-          [clientId]: {
-            ...(prev[clientId] || {}),
-            [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), gbp: updatedGbp }
-          }
-        }));
-        await supabase.from("report_data").upsert(
-          { client_id: clientId, month: monthStr, department: "gbp", data: updatedGbp, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
-          { onConflict: "client_id,month,department" }
-        );
+      let updatedGbp = { ...gbpExisting, _callrail_synced_at: new Date().toISOString() };
+
+      if (savingClient?.name === "Goode Motor Ford") {
+        if (!gbpOverrides.has("gbp_ford_phone_calls")) {
+          updatedGbp.gbp_ford_phone_calls = finalVal;
+          const overland = Number(updatedGbp.gbp_overland_phone_calls) || 0;
+          updatedGbp.phone_calls = (Number(finalVal) || 0) + overland || null;
+        }
+      } else {
+        if (!gbpOverrides.has("phone_calls")) {
+          updatedGbp.phone_calls = finalVal;
+        }
       }
+
+      setAllData(prev => ({
+        ...prev,
+        [clientId]: {
+          ...(prev[clientId] || {}),
+          [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), gbp: updatedGbp }
+        }
+      }));
+      await supabase.from("report_data").upsert(
+        { client_id: clientId, month: monthStr, department: "gbp", data: updatedGbp, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
+        { onConflict: "client_id,month,department" }
+      );
     }
 
     // Cascade to Juneau child stores
