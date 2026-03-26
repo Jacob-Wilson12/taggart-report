@@ -9,7 +9,7 @@ const C = {
   o: "#f59e0b", oL: "#fffbeb", p: "#8b5cf6", pL: "#f5f3ff",
   sh: "0 2px 6px rgba(0,0,0,0.08)", bg: "#f0f2f5"
 };
-const F = "Inter,system-ui,sans-serif";
+const F = "'DM Sans', system-ui, sans-serif";
 
 const DEPARTMENTS = [
   { id: "leads",      label: "Leads & CRM",    icon: "🎯" },
@@ -241,7 +241,7 @@ const DEPT_FIELDS = {
   // ── EMAIL: simplified to CRM-available fields + campaign list + audience_size ──
   email: [
     { key: "campaigns_sent",    label: "Campaigns Sent",          type: "number" },
-    { key: "audience_size",     label: "Audience Size",           type: "number",   hint: "Enter total as of end of month — growth auto-calculated" },
+    { key: "audience_size",     label: "Audience Size",           type: "number",   hint: "Enter total as of end of month — growth calculated vs prior month" },
     // ── NOTE: Site Visits from Email is entered on the SEO form by David (GA4 Email channel) ──
     // ── Campaign list: repeatable rows of name + date ──
     { key: "campaign_list",     label: "Campaigns This Month",    type: "campaign_list" },
@@ -1081,6 +1081,20 @@ const FieldInput = ({ field, value, onChange, disabled, scData }) => {
 };
 
 /* ─── DEPT FORM ─── */
+function InfoBanner({ children, variant = "info" }) {
+  const styles = {
+    info:  { bg: C.cyanL, border: `1px solid ${C.cyan}44`, color: C.cyanD },
+    sync:  { bg: "#e6f9fc", border: "1px solid #a5f3fc", color: C.cyanD },
+    warn:  { bg: "#fffbeb", border: "1px solid #fde68a", color: "#92400e" },
+    success: { bg: C.gL, border: `1px solid ${C.g}44`, color: "#166534" },
+  }[variant];
+  return (
+    <div style={{ background: styles.bg, border: styles.border, borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: styles.color, fontFamily: F }}>
+      {children}
+    </div>
+  );
+}
+
 function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole, userDept, onSaved, allClients, onApiPulled, serviceEnabled }) {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -1110,6 +1124,19 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   }, [clientId, month, dept.id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Cmd+S / Ctrl+S to save
+  const saveRef = React.useRef(null);
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        if (saveRef.current && editable && !saving) saveRef.current();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [editable, saving]);
 
   const handleApiPulled = useCallback(async (deptId) => {
     if (deptId === dept.id) { await load(); setSaved(false); }
@@ -1206,6 +1233,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     setSaving(false); setSaved(true);
     if (onSaved) onSaved(dept.id);
   };
+  saveRef.current = handleSave;
 
   const FULL_WIDTH_TYPES = new Set(["textarea","links","keywords","campaign_list","top_queries"]);
   const SECTION_STARTS = {
@@ -1243,32 +1271,24 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
         </div>
       )}
       {manualOverrides.size > 0 && (
-        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: "#92400e", fontFamily: F }}>
+        <InfoBanner variant="warn">
           {manualOverrides.size} field{manualOverrides.size !== 1 ? "s are" : " is"} manually locked - API pulls will not overwrite them.
-        </div>
+        </InfoBanner>
       )}
       {dept.id === "callrail" && (
-        <div style={{ background: "#e6f9fc", border: "1px solid #a5f3fc", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
-          Saving CallRail data will automatically sync GBP Calls to Google Business Profile phone calls.
-        </div>
+        <InfoBanner variant="sync">Saving CallRail data will automatically sync GBP Calls to Google Business Profile phone calls.</InfoBanner>
       )}
       {dept.id === "gbp" && data._callrail_synced_at && !manualOverrides.has("phone_calls") && (
-        <div style={{ background: "#e6f9fc", border: "1px solid #a5f3fc", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
-          Phone Calls synced from CallRail - {new Date(data._callrail_synced_at).toLocaleDateString()}
-        </div>
+        <InfoBanner variant="sync">Phone Calls synced from CallRail - {new Date(data._callrail_synced_at).toLocaleDateString()}</InfoBanner>
       )}
       {dept.id === "email" && (
-        <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
-          💡 Site Visits from Email is entered on the <strong>SEO form</strong> by David — GA4 → Acquisition → Traffic Acquisition → Email channel sessions.
-        </div>
+        <InfoBanner variant="info">💡 Site Visits from Email is entered on the <strong>SEO form</strong> by David — GA4 → Acquisition → Traffic Acquisition → Email channel sessions.</InfoBanner>
       )}
       {dept.id === "social" && (
-        <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>
-          💡 Enter total follower counts as of end of month — growth is auto-calculated vs prior month. Enter published counts per channel — Total Published is auto-calculated.
-        </div>
+        <InfoBanner variant="info">💡 Enter total follower counts as of end of month — growth is auto-calculated vs prior month. Enter published counts per channel — Total Published is auto-calculated.</InfoBanner>
       )}
-      {isJuneauSource && <div style={{ background: C.gL, border: `1px solid ${C.g}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#166534", fontFamily: F }}>Saving here syncs Total, Website, Facebook & Phone leads to all Juneau stores.</div>}
-      {isJuneauChild && <div style={{ background: C.cyanL, border: `1px solid ${C.cyan}44`, borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: C.cyanD, fontFamily: F }}>Total, Website, Facebook & Phone synced from Juneau Auto Mall. Enter {oemLabel} leads here.</div>}
+      {isJuneauSource && <InfoBanner variant="success">Saving here syncs Total, Website, Facebook & Phone leads to all Juneau stores.</InfoBanner>}
+      {isJuneauChild && <InfoBanner variant="info">Total, Website, Facebook & Phone synced from Juneau Auto Mall. Enter {oemLabel} leads here.</InfoBanner>}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
@@ -1315,12 +1335,12 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                   <span style={{ fontSize: 11, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.07em", fontFamily: F }}>{sectionStart.label}</span>
                 </div>
               )}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto", ...(isSynced ? { background: "#e6f9fc", borderRadius: 8, padding: "10px 12px", border: "1px solid #a5f3fc" } : {}) }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
                   {field.label}
                   {field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>optional</span>}
                   {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>synced</span>}
-                  {isSynced && <span style={{ color: C.cyanD, fontWeight: 600, marginLeft: 6, fontSize: 10 }}>from CallRail</span>}
+                  {isSynced && <span style={{ color: C.cyanD, fontWeight: 700, marginLeft: 6, fontSize: 11 }}>🔗 Synced from CallRail</span>}
                   {isLocked && <span style={{ color: "#92400e", fontWeight: 600, marginLeft: 6, fontSize: 10 }}>locked</span>}
                   {field.hint && !isSynced && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 4, fontSize: 11 }}>({field.hint})</span>}
                 </label>

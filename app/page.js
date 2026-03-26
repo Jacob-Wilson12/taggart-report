@@ -20,6 +20,7 @@ const C = {
 };
 const F  = "'DM Sans', system-ui, sans-serif";
 const FS = "'Instrument Serif', Georgia, serif";
+const DEPT_ACCENT = { seo: "#2563EB", gbp: "#059669", google_ads: "#D97706", meta_ads: "#7C3AED", social: "#E1306C", email: "#0891B2", creative: "#8b5cf6" };
 
 const MONTHS = [
   "January","February","March","April","May","June",
@@ -257,9 +258,9 @@ function Tip({ text }) {
 
 function SH({ title, sub, style: s }) {
   return (
-    <div style={{ marginBottom: 10, ...s }}>
-      <h2 style={{ fontSize: 17, fontWeight: 700, color: C.t, margin: 0, fontFamily: FS }}>{title}</h2>
-      {sub && <p style={{ fontSize: 11, color: C.tl, margin: "2px 0 0", fontFamily: F }}>{sub}</p>}
+    <div style={{ marginBottom: 10, paddingLeft: 12, borderLeft: `3px solid ${C.cyan}`, ...s }}>
+      <h2 style={{ fontSize: 11, fontWeight: 700, color: C.tl, margin: 0, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</h2>
+      {sub && <p style={{ fontSize: 11, color: C.tl, margin: "2px 0 0", fontFamily: F, fontWeight: 400 }}>{sub}</p>}
     </div>
   );
 }
@@ -268,23 +269,25 @@ function KpiCard({ label, value, sub, color, tip, change, invert }) {
   return (
     <div style={{
       background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10,
-      padding: "16px 20px", flex: 1, minWidth: 140, boxShadow: C.sh, textAlign: "center",
+      padding: "12px 16px", flex: 1, minWidth: 130, boxShadow: C.sh, textAlign: "left",
     }}>
-      <div style={{ fontSize: 11, color: C.tl, fontWeight: 700, marginBottom: 6,
+      <div style={{ fontSize: 10, color: C.tl, fontWeight: 700, marginBottom: 4,
         textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F,
-        display: "flex", alignItems: "center", justifyContent: "center" }}>
+        display: "flex", alignItems: "center" }}>
         {label}{tip && <Tip text={tip} />}
       </div>
-      <div style={{ fontSize: 30, fontWeight: 700, color: color || C.t, fontFamily: FS, lineHeight: 1.1, marginBottom: 4 }}>
-        {value || "—"}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <div style={{ fontSize: 24, fontWeight: 700, color: color || C.t, fontFamily: FS, lineHeight: 1.1 }}>
+          {value || "—"}
+        </div>
+        {change !== undefined && <Arr v={change} invert={invert} sz={11} />}
       </div>
-      {change !== undefined && <Arr v={change} invert={invert} sz={12} />}
-      {sub && <div style={{ fontSize: 11, color: C.tl, marginTop: 4, fontFamily: F }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: C.tl, marginTop: 2, fontFamily: F }}>{sub}</div>}
     </div>
   );
 }
 
-/* ─── BM: metric pill inside BlueCard — now shows prior value ─── */
+/* ─── BM: metric pill inside DeptCard ─── */
 function BM({ l, v, pre = "", suf = "", change, invert, prior }) {
   const display = (v === null || v === undefined || v === "")
     ? "—"
@@ -295,21 +298,21 @@ function BM({ l, v, pre = "", suf = "", change, invert, prior }) {
     : null;
   return (
     <div style={{ flex: 1, minWidth: 100, textAlign: "center", padding: "12px 8px" }}>
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 700,
+      <div style={{ fontSize: 10, color: C.tl, fontWeight: 700,
         textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4, fontFamily: F }}>
         {l}
       </div>
-      <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", fontFamily: FS, lineHeight: 1.1, marginBottom: 3 }}>
+      <div style={{ fontSize: 24, fontWeight: 700, color: C.t, fontFamily: FS, lineHeight: 1.1, marginBottom: 3 }}>
         {display}
       </div>
       {change !== undefined && <Arr v={change} invert={invert} sz={11} />}
       {priorDisplay && change === undefined && (
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: F, marginTop: 2 }}>
+        <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>
           was {priorDisplay}
         </div>
       )}
       {priorDisplay && change !== undefined && (
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: F, marginTop: 2 }}>
+        <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 2 }}>
           vs {priorDisplay}
         </div>
       )}
@@ -317,50 +320,48 @@ function BM({ l, v, pre = "", suf = "", change, invert, prior }) {
   );
 }
 
-function BlueCard({ icon, label, badge, children, onClick }) {
+function BlueCard({ icon, label, badge, children, onClick, accent = C.cyan }) {
   if (badge) {
-    /* ── No data state: dimmed card with centered message ── */
+    /* ── No data state: dashed border, light background ── */
     return (
       <div onClick={onClick} style={{
-        background: `linear-gradient(135deg, ${C.bc}, ${C.bl})`,
-        borderRadius: 12, padding: "18px 22px",
-        border: `1px solid ${C.bb}`, overflow: "hidden",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        background: C.white, borderRadius: 12, padding: "18px 22px",
+        border: `1px dashed ${C.bd}`, borderLeft: `3px dashed ${accent}`,
+        overflow: "hidden", boxShadow: C.sh,
         cursor: onClick ? "pointer" : "default",
-        opacity: 0.6,
+        opacity: 0.7,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
           <span style={{ fontSize: 18 }}>{icon}</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: FS }}>{label}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: C.t, fontFamily: FS }}>{label}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0 4px" }}>
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.45)", fontFamily: F, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            No data entered yet
+          <div style={{ flex: 1, height: 1, background: C.bl2 }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.tl, fontFamily: F, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            No data for this period yet
           </span>
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.12)" }} />
+          <div style={{ flex: 1, height: 1, background: C.bl2 }} />
         </div>
         <div style={{ textAlign: "center", paddingTop: 6 }}>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: F }}>
-            Click to open → enter data in admin panel
+          <span style={{ fontSize: 11, color: C.tl, fontFamily: F }}>
+            Data will appear here once reported
           </span>
         </div>
       </div>
     );
   }
 
-  /* ── Normal state: full metrics ── */
+  /* ── Normal state: white card with colored left accent ── */
   return (
     <div onClick={onClick} style={{
-      background: `linear-gradient(135deg, ${C.bc}, ${C.bl})`,
-      borderRadius: 12, padding: "18px 22px",
-      border: `1px solid ${C.bb}`, overflow: "hidden",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+      background: C.white, borderRadius: 12, padding: "18px 22px",
+      border: `1px solid ${C.bd}`, borderLeft: `3px solid ${accent}`,
+      overflow: "hidden", boxShadow: C.sh,
       cursor: onClick ? "pointer" : "default",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 18 }}>{icon}</span>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", fontFamily: FS }}>{label}</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: C.t, fontFamily: FS }}>{label}</span>
       </div>
       {children}
     </div>
@@ -372,6 +373,22 @@ function SecWrap({ title, sub, children }) {
     <div style={{ marginBottom: 24 }}>
       <SH title={title} sub={sub} style={{ marginBottom: 12 }} />
       {children}
+    </div>
+  );
+}
+
+function HeroMetric({ icon, label, value, change, invert, sub, color }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "20px 0", marginBottom: 8 }}>
+      <span style={{ fontSize: 28 }}>{icon}</span>
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: C.tl, fontFamily: F, marginBottom: 2 }}>{label}</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontSize: 48, fontWeight: 700, color: color || C.t, fontFamily: FS, lineHeight: 1 }}>{value || "—"}</span>
+          {change !== undefined && <Arr v={change} invert={invert} sz={14} />}
+        </div>
+        {sub && <div style={{ fontSize: 12, color: C.tl, fontFamily: F, marginTop: 2 }}>{sub}</div>}
+      </div>
     </div>
   );
 }
@@ -451,11 +468,11 @@ function NextMonth({ text }) {
   );
 }
 
-function NoData({ label }) {
+function NoData({ label, period }) {
   return (
     <div style={{ padding: "60px 24px", textAlign: "center", color: C.tl, fontFamily: F, fontSize: 14 }}>
       <div style={{ fontSize: 36, marginBottom: 10 }}>📭</div>
-      No {label || "data"} entered for this period yet.
+      No {label || "data"} reported{period ? ` for ${period}` : " for this period"} yet.
     </div>
   );
 }
@@ -468,15 +485,15 @@ function BudgetPacingBar({ spend, budget }) {
   const spendPct = Math.min(Math.round((spendN / budgetN) * 100), 100);
   const color = spendPct >= 85 ? C.g : spendPct >= 60 ? C.o : C.r;
   return (
-    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.bl2}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>Budget Pacing</span>
+        <span style={{ fontSize: 10, color: C.tl, fontFamily: F, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>Budget Pacing</span>
         <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: F }}>{spendPct}%</span>
       </div>
-      <div style={{ height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 3, overflow: "hidden" }}>
+      <div style={{ height: 6, background: C.bg, borderRadius: 3, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${spendPct}%`, background: color, borderRadius: 3, transition: "width 0.6s" }} />
       </div>
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: F, marginTop: 4 }}>
+      <div style={{ fontSize: 10, color: C.tl, fontFamily: F, marginTop: 4 }}>
         ${spendN.toLocaleString(undefined, { maximumFractionDigits: 0 })} of ${budgetN.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </div>
     </div>
@@ -494,7 +511,7 @@ function MiniChannelBar({ fb, ig, ytLong, ytShort, tiktok }) {
   const total = segs.reduce((a, s) => a + s.value, 0);
   if (total === 0) return null;
   return (
-    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.bl2}` }}>
       <div style={{ height: 4, borderRadius: 2, overflow: "hidden", display: "flex", gap: 1, marginBottom: 5 }}>
         {segs.map(s => (
           <div key={s.label} style={{ width: `${Math.round((s.value / total) * 100)}%`, background: s.color, borderRadius: 2 }} />
@@ -502,8 +519,8 @@ function MiniChannelBar({ fb, ig, ytLong, ytShort, tiktok }) {
       </div>
       <div style={{ display: "flex", gap: 10 }}>
         {segs.map(s => (
-          <span key={s.label} style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontFamily: F }}>
-            {s.label} <strong style={{ color: "rgba(255,255,255,0.7)" }}>{s.value}</strong>
+          <span key={s.label} style={{ fontSize: 10, color: C.tl, fontFamily: F }}>
+            {s.label} <strong style={{ color: C.tm }}>{s.value}</strong>
           </span>
         ))}
       </div>
@@ -524,7 +541,7 @@ function CreativeBreakdownBar({ videos, graphics, banners, adCreative, emailHead
   const total = segs.reduce((a, s) => a + s.value, 0);
   if (total === 0) return null;
   return (
-    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.bl2}` }}>
       <div style={{ height: 5, borderRadius: 3, overflow: "hidden", display: "flex", gap: 1, marginBottom: 5 }}>
         {segs.map(s => (
           <div key={s.label} style={{ width: `${Math.round((s.value / total) * 100)}%`, background: s.color, borderRadius: 2 }} />
@@ -532,8 +549,8 @@ function CreativeBreakdownBar({ videos, graphics, banners, adCreative, emailHead
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         {segs.map(s => (
-          <span key={s.label} style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontFamily: F }}>
-            {s.label} <strong style={{ color: "rgba(255,255,255,0.7)" }}>{s.value}</strong>
+          <span key={s.label} style={{ fontSize: 10, color: C.tl, fontFamily: F }}>
+            {s.label} <strong style={{ color: C.tm }}>{s.value}</strong>
           </span>
         ))}
       </div>
@@ -542,7 +559,7 @@ function CreativeBreakdownBar({ videos, graphics, banners, adCreative, emailHead
 }
 
 /* ─── DASHBOARD ─── */
-function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) {
+function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, isMobile }) {
   const leads  = data.leads      || {};
   const lcmp   = cd.leads        || {};
   const cr     = data.callrail   || {};
@@ -670,6 +687,29 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) 
   const seoTotalLeads     = (Number(seo.phone_calls) || 0) + (Number(seo.form_submissions) || 0) || null;
   const seoTotalLeadsPrev = (Number(scmp.phone_calls) || 0) + (Number(scmp.form_submissions) || 0) || null;
 
+  // Check if all departments have zero data
+  const allEmpty = leads.total_leads == null
+    && !seo.organic_sessions && !seo.impressions
+    && !gbp.phone_calls && !gbp.website_clicks
+    && !gads.conversions && !gads.total_spend
+    && !meta.conversions && !meta.total_spend
+    && totalViews === 0 && totalPublished === 0
+    && !email.campaigns_sent && !audienceSize
+    && !creat.total_assets
+    && !cr.total_calls;
+
+  if (allEmpty) {
+    return (
+      <div style={{ padding: "80px 24px", textAlign: "center", fontFamily: F }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: C.t, margin: "0 0 8px", fontFamily: FS }}>Your report is being prepared</h2>
+        <p style={{ fontSize: 14, color: C.tl, margin: 0, maxWidth: 400, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
+          Data for {clientName} hasn't been entered for this period yet. Check back soon — your marketing team is working on it.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {renderLeads()}
@@ -713,11 +753,11 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) 
 
       {/* Department cards — 2-col grid */}
       <SH title="Department Performance" style={{ marginBottom: 12 }} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(400px, 1fr))", gap: 16, marginBottom: 24 }}>
 
         {/* SEO */}
         {services.seo !== false && (
-          <BlueCard icon="🔍" label="SEO" badge={!seo.organic_sessions && !seo.impressions} onClick={() => setActiveTab("seo")}>
+          <BlueCard icon="🔍" label="SEO" accent={DEPT_ACCENT.seo} badge={!seo.organic_sessions && !seo.impressions} onClick={() => setActiveTab("seo")}>
             <div style={{ display: "flex", flexWrap: "wrap" }}>
               <BM l="Org. Sessions" v={seo.organic_sessions ? Number(seo.organic_sessions) : null} change={pct(seo.organic_sessions, scmp.organic_sessions)} prior={scmp.organic_sessions} />
               <BM l="Total Leads"   v={seoTotalLeads}     change={pct(seoTotalLeads, seoTotalLeadsPrev)}     prior={seoTotalLeadsPrev} />
@@ -731,7 +771,7 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) 
 
         {/* GBP */}
         {services.gbp !== false && (
-          <BlueCard icon="📍" label="Google Business" badge={!gbp.phone_calls && !gbp.website_clicks} onClick={() => setActiveTab("gbp")}>
+          <BlueCard icon="📍" label="Google Business" accent={DEPT_ACCENT.gbp} badge={!gbp.phone_calls && !gbp.website_clicks} onClick={() => setActiveTab("gbp")}>
             <div style={{ display: "flex", flexWrap: "wrap" }}>
               <BM l="Calls"       v={gbp.phone_calls        ? Number(gbp.phone_calls)        : null} change={pct(gbp.phone_calls,        gcmp.phone_calls)}        prior={gcmp.phone_calls} />
               <BM l="Directions"  v={gbp.direction_requests  ? Number(gbp.direction_requests)  : null} change={pct(gbp.direction_requests,  gcmp.direction_requests)}  prior={gcmp.direction_requests} />
@@ -745,7 +785,7 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) 
 
         {/* Google Ads */}
         {services.google_ads !== false && (
-          <BlueCard icon="📢" label="Google Ads" badge={!gads.conversions && !gads.total_spend} onClick={() => setActiveTab("google_ads")}>
+          <BlueCard icon="📢" label="Google Ads" accent={DEPT_ACCENT.google_ads} badge={!gads.conversions && !gads.total_spend} onClick={() => setActiveTab("google_ads")}>
             <div style={{ display: "flex", flexWrap: "wrap" }}>
               <BM l="Conversions" v={gads.conversions   ? Number(gads.conversions)                    : null} change={pct(gads.conversions,   gacmp.conversions)}   prior={gacmp.conversions} />
               <BM l="Cost/Lead"   v={gads.cost_per_lead != null ? parseFloat(gads.cost_per_lead).toFixed(2) : null} pre="$" change={pct(gads.cost_per_lead, gacmp.cost_per_lead)} invert prior={gacmp.cost_per_lead != null ? parseFloat(gacmp.cost_per_lead).toFixed(2) : null} />
@@ -759,7 +799,7 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) 
 
         {/* Meta Ads */}
         {services.meta_ads !== false && (
-          <BlueCard icon="📱" label="Meta Ads" badge={!meta.conversions && !meta.total_spend} onClick={() => setActiveTab("meta_ads")}>
+          <BlueCard icon="📱" label="Meta Ads" accent={DEPT_ACCENT.meta_ads} badge={!meta.conversions && !meta.total_spend} onClick={() => setActiveTab("meta_ads")}>
             <div style={{ display: "flex", flexWrap: "wrap" }}>
               <BM l="Conversions" v={meta.conversions   ? Number(meta.conversions)                    : null} change={pct(meta.conversions,   mcmp.conversions)}   prior={mcmp.conversions} />
               <BM l="Cost/Lead"   v={meta.cost_per_lead != null ? parseFloat(meta.cost_per_lead).toFixed(2) : null} pre="$" change={pct(meta.cost_per_lead, mcmp.cost_per_lead)} invert prior={mcmp.cost_per_lead != null ? parseFloat(mcmp.cost_per_lead).toFixed(2) : null} />
@@ -774,7 +814,7 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) 
 
         {/* Social */}
         {services.social !== false && (
-          <BlueCard icon="🎬" label="Organic Social" badge={totalViews === 0 && totalPublished === 0} onClick={() => setActiveTab("social")}>
+          <BlueCard icon="🎬" label="Organic Social" accent={DEPT_ACCENT.social} badge={totalViews === 0 && totalPublished === 0} onClick={() => setActiveTab("social")}>
             <div style={{ display: "flex", flexWrap: "wrap" }}>
               <BM l="Total Views"     v={totalViews     > 0 ? totalViews     : null} change={pct(totalViews,     prevTotalViews)}    prior={prevTotalViews > 0 ? prevTotalViews : null} />
               <BM l="Total Published" v={totalPublished > 0 ? totalPublished : null} change={pct(totalPublished, prevPublished)}      prior={prevPublished  > 0 ? prevPublished  : null} />
@@ -786,7 +826,7 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) 
 
         {/* Email */}
         {services.email !== false && (
-          <BlueCard icon="✉️" label="Email" badge={!email.campaigns_sent && !audienceSize} onClick={() => setActiveTab("email")}>
+          <BlueCard icon="✉️" label="Email" accent={DEPT_ACCENT.email} badge={!email.campaigns_sent && !audienceSize} onClick={() => setActiveTab("email")}>
             <div style={{ display: "flex", flexWrap: "wrap" }}>
               <BM l="Campaigns"    v={email.campaigns_sent ? Number(email.campaigns_sent) : null} prior={ecmp.campaigns_sent} />
               <BM l="Audience"     v={audienceSize}
@@ -800,11 +840,11 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab }) 
 
       {/* Creative — full width */}
       {services.creative !== false && (
-        <BlueCard icon="🎨" label="Creative" badge={!creat.total_assets} onClick={() => setActiveTab("creative")}>
+        <BlueCard icon="🎨" label="Creative" accent={DEPT_ACCENT.creative} badge={!creat.total_assets} onClick={() => setActiveTab("creative")}>
           <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
             <div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, fontFamily: F, marginBottom: 4 }}>Assets Delivered</div>
-              <div style={{ fontSize: 36, fontWeight: 700, color: "#fff", fontFamily: FS, lineHeight: 1 }}>
+              <div style={{ fontSize: 10, color: C.tl, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, fontFamily: F, marginBottom: 4 }}>Assets Delivered</div>
+              <div style={{ fontSize: 36, fontWeight: 700, color: C.t, fontFamily: FS, lineHeight: 1 }}>
                 {creat.total_assets ? Number(creat.total_assets).toLocaleString() : "—"}
               </div>
             </div>
@@ -856,26 +896,23 @@ function SeoPage({ d, cd, trend }) {
 
   return (
     <div>
-      <SecWrap title="Key Metrics" sub="Organic search performance from GA4 + Search Console">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Organic Sessions" value={fmt(d.organic_sessions)} color={C.cyanD}
-            change={pct(d.organic_sessions, cd.organic_sessions)}
-            tip="Website visits from organic Google search."
-            sub={totalSessions > 0 ? `${Math.round((organic / totalSessions) * 100)}% of ${totalSessions.toLocaleString()} total` : null} />
-          <KpiCard label="Total Leads" value={fmt(totalLeads)} color={C.g}
-            change={pct(totalLeads, totalLeadsPrev)}
-            tip="Phone calls + form submissions from organic search." />
-          <KpiCard label="VDP Views" value={fmt(d.vdp_views)}
-            change={pct(d.vdp_views, cd.vdp_views)}
-            tip="Vehicle Detail Page views — high-intent shoppers." />
-          <KpiCard label="Avg Position" value={d.avg_position != null ? parseFloat(d.avg_position).toFixed(1) : "—"}
-            change={pct(d.avg_position, cd.avg_position)} invert
-            tip="Average ranking across all tracked keywords." />
-          <KpiCard label="Impressions" value={fmt(d.impressions)}
-            change={pct(d.impressions, cd.impressions)}
-            tip="Times your site appeared in Google results." />
-        </div>
-      </SecWrap>
+      <HeroMetric icon="🔍" label="Organic Sessions" value={fmt(d.organic_sessions)} color={C.cyanD}
+        change={pct(d.organic_sessions, cd.organic_sessions)}
+        sub={totalSessions > 0 ? `${Math.round((organic / totalSessions) * 100)}% of ${totalSessions.toLocaleString()} total sessions` : null} />
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+        <KpiCard label="Total Leads" value={fmt(totalLeads)} color={C.g}
+          change={pct(totalLeads, totalLeadsPrev)}
+          tip="Phone calls + form submissions from organic search." />
+        <KpiCard label="VDP Views" value={fmt(d.vdp_views)}
+          change={pct(d.vdp_views, cd.vdp_views)}
+          tip="Vehicle Detail Page views — high-intent shoppers." />
+        <KpiCard label="Avg Position" value={d.avg_position != null ? parseFloat(d.avg_position).toFixed(1) : "—"}
+          change={pct(d.avg_position, cd.avg_position)} invert
+          tip="Average ranking across all tracked keywords." />
+        <KpiCard label="Impressions" value={fmt(d.impressions)}
+          change={pct(d.impressions, cd.impressions)}
+          tip="Times your site appeared in Google results." />
+      </div>
 
       {(trendLine.length > 0 || channelData.length > 0) && (
         <SecWrap title="Organic Traffic" sub="Trend over time and channel breakdown">
@@ -1004,16 +1041,16 @@ function GbpPage({ d, cd, trend, clientName }) {
 
   return (
     <div>
-      <SecWrap title="Key Metrics" sub={listings ? "Combined totals across all listings" : "Google Business Profile visibility and actions"}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Calls"               value={fmt(d.phone_calls)}        change={pct(d.phone_calls,        cd.phone_calls)}        color={C.g} tip="Calls made directly from the GBP listing." />
-          <KpiCard label="Direction Requests"  value={fmt(d.direction_requests)} change={pct(d.direction_requests, cd.direction_requests)} tip="Users who requested directions." />
-          <KpiCard label="Website Clicks"      value={fmt(d.website_clicks)}     change={pct(d.website_clicks,     cd.website_clicks)}     color={C.cyanD} tip="Clicks from GBP to your website." />
-          <KpiCard label="Searches"            value={fmt(d.search_appearances)} change={pct(d.search_appearances, cd.search_appearances)} tip="Times your business appeared in Google Search." />
-          {d.avg_rating  != null && <KpiCard label="Avg Rating"   value={`${parseFloat(d.avg_rating).toFixed(1)} ★`} />}
-          {d.new_reviews != null && <KpiCard label="New Reviews"  value={`+${d.new_reviews}`} color={C.g} change={pct(d.new_reviews, cd.new_reviews)} />}
-        </div>
-      </SecWrap>
+      <HeroMetric icon="📍" label="Website Clicks" value={fmt(d.website_clicks)} color={C.cyanD}
+        change={pct(d.website_clicks, cd.website_clicks)}
+        sub={listings ? "Combined totals across all listings" : "From Google Business Profile"} />
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+        <KpiCard label="Calls"               value={fmt(d.phone_calls)}        change={pct(d.phone_calls,        cd.phone_calls)}        color={C.g} tip="Calls made directly from the GBP listing." />
+        <KpiCard label="Direction Requests"  value={fmt(d.direction_requests)} change={pct(d.direction_requests, cd.direction_requests)} tip="Users who requested directions." />
+        <KpiCard label="Searches"            value={fmt(d.search_appearances)} change={pct(d.search_appearances, cd.search_appearances)} tip="Times your business appeared in Google Search." />
+        {d.avg_rating  != null && <KpiCard label="Avg Rating"   value={`${parseFloat(d.avg_rating).toFixed(1)} ★`} />}
+        {d.new_reviews != null && <KpiCard label="New Reviews"  value={`+${d.new_reviews}`} color={C.g} change={pct(d.new_reviews, cd.new_reviews)} />}
+      </div>
 
       {listings && listings.some(l => listingStat(l.key, "profile_views") != null) && (
         <SecWrap title="Listing Breakdown" sub="Performance by individual Google Business Profile">
@@ -1147,29 +1184,23 @@ function GoogleAdsPage({ d, cd, trend }) {
 
   return (
     <div>
-      <SecWrap title="Results" sub="Campaign performance from Google Ads">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Conversions" value={fmt(d.conversions)} color={C.cyanD}
-            change={pct(d.conversions, cd.conversions)} tip="Total tracked conversions from Google Ads." />
-          <KpiCard label="Cost / Lead"
-            value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
-            color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
-            tip="Average cost per conversion." sub="Industry avg $25–$45" />
-          <KpiCard label="Total Clicks" value={fmt(d.clicks)} change={pct(d.clicks, cd.clicks)} />
-        </div>
-      </SecWrap>
-
-      <SecWrap title="Ad Performance">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="CTR"
-            value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"}
-            change={pct(d.ctr, cd.ctr)} tip="Click-through rate." sub="Industry avg ~8.29%" />
-          <KpiCard label="Avg CPC"
-            value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"}
-            invert change={pct(d.cpc, cd.cpc)} tip="Average cost per click." sub="Industry avg ~$2.41" />
-          <KpiCard label="Impressions" value={fmt(d.impressions)} change={pct(d.impressions, cd.impressions)} />
-        </div>
-      </SecWrap>
+      <HeroMetric icon="📢" label="Conversions" value={fmt(d.conversions)} color={C.cyanD}
+        change={pct(d.conversions, cd.conversions)}
+        sub={d.cost_per_lead != null ? `$${parseFloat(d.cost_per_lead).toFixed(2)} cost per lead` : null} />
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+        <KpiCard label="Cost / Lead"
+          value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
+          color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
+          tip="Average cost per conversion." sub="Industry avg $25–$45" />
+        <KpiCard label="Total Clicks" value={fmt(d.clicks)} change={pct(d.clicks, cd.clicks)} />
+        <KpiCard label="CTR"
+          value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"}
+          change={pct(d.ctr, cd.ctr)} tip="Click-through rate." sub="Industry avg ~8.29%" />
+        <KpiCard label="Avg CPC"
+          value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"}
+          invert change={pct(d.cpc, cd.cpc)} tip="Average cost per click." sub="Industry avg ~$2.41" />
+        <KpiCard label="Impressions" value={fmt(d.impressions)} change={pct(d.impressions, cd.impressions)} />
+      </div>
 
       {spendPct !== null && (
         <SecWrap title="Budget">
@@ -1230,18 +1261,18 @@ function MetaAdsPage({ d, cd, trend }) {
 
   return (
     <div>
-      <SecWrap title="Results" sub="Facebook & Instagram ad performance">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Conversions"  value={fmt(d.conversions)} color={C.cyanD}
-            change={pct(d.conversions, cd.conversions)} tip="Total tracked conversions from Meta ads." />
-          <KpiCard label="Cost / Lead"
-            value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
-            color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
-            tip="Average cost per lead." sub="Industry avg $25–$40" />
-          <KpiCard label="Total Spend"
-            value={spend != null ? "$" + spend.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"} />
-        </div>
-      </SecWrap>
+      <HeroMetric icon="📱" label="Conversions" value={fmt(d.conversions)} color={C.cyanD}
+        change={pct(d.conversions, cd.conversions)}
+        sub={d.cost_per_lead != null ? `$${parseFloat(d.cost_per_lead).toFixed(2)} cost per lead` : "Facebook & Instagram ads"} />
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+        <KpiCard label="Cost / Lead"
+          value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
+          color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
+          tip="Average cost per lead." sub="Industry avg $25–$40" />
+        <KpiCard label="Total Spend"
+          value={spend != null ? "$" + spend.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"} />
+        <KpiCard label="Reach" value={fmt(d.reach)} change={pct(d.reach, cd.reach)} />
+      </div>
 
       {spendPct !== null && (
         <SecWrap title="Budget">
@@ -1340,13 +1371,13 @@ function SocialPage({ d, cd, trend }) {
 
   return (
     <div>
-      <SecWrap title="Monthly Overview">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Total Views"      value={totalViews > 0 ? fmt(totalViews) : "—"} color={C.cyanD} change={pct(totalViews, prevTotalViews)} tip="Combined views/reach across all platforms." />
-          <KpiCard label="Total Published"  value={totalPublished ? fmt(totalPublished) : "—"} change={pct(totalPublished, prevPublished)} tip="Posts and videos published across all platforms." />
-          {d.web_clicks != null && <KpiCard label="Website Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} tip="Clicks from social to your website (GA4)." />}
-        </div>
-      </SecWrap>
+      <HeroMetric icon="🎬" label="Total Views" value={totalViews > 0 ? fmt(totalViews) : "—"} color={C.cyanD}
+        change={pct(totalViews, prevTotalViews)}
+        sub="Combined views and reach across all platforms" />
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+        <KpiCard label="Total Published"  value={totalPublished ? fmt(totalPublished) : "—"} change={pct(totalPublished, prevPublished)} tip="Posts and videos published across all platforms." />
+        {d.web_clicks != null && <KpiCard label="Website Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} tip="Clicks from social to your website (GA4)." />}
+      </div>
 
       {/* Published channel breakdown */}
       {publishedChannels.length > 0 && (
@@ -1458,19 +1489,18 @@ function EmailPage({ d, cd, seoData, seoDataCmp }) {
 
   return (
     <div>
-      <SecWrap title="Monthly Summary">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Campaigns Sent" value={fmt(d.campaigns_sent)} tip="Total campaigns deployed this month." />
-          <KpiCard label="Audience Size"  color={C.cyanD}
-            value={audienceSize != null ? audienceSize.toLocaleString() : "—"}
-            sub={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()} vs prior month` : null}
-            tip="Total active email subscribers as of end of month." />
-          <KpiCard label="Site Visits from Email" color={C.g}
-            value={siteVisits != null ? fmt(siteVisits) : "—"}
-            change={pct(siteVisits, siteVisitsPrev)}
-            tip="GA4 sessions from email campaigns via UTM links." />
-        </div>
-      </SecWrap>
+      <HeroMetric icon="✉️" label="Campaigns Sent" value={fmt(d.campaigns_sent)}
+        sub={audienceSize != null ? `${audienceSize.toLocaleString()} subscribers` : null} />
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+        <KpiCard label="Audience Size"  color={C.cyanD}
+          value={audienceSize != null ? audienceSize.toLocaleString() : "—"}
+          sub={audienceGrowth != null ? `${audienceGrowth > 0 ? "+" : ""}${audienceGrowth.toLocaleString()} vs prior month` : null}
+          tip="Total active email subscribers as of end of month." />
+        <KpiCard label="Site Visits from Email" color={C.g}
+          value={siteVisits != null ? fmt(siteVisits) : "—"}
+          change={pct(siteVisits, siteVisitsPrev)}
+          tip="GA4 sessions from email campaigns via UTM links." />
+      </div>
 
       {campaignList.length > 0 && (
         <SecWrap title="Campaigns This Month">
@@ -1527,14 +1557,13 @@ function CreativePage({ d, trend }) {
 
   return (
     <div>
-      <SecWrap title="Monthly Summary">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Total Assets Delivered" value={fmt(totalAssets)} color={C.cyanD} />
-          {assetTypes.map(t => (
-            <KpiCard key={t.key} label={t.label} value={fmt(d[t.key])} color={t.color} />
-          ))}
-        </div>
-      </SecWrap>
+      <HeroMetric icon="🎨" label="Total Assets Delivered" value={fmt(totalAssets)} color={C.cyanD}
+        sub={assetTypes.length > 0 ? assetTypes.map(t => `${d[t.key]} ${t.label.toLowerCase()}`).join(", ") : null} />
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+        {assetTypes.map(t => (
+          <KpiCard key={t.key} label={t.label} value={fmt(d[t.key])} color={t.color} />
+        ))}
+      </div>
 
       {assetTypes.length > 1 && totalAssets > 0 && (
         <SecWrap title="Deliverable Breakdown">
@@ -1707,6 +1736,14 @@ export default function App() {
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError]     = useState(null);
   const [trendData, setTrendData]     = useState({});
+  const [winW, setWinW]               = useState(typeof window !== "undefined" ? window.innerWidth : 1280);
+
+  useEffect(() => {
+    const handler = () => setWinW(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  const isMobile = winW < 768;
 
   const range      = getMonthRange(preset, customStart, customEnd);
   const [cr0, cr1] = getCompRanges(range);
@@ -1829,7 +1866,7 @@ export default function App() {
       </div>
     );
     switch (activeTab) {
-      case "dashboard":  return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} leadTrend={trendData.leads || []} setActiveTab={setActiveTab} />;
+      case "dashboard":  return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} leadTrend={trendData.leads || []} setActiveTab={setActiveTab} isMobile={isMobile} />;
       case "seo":        return svcEnabled("seo")        ? <SeoPage       d={reportData.seo}        cd={cd.seo        || {}} trend={trendData.seo        || []} /> : <DisabledDept label="SEO" />;
       case "gbp":        return svcEnabled("gbp")        ? <GbpPage       d={reportData.gbp}        cd={cd.gbp        || {}} trend={trendData.gbp        || []} clientName={selectedClient?.name} /> : <DisabledDept label="Google Business Profile" />;
       case "google_ads": return svcEnabled("google_ads") ? <GoogleAdsPage d={reportData.google_ads} cd={cd.google_ads || {}} trend={trendData.google_ads || []} /> : <DisabledDept label="Google Ads" />;
@@ -1837,7 +1874,7 @@ export default function App() {
       case "social":     return svcEnabled("social")     ? <SocialPage    d={reportData.social}     cd={cd.social     || {}} trend={trendData.social     || []} /> : <DisabledDept label="Organic Social" />;
       case "email":      return svcEnabled("email")      ? <EmailPage     d={reportData.email}      cd={cd.email      || {}} seoData={reportData.seo || {}} seoDataCmp={cd.seo || {}} /> : <DisabledDept label="Email" />;
       case "creative":   return svcEnabled("creative")   ? <CreativePage  d={reportData.creative}   trend={trendData.creative || []} /> : <DisabledDept label="Creative" />;
-      default:           return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} leadTrend={trendData.leads || []} setActiveTab={setActiveTab} />;
+      default:           return <Dashboard data={reportData} cd={cd} services={services} clientName={selectedClient?.name} leadTrend={trendData.leads || []} setActiveTab={setActiveTab} isMobile={isMobile} />;
     }
   };
 
@@ -1865,11 +1902,11 @@ export default function App() {
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: F, background: C.bg }}>
 
       {/* HEADER */}
-      <div style={{ background: C.white, padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.bd}`, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", flexShrink: 0, zIndex: 50 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/Taggart_Advertising_Logo.png" alt="Taggart" style={{ height: 44, width: "auto" }} />
-          <span style={{ fontFamily: "'Permanent Marker', cursive", fontSize: 22, color: C.navy, letterSpacing: "-0.5px" }}>TAGGART</span>
-          <span style={{ fontFamily: "'Permanent Marker', cursive", fontSize: 22, color: C.cyan, letterSpacing: "-0.5px" }}>ADVERTISING</span>
+      <div style={{ background: C.white, padding: isMobile ? "0 12px" : "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.bd}`, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", flexShrink: 0, zIndex: 50 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10 }}>
+          <img src="/Taggart_Advertising_Logo.png" alt="Taggart" style={{ height: isMobile ? 36 : 44, width: "auto" }} />
+          {!isMobile && <span style={{ fontFamily: "'Permanent Marker', cursive", fontSize: 22, color: C.navy, letterSpacing: "-0.5px" }}>TAGGART</span>}
+          {!isMobile && <span style={{ fontFamily: "'Permanent Marker', cursive", fontSize: 22, color: C.cyan, letterSpacing: "-0.5px" }}>ADVERTISING</span>}
           {clients.length > 1 && (
             <>
               <div style={{ width: 1, height: 30, background: C.bd, margin: "0 6px" }} />
@@ -1916,21 +1953,18 @@ export default function App() {
       </div>
 
       {/* COMPARISON BAR */}
-      <div style={{ background: "rgba(230,249,252,0.92)", padding: "7px 24px", borderBottom: `1px solid #b2e9f5`, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <span style={{ fontSize: 12, color: C.cyanD, fontFamily: F, fontWeight: 700 }}>📊 Comparing:</span>
+      <div style={{ background: "rgba(230,249,252,0.5)", padding: "6px 24px", borderBottom: `1px solid ${C.bl2}`, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <span style={{ fontSize: 11, color: C.cyanD, fontFamily: F, fontWeight: 700 }}>Comparing:</span>
         {compLabels.map((label, i) => (
           <button key={i} onClick={() => setCompIdx(i)}
-            style={{ fontSize: 12, fontFamily: F, fontWeight: 600, padding: "4px 12px", borderRadius: 6, cursor: "pointer", background: compIdx === i ? C.cyanD : C.white, color: compIdx === i ? "#fff" : C.t, border: `1px solid ${compIdx === i ? C.cyanD : C.bd}` }}>
+            style={{ fontSize: 11, fontFamily: F, fontWeight: 600, padding: "3px 10px", borderRadius: 6, cursor: "pointer", background: compIdx === i ? C.cyanD : C.white, color: compIdx === i ? "#fff" : C.t, border: `1px solid ${compIdx === i ? C.cyanD : C.bd}` }}>
             {label}
           </button>
         ))}
-        <span style={{ fontSize: 11, color: C.tl, fontFamily: F, marginLeft: 4 }}>
-          Arrows appear once comparison period data is entered.
-        </span>
       </div>
 
       {/* CONTENT */}
-      <div style={{ flex: 1, padding: "24px 24px", maxWidth: 1200, margin: "0 auto", width: "100%", boxSizing: "border-box" }} onClick={closeMenus}>
+      <div style={{ flex: 1, padding: isMobile ? "16px 12px" : "24px 24px", maxWidth: 1200, margin: "0 auto", width: "100%", boxSizing: "border-box" }} onClick={closeMenus}>
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: C.t, margin: 0, fontFamily: FS }}>{selectedClient?.name}</h1>
           <p style={{ fontSize: 13, color: C.tl, margin: "3px 0 0", fontFamily: F }}>Performance Report — {rangeLabel}</p>
