@@ -471,7 +471,7 @@ export default function ImportPage() {
             {step === "done" && (
               <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
                 <a href="/admin/bulk" style={{ background: C.navy, color: "#fff", borderRadius: 8, padding: "10px 22px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
-                  -> Open Bulk Editor
+                  Open Bulk Editor
                 </a>
                 <button onClick={() => { setStep("upload"); setPreview(null); setLog([]); setCounts({ upserted: 0, skipped: 0, error: 0 }); }}
                   style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, color: C.t }}>
