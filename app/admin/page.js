@@ -96,7 +96,15 @@ const DEPT_BENCH_LABELS = {
   gbp: "📍 Google Business Profile", social: "🎬 Organic Social", email: "✉️ Email",
 };
 
-const LIVE_APIS = {};
+const LIVE_APIS = {
+  seo:       { label: "Search Console", endpoint: "/api/search-console" },
+  ga4:       { label: "GA4",            endpoint: "/api/ga4" },
+  google_ads:{ label: "Google Ads",     endpoint: "/api/google-ads" },
+  callrail:  { label: "CallRail",       endpoint: "/api/callrail" },
+  meta_ads:  { label: "Meta Ads",       endpoint: "/api/meta-ads" },
+  social:    { label: "Social",         endpoint: "/api/social" },
+  gbp:       { label: "GBP",            endpoint: "/api/gbp" },
+};
 
 const UPLOAD_DEPTS = ["email", "creative", "social", "seo", "meta_ads", "google_ads"];
 
@@ -312,6 +320,37 @@ const GBP_LISTING_SUM_FIELDS = [
   "profile_views","search_appearances","map_views","website_clicks",
   "phone_calls","direction_requests","review_count","new_reviews","posts_published",
 ];
+
+// ── CallRail -> GBP phone_calls cascade helper ───────────────────────────────
+// For Goode Motor Ford: writes to gbp_ford_phone_calls and recomputes top-level sum
+// For all other clients: writes directly to phone_calls
+async function cascadeCallRailToGbp(supabaseClient, clientId, clientName, month, gbpCalls, userId) {
+  const { data: existingGbp } = await supabaseClient.from("report_data").select("data")
+    .eq("client_id", clientId).eq("month", month).eq("department", "gbp").single();
+  const gbpData = existingGbp?.data || {};
+  const gbpOverrides = new Set(gbpData._manual_overrides || []);
+  const ts = { last_updated_by: userId, last_updated_at: new Date().toISOString() };
+
+  let updatedGbp = { ...gbpData, _callrail_synced_at: new Date().toISOString() };
+
+  if (clientName === "Goode Motor Ford") {
+    // Write to ford listing field, recompute combined total
+    if (!gbpOverrides.has("gbp_ford_phone_calls")) {
+      updatedGbp.gbp_ford_phone_calls = gbpCalls;
+      const overland = Number(updatedGbp.gbp_overland_phone_calls) || 0;
+      updatedGbp.phone_calls = (Number(gbpCalls) || 0) + overland || null;
+    }
+  } else {
+    if (!gbpOverrides.has("phone_calls")) {
+      updatedGbp.phone_calls = gbpCalls;
+    }
+  }
+
+  await supabaseClient.from("report_data").upsert(
+    { client_id: clientId, month, department: "gbp", data: updatedGbp, ...ts },
+    { onConflict: "client_id,month,department" }
+  );
+}
 
 const MONTHS = ["January","February","March","April","May","June",
   "July","August","September","October","November","December"];
@@ -872,19 +911,8 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       const { data: crRow } = await supabase.from("report_data").select("data")
         .eq("client_id", clientId).eq("month", month).eq("department", "callrail").single();
       const gbpCalls = crRow?.data?.gbp_calls ?? null;
-      const { data: existingGbp } = await supabase.from("report_data").select("data")
-        .eq("client_id", clientId).eq("month", month).eq("department", "gbp").single();
-      const gbpData = existingGbp?.data || {};
-      const gbpOverrides = new Set(gbpData._manual_overrides || []);
-      if (!gbpOverrides.has("phone_calls")) {
-        const { data: { user } } = await supabase.auth.getUser();
-        const ts = { last_updated_by: user.id, last_updated_at: new Date().toISOString() };
-        const updatedGbp = { ...gbpData, phone_calls: gbpCalls, _callrail_synced_at: new Date().toISOString() };
-        await supabase.from("report_data").upsert(
-          { client_id: clientId, month, department: "gbp", data: updatedGbp, ...ts },
-          { onConflict: "client_id,month,department" }
-        );
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      await cascadeCallRailToGbp(supabase, clientId, clientName, month, gbpCalls, user.id);
     }
     if (onApiPulled) onApiPulled(deptId);
   }, [dept.id, clientId, month, load, onApiPulled]);
@@ -939,17 +967,7 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
     // ── Cascade CallRail gbp_calls -> GBP phone_calls ──
     if (dept.id === "callrail") {
       const gbpCalls = savePayload.gbp_calls ?? null;
-      const { data: existingGbp } = await supabase.from("report_data").select("data")
-        .eq("client_id", clientId).eq("month", month).eq("department", "gbp").single();
-      const gbpData = existingGbp?.data || {};
-      const gbpOverrides = new Set(gbpData._manual_overrides || []);
-      if (!gbpOverrides.has("phone_calls")) {
-        const updatedGbp = { ...gbpData, phone_calls: gbpCalls, _callrail_synced_at: new Date().toISOString() };
-        await supabase.from("report_data").upsert(
-          { client_id: clientId, month, department: "gbp", data: updatedGbp, ...ts },
-          { onConflict: "client_id,month,department" }
-        );
-      }
+      await cascadeCallRailToGbp(supabase, clientId, clientName, month, gbpCalls, user.id);
     }
 
     if (isJuneauSource && allClients) {
