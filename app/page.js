@@ -771,7 +771,6 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
               <BM l="VDP Views"     v={seo.vdp_views      ? Number(seo.vdp_views)      : null} change={pct(seo.vdp_views,     scmp.vdp_views)}     prior={scmp.vdp_views} />
               <BM l="Avg Position"  v={seo.avg_position   != null ? parseFloat(seo.avg_position).toFixed(1)   : null} change={pct(seo.avg_position,  scmp.avg_position)}  invert prior={scmp.avg_position != null ? parseFloat(scmp.avg_position).toFixed(1) : null} />
               <BM l="Impressions"   v={seo.impressions     ? Number(seo.impressions)     : null} change={pct(seo.impressions,   scmp.impressions)}   prior={scmp.impressions} />
-              <BM l="Top Query"     v={seo.top_query || (Array.isArray(seo.top_queries) && seo.top_queries[0]?.query) || null} />
             </div>
           </BlueCard>
         )}
@@ -783,7 +782,6 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
               <BM l="Calls"       v={gbp.phone_calls        ? Number(gbp.phone_calls)        : null} change={pct(gbp.phone_calls,        gcmp.phone_calls)}        prior={gcmp.phone_calls} />
               <BM l="Directions"  v={gbp.direction_requests  ? Number(gbp.direction_requests)  : null} change={pct(gbp.direction_requests,  gcmp.direction_requests)}  prior={gcmp.direction_requests} />
               <BM l="Web Clicks"  v={gbp.website_clicks      ? Number(gbp.website_clicks)      : null} change={pct(gbp.website_clicks,      gcmp.website_clicks)}      prior={gcmp.website_clicks} />
-              <BM l="Searches"    v={gbp.search_appearances  ? Number(gbp.search_appearances)  : null} change={pct(gbp.search_appearances,  gcmp.search_appearances)}  prior={gcmp.search_appearances} />
               <BM l="Avg Rating"  v={gbp.avg_rating          != null ? `${parseFloat(gbp.avg_rating).toFixed(1)} ★` : null} />
               <BM l="New Reviews" v={gbp.new_reviews         ? Number(gbp.new_reviews)         : null} change={pct(gbp.new_reviews,         gcmp.new_reviews)}         prior={gcmp.new_reviews} />
             </div>
@@ -810,7 +808,6 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
             <div style={{ display: "flex", flexWrap: "wrap" }}>
               <BM l="Conversions" v={meta.conversions   ? Number(meta.conversions)                    : null} change={pct(meta.conversions,   mcmp.conversions)}   prior={mcmp.conversions} />
               <BM l="Cost/Lead"   v={meta.cost_per_lead != null ? parseFloat(meta.cost_per_lead).toFixed(2) : null} pre="$" change={pct(meta.cost_per_lead, mcmp.cost_per_lead)} invert prior={mcmp.cost_per_lead != null ? parseFloat(mcmp.cost_per_lead).toFixed(2) : null} />
-              <BM l="Reach"       v={meta.reach         ? Number(meta.reach)                          : null} change={pct(meta.reach,         mcmp.reach)}         prior={mcmp.reach} />
               <BM l="CTR"         v={meta.ctr           != null ? parseFloat(meta.ctr).toFixed(1)           : null} suf="%" change={pct(meta.ctr,           mcmp.ctr)}           prior={mcmp.ctr != null ? parseFloat(mcmp.ctr).toFixed(1) : null} />
               <BM l="Avg CPC"     v={meta.cpc           != null ? parseFloat(meta.cpc).toFixed(2)           : null} pre="$" change={pct(meta.cpc,           mcmp.cpc)}           invert prior={mcmp.cpc != null ? parseFloat(mcmp.cpc).toFixed(2) : null} />
               <BM l="Spend"       v={meta.total_spend   ? Number(meta.total_spend)                    : null} pre="$" prior={mcmp.total_spend} />
@@ -872,8 +869,9 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
 }
 
 /* ─── SEO PAGE ─── */
-function SeoPage({ d, cd, trend }) {
-  if (!d) return <NoData label="SEO data" />;
+function SeoPage({ d: _d, cd: _cd, trend }) {
+  const d = _d || {};
+  const cd = _cd || {};
 
   const trendLine = trend
     .filter(t => t.organic_sessions != null)
@@ -920,8 +918,8 @@ function SeoPage({ d, cd, trend }) {
           tip="Times your site appeared in Google results." />
       </div>
 
-      {(trendLine.length > 0 || channelData.length > 0) && (
-        <SecWrap title="Organic Traffic" sub="Trend over time and channel breakdown">
+      <SecWrap title="Organic Traffic" sub="Trend over time and channel breakdown">
+        {trendLine.length > 0 || channelData.length > 0 ? (
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "stretch" }}>
             {trendLine.length > 0 && (
               <Card style={{ flex: 3, minWidth: 300, marginBottom: 0 }}>
@@ -961,12 +959,12 @@ function SeoPage({ d, cd, trend }) {
               </Card>
             )}
           </div>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="Traffic trend and channel breakdown — appears when session data is entered." />}
+      </SecWrap>
 
       {/* Top Queries table */}
-      {topQueries.length > 0 && (
-        <SecWrap title="Top Organic Queries" sub="Top performing search queries this period">
+      <SecWrap title="Top Organic Queries" sub="Top performing search queries this period">
+        {topQueries.length > 0 ? (
           <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F }}>
               <thead>
@@ -999,19 +997,17 @@ function SeoPage({ d, cd, trend }) {
               </tbody>
             </table>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="No top queries entered for this period." />}
+      </SecWrap>
 
-      {(d.bounce_rate != null || d.avg_session_duration != null || d.phone_calls != null || d.form_submissions != null) && (
-        <SecWrap title="Conversions & Engagement">
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {d.phone_calls      != null && <KpiCard label="Phone Calls (SEO)"    value={fmt(d.phone_calls)}      color={C.g}   change={pct(d.phone_calls, cd.phone_calls)} tip="Calls attributed to organic search." />}
-            {d.form_submissions != null && <KpiCard label="Form Submissions"     value={fmt(d.form_submissions)} change={pct(d.form_submissions, cd.form_submissions)} tip="Contact, trade-in, and finance forms." />}
-            {d.bounce_rate      != null && <KpiCard label="Bounce Rate"          value={parseFloat(d.bounce_rate).toFixed(1) + "%"} change={pct(d.bounce_rate, cd.bounce_rate)} invert sub="Industry avg 40–55%" />}
-            {d.avg_session_duration != null && <KpiCard label="Avg Session"      value={fmtDur(d.avg_session_duration)} sub="2+ min is healthy" />}
-          </div>
-        </SecWrap>
-      )}
+      <SecWrap title="Conversions & Engagement">
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <KpiCard label="Phone Calls (SEO)"    value={fmt(d.phone_calls)}      color={C.g}   change={pct(d.phone_calls, cd.phone_calls)} tip="Calls attributed to organic search." />
+          <KpiCard label="Form Submissions"     value={fmt(d.form_submissions)} change={pct(d.form_submissions, cd.form_submissions)} tip="Contact, trade-in, and finance forms." />
+          <KpiCard label="Bounce Rate"          value={d.bounce_rate != null ? parseFloat(d.bounce_rate).toFixed(1) + "%" : "—"} change={pct(d.bounce_rate, cd.bounce_rate)} invert sub="Industry avg 40–55%" />
+          <KpiCard label="Avg Session"          value={d.avg_session_duration != null ? fmtDur(d.avg_session_duration) : "—"} sub="2+ min is healthy" />
+        </div>
+      </SecWrap>
 
       <WorkDone text={d.work_completed} />
       <WinsLosses wins={d.wins} losses={d.losses} />
@@ -1021,8 +1017,9 @@ function SeoPage({ d, cd, trend }) {
 }
 
 /* ─── GBP PAGE ─── */
-function GbpPage({ d, cd, trend, clientName }) {
-  if (!d) return <NoData label="Google Business data" />;
+function GbpPage({ d: _d, cd: _cd, trend, clientName }) {
+  const d = _d || {};
+  const cd = _cd || {};
 
   const listings = GBP_MULTI_LISTINGS[clientName] || null;
 
@@ -1039,7 +1036,6 @@ function GbpPage({ d, cd, trend, clientName }) {
       clicks:     Number(t.website_clicks)     || 0,
     }));
 
-  const hasCharts = viewsTrend.length > 1 || actionsTrend.length > 1;
   const listingStat = (listingKey, field) => {
     const v = d[`gbp_${listingKey}_${field}`];
     return v != null ? Number(v) : null;
@@ -1058,58 +1054,60 @@ function GbpPage({ d, cd, trend, clientName }) {
         <KpiCard label="New Reviews"  value={d.new_reviews != null ? `+${d.new_reviews}` : "—"} color={C.g} change={pct(d.new_reviews, cd.new_reviews)} />
       </div>
 
-      {listings && listings.some(l => listingStat(l.key, "profile_views") != null) && (
+      {listings && (
         <SecWrap title="Listing Breakdown" sub="Performance by individual Google Business Profile">
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-            {listings.map(l => {
-              const views    = listingStat(l.key, "profile_views");
-              const searches = listingStat(l.key, "search_appearances");
-              const mapV     = listingStat(l.key, "map_views");
-              const clicks   = listingStat(l.key, "website_clicks");
-              const calls    = listingStat(l.key, "phone_calls");
-              const dirs     = listingStat(l.key, "direction_requests");
-              const rating   = d[`gbp_${l.key}_avg_rating`];
-              const reviews  = listingStat(l.key, "review_count");
-              const newRev   = listingStat(l.key, "new_reviews");
-              const posts    = listingStat(l.key, "posts_published");
-              return (
-                <div key={l.key} style={{ flex: 1, minWidth: 300, background: C.white, border: `2px solid ${l.color}33`, borderRadius: 12, padding: "18px 20px", boxShadow: C.sh }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 10, borderBottom: `2px solid ${l.color}22` }}>
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: l.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 14, fontWeight: 700, color: C.t, fontFamily: FS }}>📍 {l.label}</span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                    {[{ label: "Calls", value: calls, color: C.g }, { label: "Directions", value: dirs }, { label: "Web Clicks", value: clicks, color: l.color }, { label: "Searches", value: searches }, { label: "Map Views", value: mapV }, { label: "Profile Views", value: views }].map(s => (
-                      <div key={s.label} style={{ textAlign: "center", background: "#f8fafc", borderRadius: 8, padding: "10px 6px", border: `1px solid ${C.bl2}` }}>
-                        <div style={{ fontSize: 10, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F, marginBottom: 4 }}>{s.label}</div>
-                        <div style={{ fontSize: 20, fontWeight: 700, color: s.color || C.t, fontFamily: FS }}>{s.value != null ? s.value.toLocaleString() : "—"}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {(rating != null || reviews != null) && (
-                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.bl2}`, display: "flex", gap: 12, alignItems: "center" }}>
-                      {rating != null && (
-                        <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 22, fontWeight: 700, color: C.t, fontFamily: FS }}>{parseFloat(rating).toFixed(1)}</div>
-                          <div style={{ color: C.o, fontSize: 14 }}>{"★".repeat(Math.round(rating))}</div>
-                        </div>
-                      )}
-                      <div style={{ display: "flex", gap: 10 }}>
-                        {reviews != null && <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{reviews.toLocaleString()} reviews</div>}
-                        {newRev  != null && <div style={{ fontSize: 12, color: C.g,  fontFamily: F, fontWeight: 700 }}>+{newRev} new</div>}
-                        {posts   != null && <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{posts} posts</div>}
-                      </div>
+          {listings.some(l => listingStat(l.key, "profile_views") != null) ? (
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              {listings.map(l => {
+                const views    = listingStat(l.key, "profile_views");
+                const searches = listingStat(l.key, "search_appearances");
+                const mapV     = listingStat(l.key, "map_views");
+                const clicks   = listingStat(l.key, "website_clicks");
+                const calls    = listingStat(l.key, "phone_calls");
+                const dirs     = listingStat(l.key, "direction_requests");
+                const rating   = d[`gbp_${l.key}_avg_rating`];
+                const reviews  = listingStat(l.key, "review_count");
+                const newRev   = listingStat(l.key, "new_reviews");
+                const posts    = listingStat(l.key, "posts_published");
+                return (
+                  <div key={l.key} style={{ flex: 1, minWidth: 300, background: C.white, border: `2px solid ${l.color}33`, borderRadius: 12, padding: "18px 20px", boxShadow: C.sh }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 10, borderBottom: `2px solid ${l.color}22` }}>
+                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: l.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 14, fontWeight: 700, color: C.t, fontFamily: FS }}>📍 {l.label}</span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                      {[{ label: "Calls", value: calls, color: C.g }, { label: "Directions", value: dirs }, { label: "Web Clicks", value: clicks, color: l.color }, { label: "Searches", value: searches }, { label: "Map Views", value: mapV }, { label: "Profile Views", value: views }].map(s => (
+                        <div key={s.label} style={{ textAlign: "center", background: "#f8fafc", borderRadius: 8, padding: "10px 6px", border: `1px solid ${C.bl2}` }}>
+                          <div style={{ fontSize: 10, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F, marginBottom: 4 }}>{s.label}</div>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: s.color || C.t, fontFamily: FS }}>{s.value != null ? s.value.toLocaleString() : "—"}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {(rating != null || reviews != null) && (
+                      <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.bl2}`, display: "flex", gap: 12, alignItems: "center" }}>
+                        {rating != null && (
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 22, fontWeight: 700, color: C.t, fontFamily: FS }}>{parseFloat(rating).toFixed(1)}</div>
+                            <div style={{ color: C.o, fontSize: 14 }}>{"★".repeat(Math.round(rating))}</div>
+                          </div>
+                        )}
+                        <div style={{ display: "flex", gap: 10 }}>
+                          {reviews != null && <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{reviews.toLocaleString()} reviews</div>}
+                          {newRev  != null && <div style={{ fontSize: 12, color: C.g,  fontFamily: F, fontWeight: 700 }}>+{newRev} new</div>}
+                          {posts   != null && <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{posts} posts</div>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : <EmptyPlaceholder text="Per-listing data not yet entered for this period." />}
         </SecWrap>
       )}
 
-      {hasCharts && (
-        <SecWrap title="Performance Trends" sub="Profile views and customer actions over time">
+      <SecWrap title="Performance Trends" sub="Profile views and customer actions over time">
+        {viewsTrend.length > 1 || actionsTrend.length > 1 ? (
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
             {viewsTrend.length > 1 && (
               <Card style={{ flex: 1, minWidth: 280, marginBottom: 0 }}>
@@ -1150,10 +1148,10 @@ function GbpPage({ d, cd, trend, clientName }) {
               </Card>
             )}
           </div>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="Trend charts appear with 2+ months of data." />}
+      </SecWrap>
 
-      {!listings && (d.avg_rating != null || d.review_count != null) && (
+      {!listings && (
         <SecWrap title="Reviews">
           <Card>
             <div style={{ display: "flex", gap: 32, alignItems: "center", flexWrap: "wrap" }}>
@@ -1163,9 +1161,9 @@ function GbpPage({ d, cd, trend, clientName }) {
                 <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{d.review_count ? `${d.review_count} reviews` : ""}</div>
               </div>
               <div style={{ display: "flex", gap: 12, flex: 1, flexWrap: "wrap" }}>
-                {d.new_reviews     != null && <KpiCard label="New Reviews"     value={`+${d.new_reviews}`} color={C.g} />}
-                {d.photo_count     != null && <KpiCard label="Photos"          value={fmt(d.photo_count)} />}
-                {d.posts_published != null && <KpiCard label="Posts Published" value={fmt(d.posts_published)} />}
+                <KpiCard label="New Reviews"     value={d.new_reviews != null ? `+${d.new_reviews}` : "—"} color={C.g} />
+                <KpiCard label="Photos"          value={fmt(d.photo_count)} />
+                <KpiCard label="Posts Published" value={fmt(d.posts_published)} />
               </div>
             </div>
           </Card>
@@ -1180,8 +1178,9 @@ function GbpPage({ d, cd, trend, clientName }) {
 }
 
 /* ─── GOOGLE ADS PAGE ─── */
-function GoogleAdsPage({ d, cd, trend }) {
-  if (!d) return <NoData label="Google Ads data" />;
+function GoogleAdsPage({ d: _d, cd: _cd, trend }) {
+  const d = _d || {};
+  const cd = _cd || {};
 
   const convTrend = trend.filter(t => t.conversions != null).map(t => ({ label: t.label, conversions: Number(t.conversions) || 0 }));
   const spend  = d.total_spend != null ? Number(d.total_spend) : null;
@@ -1208,8 +1207,8 @@ function GoogleAdsPage({ d, cd, trend }) {
         <KpiCard label="Impressions" value={fmt(d.impressions)} change={pct(d.impressions, cd.impressions)} />
       </div>
 
-      {spendPct !== null && (
-        <SecWrap title="Budget">
+      <SecWrap title="Budget">
+        {spendPct !== null ? (
           <Card style={{ marginBottom: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
               <div>
@@ -1222,11 +1221,11 @@ function GoogleAdsPage({ d, cd, trend }) {
               <div style={{ height: "100%", width: `${spendPct}%`, background: `linear-gradient(90deg, ${C.cyan}, ${C.cyanD})`, borderRadius: 5, transition: "width 0.6s" }} />
             </div>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="Budget pacing appears when spend and budget data are entered." />}
+      </SecWrap>
 
-      {convTrend.length > 1 && (
-        <SecWrap title="Monthly Conversions Trend">
+      <SecWrap title="Monthly Conversions Trend">
+        {convTrend.length > 1 ? (
           <Card style={{ marginBottom: 0 }}>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={convTrend}>
@@ -1238,16 +1237,14 @@ function GoogleAdsPage({ d, cd, trend }) {
               </LineChart>
             </ResponsiveContainer>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="Conversions trend — chart appears with 2+ months of data." />}
+      </SecWrap>
 
-      {d.quality_score != null && (
-        <SecWrap title="Quality">
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Avg Quality Score" value={parseFloat(d.quality_score).toFixed(1) + " / 10"} tip="6+ is standard." sub="Scale: 1–10" />
-          </div>
-        </SecWrap>
-      )}
+      <SecWrap title="Quality">
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <KpiCard label="Avg Quality Score" value={d.quality_score != null ? parseFloat(d.quality_score).toFixed(1) + " / 10" : "—"} tip="6+ is standard." sub="Scale: 1–10" />
+        </div>
+      </SecWrap>
 
       <WorkDone text={d.work_completed} />
       <WinsLosses wins={d.wins} losses={d.losses} />
@@ -1257,8 +1254,9 @@ function GoogleAdsPage({ d, cd, trend }) {
 }
 
 /* ─── META ADS PAGE ─── */
-function MetaAdsPage({ d, cd, trend }) {
-  if (!d) return <NoData label="Meta Ads data" />;
+function MetaAdsPage({ d: _d, cd: _cd, trend }) {
+  const d = _d || {};
+  const cd = _cd || {};
 
   const convTrend = trend.filter(t => t.conversions != null).map(t => ({ label: t.label, conversions: Number(t.conversions) || 0 }));
   const spend  = d.total_spend    != null ? Number(d.total_spend)    : null;
@@ -1280,8 +1278,8 @@ function MetaAdsPage({ d, cd, trend }) {
         <KpiCard label="Reach" value={fmt(d.reach)} change={pct(d.reach, cd.reach)} />
       </div>
 
-      {spendPct !== null && (
-        <SecWrap title="Budget">
+      <SecWrap title="Budget">
+        {spendPct !== null ? (
           <Card style={{ marginBottom: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
               <div>
@@ -1294,8 +1292,8 @@ function MetaAdsPage({ d, cd, trend }) {
               <div style={{ height: "100%", width: `${spendPct}%`, background: `linear-gradient(90deg, ${C.p}, #6d28d9)`, borderRadius: 5, transition: "width 0.6s" }} />
             </div>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="Budget pacing appears when spend and budget data are entered." />}
+      </SecWrap>
 
       <SecWrap title="Reach & Engagement">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -1306,8 +1304,8 @@ function MetaAdsPage({ d, cd, trend }) {
         </div>
       </SecWrap>
 
-      {convTrend.length > 1 && (
-        <SecWrap title="Monthly Conversions Trend">
+      <SecWrap title="Monthly Conversions Trend">
+        {convTrend.length > 1 ? (
           <Card style={{ marginBottom: 0 }}>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={convTrend}>
@@ -1319,8 +1317,8 @@ function MetaAdsPage({ d, cd, trend }) {
               </LineChart>
             </ResponsiveContainer>
           </Card>
-        </SecWrap>
-      )}
+        ) : <EmptyPlaceholder text="Conversions trend — chart appears with 2+ months of data." />}
+      </SecWrap>
 
       <WorkDone text={d.work_completed} />
       <WinsLosses wins={d.wins} losses={d.losses} />
@@ -1330,8 +1328,9 @@ function MetaAdsPage({ d, cd, trend }) {
 }
 
 /* ─── SOCIAL PAGE ─── */
-function SocialPage({ d, cd, trend }) {
-  if (!d) return <NoData label="Organic Social data" />;
+function SocialPage({ d: _d, cd: _cd, trend }) {
+  const d = _d || {};
+  const cd = _cd || {};
 
   // Views-based totals
   const totalViews     = (Number(d.yt_month_views) || 0) + (Number(d.ig_reach) || 0) + (Number(d.fb_visits) || 0) + (Number(d.tiktok_profile_views) || 0);
@@ -1474,8 +1473,9 @@ function SocialPage({ d, cd, trend }) {
 }
 
 /* ─── EMAIL PAGE ─── */
-function EmailPage({ d, cd, seoData, seoDataCmp, trend }) {
-  if (!d) return <NoData label="Email data" />;
+function EmailPage({ d: _d, cd: _cd, seoData, seoDataCmp, trend }) {
+  const d = _d || {};
+  const cd = _cd || {};
 
   // Audience / list health
   const audienceSize     = d.audience_size     != null ? Number(d.audience_size)     : null;
@@ -1602,8 +1602,8 @@ function EmailPage({ d, cd, seoData, seoDataCmp, trend }) {
 }
 
 /* ─── CREATIVE PAGE ─── */
-function CreativePage({ d, trend }) {
-  if (!d) return <NoData label="Creative data" />;
+function CreativePage({ d: _d, trend }) {
+  const d = _d || {};
 
   const assetTypes = [
     { key: "videos",        label: "Videos",         color: "#7C3AED" },
