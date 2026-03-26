@@ -536,53 +536,80 @@ function TopQueriesField({ value, onChange, disabled }) {
     setNewQuery(""); setNewClicks(""); setNewImpressions(""); setNewPosition("");
   };
   const removeQuery = (i) => onChange(queries.filter((_, idx) => idx !== i));
+  const updateQuery = (i, field, val) => {
+    const updated = queries.map((q, idx) => {
+      if (idx !== i) return q;
+      const numVal = val === "" ? null : Number(val);
+      return { ...q, [field]: field === "query" ? val : (isNaN(numVal) ? null : numVal) };
+    });
+    onChange(updated);
+  };
 
   const MAX_QUERIES = 10;
+  const inputStyle = { width: "100%", padding: "5px 7px", borderRadius: 5, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none", background: C.white, boxSizing: "border-box" };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>
-        Enter up to {MAX_QUERIES} top organic queries from Search Console. Clicks and Position required; Impressions optional.
+        Enter up to {MAX_QUERIES} top organic queries. All rows are editable — click any cell to update. Hit Save when done.
       </div>
       {queries.length > 0 && (
         <div style={{ border: `1px solid ${C.bd}`, borderRadius: 8, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 70px 90px 80px 36px", padding: "6px 10px", background: "#f8fafc", borderBottom: `1px solid ${C.bd}` }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px 90px 36px", padding: "6px 10px", background: "#f8fafc", borderBottom: `1px solid ${C.bd}` }}>
             {["Query", "Clicks", "Impressions", "Position", ""].map(h => (
               <span key={h} style={{ fontSize: 10, fontWeight: 700, color: C.tl, textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: F }}>{h}</span>
             ))}
           </div>
           {queries.map((q, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 70px 90px 80px 36px", padding: "7px 10px", borderBottom: i < queries.length - 1 ? `1px solid ${C.bl2}` : "none", background: i % 2 === 0 ? C.white : "#fafafa", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: C.t, fontFamily: F }}>{q.query}</span>
-              <span style={{ fontSize: 12, color: C.t, fontFamily: F }}>{q.clicks?.toLocaleString() ?? "—"}</span>
-              <span style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{q.impressions?.toLocaleString() ?? "—"}</span>
-              <span style={{ fontSize: 12, color: C.t, fontFamily: F }}>
-                {q.position != null ? (
-                  <span style={{
-                    background: q.position <= 3 ? "#ecfdf5" : q.position <= 10 ? "#e6f9fc" : "#f0f2f5",
-                    color: q.position <= 3 ? "#059669" : q.position <= 10 ? C.cyanD : C.tl,
-                    padding: "1px 6px", borderRadius: 4, fontSize: 11, fontWeight: 700,
-                  }}>{q.position.toFixed(1)}</span>
-                ) : "—"}
-              </span>
-              {!disabled && (
-                <button onClick={() => removeQuery(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 14, padding: 0 }}>x</button>
-              )}
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px 90px 36px", padding: "6px 8px", borderBottom: i < queries.length - 1 ? `1px solid ${C.bl2}` : "none", background: i % 2 === 0 ? C.white : "#fafafa", alignItems: "center", gap: 6 }}>
+              {/* Query — editable text */}
+              {disabled
+                ? <span style={{ fontSize: 12, fontWeight: 500, color: C.t, fontFamily: F }}>{q.query}</span>
+                : <input value={q.query ?? ""} onChange={e => updateQuery(i, "query", e.target.value)}
+                    style={{ ...inputStyle, fontWeight: 500 }} placeholder="Query" />
+              }
+              {/* Clicks */}
+              {disabled
+                ? <span style={{ fontSize: 12, color: C.t, fontFamily: F }}>{q.clicks?.toLocaleString() ?? "—"}</span>
+                : <input type="number" value={q.clicks ?? ""} onChange={e => updateQuery(i, "clicks", e.target.value)}
+                    style={inputStyle} placeholder="0" />
+              }
+              {/* Impressions */}
+              {disabled
+                ? <span style={{ fontSize: 12, color: C.tl, fontFamily: F }}>{q.impressions?.toLocaleString() ?? "—"}</span>
+                : <input type="number" value={q.impressions ?? ""} onChange={e => updateQuery(i, "impressions", e.target.value)}
+                    style={inputStyle} placeholder="opt" />
+              }
+              {/* Position */}
+              {disabled
+                ? <span style={{ fontSize: 12, color: C.t, fontFamily: F }}>
+                    {q.position != null ? (
+                      <span style={{ background: q.position <= 3 ? "#ecfdf5" : q.position <= 10 ? "#e6f9fc" : "#f0f2f5", color: q.position <= 3 ? "#059669" : q.position <= 10 ? C.cyanD : C.tl, padding: "1px 6px", borderRadius: 4, fontSize: 11, fontWeight: 700 }}>{q.position.toFixed(1)}</span>
+                    ) : "—"}
+                  </span>
+                : <input type="number" step="0.1" value={q.position ?? ""} onChange={e => updateQuery(i, "position", e.target.value)}
+                    style={inputStyle} placeholder="0.0" />
+              }
+              {/* Remove */}
+              {!disabled
+                ? <button onClick={() => removeQuery(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 14, padding: 0, textAlign: "center" }}>x</button>
+                : <span />
+              }
             </div>
           ))}
         </div>
       )}
       {!disabled && queries.length < MAX_QUERIES && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px 90px auto", gap: 6, alignItems: "center" }}>
-          <input value={newQuery} onChange={e => setNewQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && addQuery()} placeholder="e.g. ford dealer twin falls"
-            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+          <input value={newQuery} onChange={e => setNewQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && addQuery()} placeholder="Add query..."
+            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.cyan}88`, fontSize: 12, fontFamily: F, outline: "none", background: "#f0fdff" }} />
           <input type="number" value={newClicks} onChange={e => setNewClicks(e.target.value)} placeholder="Clicks"
-            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
-          <input type="number" value={newImpressions} onChange={e => setNewImpressions(e.target.value)} placeholder="Impressions (opt)"
-            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
-          <input type="number" step="0.1" value={newPosition} onChange={e => setNewPosition(e.target.value)} placeholder="Position"
-            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
-          <button onClick={addQuery} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>Add</button>
+            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.cyan}88`, fontSize: 12, fontFamily: F, outline: "none", background: "#f0fdff" }} />
+          <input type="number" value={newImpressions} onChange={e => setNewImpressions(e.target.value)} placeholder="Impr. (opt)"
+            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.cyan}88`, fontSize: 12, fontFamily: F, outline: "none", background: "#f0fdff" }} />
+          <input type="number" step="0.1" value={newPosition} onChange={e => setNewPosition(e.target.value)} placeholder="Pos."
+            style={{ padding: "7px 10px", borderRadius: 6, border: `1px solid ${C.cyan}88`, fontSize: 12, fontFamily: F, outline: "none", background: "#f0fdff" }} />
+          <button onClick={addQuery} style={{ background: C.cyan, color: C.navy, border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F, whiteSpace: "nowrap" }}>+ Add</button>
         </div>
       )}
       {queries.length >= MAX_QUERIES && !disabled && (
