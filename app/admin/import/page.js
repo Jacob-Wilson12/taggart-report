@@ -209,17 +209,12 @@ export default function ImportPage() {
         const socialSheet = wb.Sheets["SOCIAL"];
         if (!seoSheet || !socialSheet) throw new Error("Missing SEO_GMB or SOCIAL sheet");
 
-        const seoRows  = XLSX.utils.sheet_to_json(seoSheet,  { header: 1, defval: null, raw: false, cellDates: true });
-        const seoRowsRaw = XLSX.utils.sheet_to_json(seoSheet, { header: 1, defval: null, raw: true });
+        // cellDates:true on XLSX.read means date cells already come as JS Date objects in raw mode
+        // No need to merge -- use raw:true directly for both sheets
+        const seoRows    = XLSX.utils.sheet_to_json(seoSheet,    { header: 1, defval: null, raw: true });
         const socialRows = XLSX.utils.sheet_to_json(socialSheet, { header: 1, defval: null, raw: true });
 
-        const mergedSeo = seoRowsRaw.map((row, i) => {
-          const r = [...row];
-          r[1] = seoRows[i]?.[1];
-          return r;
-        });
-
-        const seoRecords    = parseSheet(mergedSeo, SEO_COL_MAP);
+        const seoRecords    = parseSheet(seoRows, SEO_COL_MAP);
         const socialRecords = parseSheet(socialRows, SOCIAL_COL_MAP);
         const grouped       = groupRecords([...seoRecords, ...socialRecords]);
         const clientNames   = Object.keys(grouped);
