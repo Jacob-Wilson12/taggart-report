@@ -40,7 +40,7 @@ const SEO_COL_MAP = {
   19: { dept: "gbp", key: "search_appearances" },
   20: { dept: "gbp", key: "map_views" },
   21: { dept: "gbp", key: "website_clicks" },
-  22: { dept: "gbp", key: "phone_calls" },
+  // col 22 = Calls -- intentionally excluded, synced from CallRail
   23: { dept: "gbp", key: "direction_requests" },
   24: { dept: "gbp", key: "review_count" },
   25: { dept: "gbp", key: "avg_rating" },
@@ -56,7 +56,7 @@ const GMF_GBP_COL_OVERRIDE = {
   19: { dept: "gbp", key: "gbp_ford_search_appearances" },
   20: { dept: "gbp", key: "gbp_ford_map_views" },
   21: { dept: "gbp", key: "gbp_ford_website_clicks" },
-  22: { dept: "gbp", key: "gbp_ford_phone_calls" },
+  // col 22 = Calls -- intentionally excluded, synced from CallRail
   23: { dept: "gbp", key: "gbp_ford_direction_requests" },
   24: { dept: "gbp", key: "gbp_ford_review_count" },
   25: { dept: "gbp", key: "gbp_ford_avg_rating" },
@@ -375,7 +375,7 @@ export default function ImportPage() {
           if (clientName === "Goode Motor Ford" && dept === "gbp") {
             const sumFields = [
               "profile_views","search_appearances","map_views","website_clicks",
-              "phone_calls","direction_requests","review_count","new_reviews","posts_published",
+              "direction_requests","review_count","new_reviews","posts_published",
             ];
             sumFields.forEach(f => {
               const ford     = Number(merged[`gbp_ford_${f}`])     || 0;
