@@ -1347,7 +1347,7 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
   const getServiceEnabled = (deptId) => serviceStates[deptId] !== false;
 
   useEffect(() => {
-    setDeptCompletion({}); setPullAllResult("");
+    setDeptCompletion({});
     const loadStatus = async () => {
       const { data } = await supabase.from("monthly_reports").select("status").eq("client_id", client.id).eq("month", month).single();
       setReportStatus(data?.status || "draft");
