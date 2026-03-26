@@ -49,6 +49,22 @@ const SEO_COL_MAP = {
   28: { dept: "gbp", key: "posts_published" },
 };
 
+// Goode Motor Ford GBP data goes into gbp_ford_* keys (per-listing)
+// Combined totals auto-compute when Overland data is added via admin
+const GMF_GBP_COL_OVERRIDE = {
+  18: { dept: "gbp", key: "gbp_ford_profile_views" },
+  19: { dept: "gbp", key: "gbp_ford_search_appearances" },
+  20: { dept: "gbp", key: "gbp_ford_map_views" },
+  21: { dept: "gbp", key: "gbp_ford_website_clicks" },
+  22: { dept: "gbp", key: "gbp_ford_phone_calls" },
+  23: { dept: "gbp", key: "gbp_ford_direction_requests" },
+  24: { dept: "gbp", key: "gbp_ford_review_count" },
+  25: { dept: "gbp", key: "gbp_ford_avg_rating" },
+  26: { dept: "gbp", key: "gbp_ford_new_reviews" },
+  27: { dept: "gbp", key: "gbp_ford_photo_count" },
+  28: { dept: "gbp", key: "gbp_ford_posts_published" },
+};
+
 const SOCIAL_COL_MAP = {
   2:  { dept: "social", key: "fb_followers" },
   3:  { dept: "social", key: "fb_visits" },
@@ -113,8 +129,17 @@ function parseDuration(raw) {
 function parseVal(raw, key) {
   if (raw == null || raw === "" || (typeof raw === "number" && isNaN(raw))) return null;
   if (key === "avg_session_duration") return parseDuration(raw);
-  if (typeof raw === "number") return raw;
-  const n = parseFloat(String(raw).replace(/[^0-9.-]/g, ""));
+  if (typeof raw === "number") {
+    // yt_total_views is stored in thousands in the spreadsheet (e.g. 21.3 = 21,300)
+    if (key === "yt_total_views") return Math.round(raw * 1000);
+    return raw;
+  }
+  const str = String(raw).trim();
+  // Handle K suffix (e.g. 7.8K, 20K) -- TikTok views
+  if (/^[0-9.]+[Kk]$/.test(str)) return Math.round(parseFloat(str) * 1000);
+  // Handle M suffix just in case
+  if (/^[0-9.]+[Mm]$/.test(str)) return Math.round(parseFloat(str) * 1000000);
+  const n = parseFloat(str.replace(/[^0-9.-]/g, ""));
   return isNaN(n) ? null : n;
 }
 
@@ -132,7 +157,12 @@ function parseSheet(rows, colMap) {
     const monthStr = parseMonthStr(row[1]);
     if (!monthStr) return;
 
-    Object.entries(colMap).forEach(([colIdx, { dept, key }]) => {
+    // For Goode Motor Ford, use the ford-specific GBP keys for GBP columns
+    const effectiveMap = (currentClient === "Goode Motor Ford")
+      ? { ...colMap, ...GMF_GBP_COL_OVERRIDE }
+      : colMap;
+
+    Object.entries(effectiveMap).forEach(([colIdx, { dept, key }]) => {
       const raw = row[parseInt(colIdx)];
       const val = parseVal(raw, key);
       // Always push including nulls so we can show gap counts in preview
@@ -268,7 +298,8 @@ export default function ImportPage() {
           const manualOverrides = new Set(existingData._manual_overrides || []);
 
           // Merge: import wins for non-null values unless manually locked
-          // Blank cells (null) are skipped entirely -- existing data is preserved
+          // Social dept: blank cells clear existing values (removes stale API numbers)
+          // All other depts: blank cells are skipped, existing data preserved
           const merged = { ...existingData };
           const importedFields = new Set(existingData._imported_fields || []);
           let importedCount = 0, clearedCount = 0;
@@ -278,12 +309,31 @@ export default function ImportPage() {
                 merged[key] = val;
                 importedFields.add(key);
                 importedCount++;
+              } else if (dept === "social") {
+                // Blank social cell — clear any existing value (including API data)
+                merged[key] = null;
+                importedFields.delete(key);
+                clearedCount++;
               }
-              // null = blank cell in spreadsheet, skip it, keep existing value
+              // Other depts: null = skip, keep existing value
             }
           });
 
           merged._imported_fields = Array.from(importedFields);
+
+          // Auto-compute combined GBP totals for Goode Motor Ford
+          // Ford + Overland (Overland may be 0/null if not yet entered -- that's fine)
+          if (clientName === "Goode Motor Ford" && dept === "gbp") {
+            const sumFields = [
+              "profile_views","search_appearances","map_views","website_clicks",
+              "phone_calls","direction_requests","review_count","new_reviews","posts_published",
+            ];
+            sumFields.forEach(f => {
+              const ford     = Number(merged[`gbp_ford_${f}`])     || 0;
+              const overland = Number(merged[`gbp_overland_${f}`]) || 0;
+              merged[f] = ford + overland || null;
+            });
+          }
 
           merged._imported_at = new Date().toISOString();
 
@@ -303,7 +353,7 @@ export default function ImportPage() {
             addLog(`x ${clientName} . ${monthStr} . ${dept}: ${upsertErr.message}`, "error");
             error++;
           } else {
-            addLog(`v ${clientName} . ${monthStr} . ${dept} (${importedCount} fields)`, "success");
+            addLog(`v ${clientName} . ${monthStr} . ${dept} (${importedCount} fields${clearedCount > 0 ? `, ${clearedCount} cleared` : ""})`, "success");
             upserted++;
           }
           setCounts({ upserted, skipped, error });
