@@ -81,7 +81,10 @@ const fmtDur = (s) => {
   if (!s) return "—";
   const n = Number(s);
   if (isNaN(n)) return s;
-  return `${Math.floor(n / 60)}:${String(Math.round(n % 60)).padStart(2, "0")}`;
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const sec = Math.round(n % 60);
+  return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 };
 const lines = (str) => str ? str.split("\n").map(l => l.trim()).filter(Boolean) : [];
 const pct = (curr, prev) => {

@@ -129,7 +129,7 @@ const DEPT_FIELDS = {
     { key: "form_submissions",      label: "Form Submissions",           type: "number",   section: "Conversions",         hint: "GA4 → Conversions or form tracking tool" },
     { key: "vdp_views",             label: "VDP Views",                  type: "number",   section: "Conversions",         hint: "Dealer website analytics → Vehicle Detail Page views" },
     { key: "bounce_rate",           label: "Bounce Rate (%)",            type: "decimal",  section: "Conversions",         hint: "GA4 → Reports → Engagement → Bounce rate %" },
-    { key: "avg_session_duration",  label: "Avg Session Duration (sec)", type: "number",   section: "Conversions",         hint: "GA4 → Reports → Engagement → Average session duration (enter in seconds)" },
+    { key: "avg_session_duration",  label: "Avg Session Duration",       type: "duration", section: "Conversions",         hint: "GA4 → Reports → Engagement → Paste as H:MM:SS (e.g. 0:02:25)" },
     { key: "top_queries",           label: "Top Queries (up to 10)",     type: "top_queries", section: "Top Queries",      optional: true },
     { key: "top_query",             label: "Top Query (legacy)",         type: "text",     section: "Top Queries",         optional: true, hint: "Legacy field — use Top Queries table above instead" },
     { key: "tracked_keywords",      label: "Tracked Keywords",           type: "keywords", section: "Tracked Keywords",    optional: true, hint: "Enter keywords + target positions to track ranking progress" },
@@ -914,12 +914,38 @@ function PublishedBreakdownPreview({ data }) {
 }
 
 /* ─── FIELD INPUT ─── */
+// Duration helpers: store as seconds, display/accept H:MM:SS
+const parseDuration = (str) => {
+  if (!str || str === "") return null;
+  const s = String(str).trim();
+  // Already a plain number (seconds)
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  // H:MM:SS or M:SS format
+  const parts = s.split(":").map(Number);
+  if (parts.some(isNaN)) return null;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return null;
+};
+const fmtDuration = (sec) => {
+  if (sec == null || sec === "") return "";
+  const n = Number(sec);
+  if (isNaN(n)) return String(sec);
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const s = Math.round(n % 60);
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
 const FieldInput = ({ field, value, onChange, disabled, scData }) => {
   if (field.type === "links")         return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
   if (field.type === "keywords")      return <TrackedKeywordsField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} scData={scData} />;
   if (field.type === "campaign_list") return <CampaignListField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
   if (field.type === "top_queries")   return <TopQueriesField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
   const base = { width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box", background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t, cursor: disabled ? "not-allowed" : "text" };
+  if (field.type === "duration") return (
+    <input type="text" value={value != null && value !== "" ? fmtDuration(value) : ""} onChange={e => { const sec = parseDuration(e.target.value); onChange(field.key, sec); }} onBlur={e => { const sec = parseDuration(e.target.value); if (sec !== null) onChange(field.key, sec); }} disabled={disabled} placeholder="0:02:25" style={base} />
+  );
   if (field.type === "textarea") return (
     <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`} style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
   );

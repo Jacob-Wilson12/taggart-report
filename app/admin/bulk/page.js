@@ -12,6 +12,27 @@ const F = "Inter,system-ui,sans-serif";
 
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+// Duration helpers: store as seconds, display/accept H:MM:SS
+const parseDuration = (str) => {
+  if (!str || str === "") return null;
+  const s = String(str).trim();
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  const parts = s.split(":").map(Number);
+  if (parts.some(isNaN)) return null;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return null;
+};
+const fmtDuration = (sec) => {
+  if (sec == null || sec === "") return "";
+  const n = Number(sec);
+  if (isNaN(n)) return String(sec);
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const s = Math.round(n % 60);
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
 // ── Per-client lead field config ──────────────────────────────────────────────
 const CLIENT_LEADS_CONFIG = {
   "Goode Motor Group":     { active: ["total_leads","ford_leads","mazda_leads","vw_leads","total_sold","ford_sold","mazda_sold","vw_sold"] },
@@ -92,7 +113,7 @@ const BULK_DEPTS = [
       { key: "form_submissions",      label: "Forms",           type: "number"  },
       { key: "vdp_views",             label: "VDP Views",       type: "number"  },
       { key: "bounce_rate",           label: "Bounce%",         type: "decimal" },
-      { key: "avg_session_duration",  label: "Sess. Dur",       type: "number"  },
+      { key: "avg_session_duration",  label: "Sess. Dur",       type: "duration" },
     ]
   },
   {
@@ -270,9 +291,10 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
   const handleBlur = () => {
     setEditing(false);
     const trimmed = localVal.trim();
-    const original = hasValue ? String(value) : "";
+    const original = hasValue ? (field.type === "duration" ? fmtDuration(value) : String(value)) : "";
     if (trimmed !== original) {
-      onSave(clientId, monthStr, deptId, field.key, trimmed, field.type);
+      const saveVal = field.type === "duration" ? String(parseDuration(trimmed) ?? "") : trimmed;
+      onSave(clientId, monthStr, deptId, field.key, saveVal, field.type);
     }
   };
 
@@ -292,7 +314,9 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
     // Single value paste is handled normally by the input
   };
 
-  const displayVal = !hasValue ? "" : field.type === "decimal"
+  const displayVal = !hasValue ? "" : field.type === "duration"
+    ? fmtDuration(value)
+    : field.type === "decimal"
     ? parseFloat(value).toFixed(2)
     : String(value);
 
@@ -603,7 +627,11 @@ export default function BulkEditPage() {
           const config = getLeadsConfig(clientName);
           if (!config.active.includes(field.key)) return;
         }
-        const trimmed = cellVal.trim().replace(/[$,%]/g, "");
+        let trimmed = cellVal.trim().replace(/[$,%]/g, "");
+        if (field.type === "duration" && trimmed.includes(":")) {
+          const sec = parseDuration(trimmed);
+          trimmed = sec !== null ? String(sec) : trimmed;
+        }
         if (trimmed !== "") {
           handleCellSave(clientId, allRows[targetRow].monthStr, deptId, field.key, trimmed, field.type);
           pasteCount++;
