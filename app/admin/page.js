@@ -1586,8 +1586,13 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
 }
 
 /* ─── OVERVIEW ─── */
-function getDeptCompletion(deptId, data) {
-  const fields = DEPT_FIELDS[deptId] || [];
+function getDeptCompletion(deptId, data, clientName) {
+  let fields = DEPT_FIELDS[deptId] || [];
+  // Goode Motor Group uses special leads fields
+  if (deptId === "leads" && clientName === "Goode Motor Group") fields = LEADS_FIELDS_GOODE;
+  // Juneau stores use special leads fields
+  const juneauOem = { "Juneau Auto Mall": "OEM", "Juneau Subaru": "Subaru", "Juneau CDJR": "CDJR", "Juneau Toyota": "Toyota", "Juneau Chevrolet": "Chevrolet", "Juneau Honda": "Honda" };
+  if (deptId === "leads" && juneauOem[clientName]) fields = leadsFieldsJuneau(juneauOem[clientName]);
   const required = fields.filter(f => !f.optional);
   if (!required.length) return null;
   let filled = 0;
@@ -1667,7 +1672,7 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
                   const svcKey = `${client.id}_${dept.id}`;
                   if (serviceStates[svcKey] === false) return null;
                   const data = reportData[svcKey] || {};
-                  const comp = getDeptCompletion(dept.id, data);
+                  const comp = getDeptCompletion(dept.id, data, client.name);
                   if (!comp) return null;
                   const pct = Math.round((comp.filled / comp.total) * 100);
                   const color = pct === 100 ? C.g : pct >= 50 ? C.o : C.tl;
