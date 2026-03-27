@@ -610,7 +610,6 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
   const renderLeads = () => {
     if (!leadsEnabled) return null;
     if (isGoode) {
-      if (leads.total_leads == null && leads.ford_leads == null) return null;
       return (
         <SecWrap title="Lead Summary" sub="Total leads by brand — Goode Motor Group">
           <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>

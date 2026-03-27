@@ -1128,11 +1128,13 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
         const parentData = { ...(parentRow?.data || {}) };
         for (const [childName, keys] of childConfigs) {
           const cd = childData[childName] || { leads: 0, sold: 0 };
-          parentData[keys.leadsKey] = cd.leads || null;
-          parentData[keys.soldKey] = cd.sold || null;
+          parentData[keys.leadsKey] = cd.leads > 0 ? cd.leads : null;
+          parentData[keys.soldKey] = cd.sold > 0 ? cd.sold : null;
         }
-        parentData.total_leads = (childData["Goode Motor Ford"]?.leads || 0) + (childData["Goode Motor Mazda"]?.leads || 0) + (childData["Twin Falls Volkswagen"]?.leads || 0) || null;
-        parentData.total_sold = (childData["Goode Motor Ford"]?.sold || 0) + (childData["Goode Motor Mazda"]?.sold || 0) + (childData["Twin Falls Volkswagen"]?.sold || 0) || null;
+        const sumLeads = (childData["Goode Motor Ford"]?.leads || 0) + (childData["Goode Motor Mazda"]?.leads || 0) + (childData["Twin Falls Volkswagen"]?.leads || 0);
+        const sumSold = (childData["Goode Motor Ford"]?.sold || 0) + (childData["Goode Motor Mazda"]?.sold || 0) + (childData["Twin Falls Volkswagen"]?.sold || 0);
+        parentData.total_leads = sumLeads > 0 ? sumLeads : null;
+        parentData.total_sold = sumSold > 0 ? sumSold : null;
         parentData._synced_from_stores_at = new Date().toISOString();
         await supabase.from("report_data").upsert(
           { client_id: parentClient.id, month, department: "leads", data: parentData, ...ts },
