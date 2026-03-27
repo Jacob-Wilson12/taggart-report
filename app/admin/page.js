@@ -1842,7 +1842,7 @@ function HowToPage() {
       </div>
 
       <div style={sectionStyle}>
-        <h2 style={h2Style}>Adding a New Client</h2>
+        <h2 style={h2Style}>Adding a New Client <span style={{ fontSize: 11, color: C.o, fontWeight: 600 }}>(Jacob Only)</span></h2>
         <ol style={{ margin: 0, paddingLeft: 20 }}>
           <li style={liStyle}>Go to <strong>Supabase</strong> → <span style={codeStyle}>clients</span> table</li>
           <li style={liStyle}>Insert a new row with: <span style={codeStyle}>name</span> (display name), <span style={codeStyle}>group_name</span> (e.g., "Goode Motor" or "Juneau Auto"), <span style={codeStyle}>active</span> = true</li>
@@ -1852,7 +1852,7 @@ function HowToPage() {
       </div>
 
       <div style={sectionStyle}>
-        <h2 style={h2Style}>Adding a Team Member</h2>
+        <h2 style={h2Style}>Adding a Team Member <span style={{ fontSize: 11, color: C.o, fontWeight: 600 }}>(Jacob Only)</span></h2>
         <ol style={{ margin: 0, paddingLeft: 20 }}>
           <li style={liStyle}>Go to the <strong>Team</strong> tab (admin only)</li>
           <li style={liStyle}>Enter their email address, select a role, and select their department</li>
