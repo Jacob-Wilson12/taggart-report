@@ -268,7 +268,8 @@ function SH({ title, sub, style: s }) {
   );
 }
 
-function KpiCard({ label, value, sub, color, tip, change, invert }) {
+function KpiCard({ label, value, sub, color, tip, change, invert, prior }) {
+  const hasPrior = prior !== null && prior !== undefined && prior !== "";
   return (
     <div style={{
       background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10,
@@ -285,7 +286,8 @@ function KpiCard({ label, value, sub, color, tip, change, invert }) {
         </div>
         {change !== undefined && <Arr v={change} invert={invert} sz={11} />}
       </div>
-      {sub && <div style={{ fontSize: 11, color: C.tl, marginTop: 2, fontFamily: F }}>{sub}</div>}
+      {hasPrior && <div style={{ fontSize: 10, color: C.tl, marginTop: 2, fontFamily: F }}>vs {typeof prior === "number" ? prior.toLocaleString() : prior}</div>}
+      {sub && !hasPrior && <div style={{ fontSize: 11, color: C.tl, marginTop: 2, fontFamily: F }}>{sub}</div>}
     </div>
   );
 }
@@ -613,22 +615,22 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
       return (
         <SecWrap title="Lead Summary" sub="Total leads by brand — Goode Motor Group">
           <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total Leads"      value={fmt(leads.total_leads)} change={pct(leads.total_leads, lcmp.total_leads)} />
-            <KpiCard label="Ford Leads"       value={fmt(leads.ford_leads)}  change={pct(leads.ford_leads,  lcmp.ford_leads)} />
-            <KpiCard label="Mazda Leads"      value={fmt(leads.mazda_leads)} change={pct(leads.mazda_leads, lcmp.mazda_leads)} />
-            <KpiCard label="Volkswagen Leads" value={fmt(leads.vw_leads)}    change={pct(leads.vw_leads,    lcmp.vw_leads)} />
+            <KpiCard label="Total Leads"      value={fmt(leads.total_leads)} change={pct(leads.total_leads, lcmp.total_leads)} prior={lcmp.total_leads} />
+            <KpiCard label="Ford Leads"       value={fmt(leads.ford_leads)}  change={pct(leads.ford_leads,  lcmp.ford_leads)} prior={lcmp.ford_leads} />
+            <KpiCard label="Mazda Leads"      value={fmt(leads.mazda_leads)} change={pct(leads.mazda_leads, lcmp.mazda_leads)} prior={lcmp.mazda_leads} />
+            <KpiCard label="Volkswagen Leads" value={fmt(leads.vw_leads)}    change={pct(leads.vw_leads,    lcmp.vw_leads)} prior={lcmp.vw_leads} />
           </div>
           <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total Sold"  value={fmt(leads.total_sold)}  color={C.g} change={pct(leads.total_sold,  lcmp.total_sold)} />
-            <KpiCard label="Ford Sold"   value={fmt(leads.ford_sold)}   change={pct(leads.ford_sold,   lcmp.ford_sold)} />
-            <KpiCard label="Mazda Sold"  value={fmt(leads.mazda_sold)}  change={pct(leads.mazda_sold,  lcmp.mazda_sold)} />
-            <KpiCard label="VW Sold"     value={fmt(leads.vw_sold)}     change={pct(leads.vw_sold,     lcmp.vw_sold)} />
+            <KpiCard label="Total Sold"  value={fmt(leads.total_sold)}  color={C.g} change={pct(leads.total_sold,  lcmp.total_sold)} prior={lcmp.total_sold} />
+            <KpiCard label="Ford Sold"   value={fmt(leads.ford_sold)}   change={pct(leads.ford_sold,   lcmp.ford_sold)} prior={lcmp.ford_sold} />
+            <KpiCard label="Mazda Sold"  value={fmt(leads.mazda_sold)}  change={pct(leads.mazda_sold,  lcmp.mazda_sold)} prior={lcmp.mazda_sold} />
+            <KpiCard label="VW Sold"     value={fmt(leads.vw_sold)}     change={pct(leads.vw_sold,     lcmp.vw_sold)} prior={lcmp.vw_sold} />
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Overall Close %" value={closePct(leads.total_sold, leads.total_leads) !== null ? closePct(leads.total_sold, leads.total_leads) + "%" : "—"} color={C.cyanD} change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))} tip="Total sold ÷ total leads" />
-            <KpiCard label="Ford Close %"    value={closePct(leads.ford_sold, leads.ford_leads)   !== null ? closePct(leads.ford_sold, leads.ford_leads)   + "%" : "—"} change={pct(closePct(leads.ford_sold, leads.ford_leads),   closePct(lcmp.ford_sold, lcmp.ford_leads))} />
-            <KpiCard label="Mazda Close %"   value={closePct(leads.mazda_sold, leads.mazda_leads) !== null ? closePct(leads.mazda_sold, leads.mazda_leads) + "%" : "—"} change={pct(closePct(leads.mazda_sold, leads.mazda_leads), closePct(lcmp.mazda_sold, lcmp.mazda_leads))} />
-            <KpiCard label="VW Close %"      value={closePct(leads.vw_sold, leads.vw_leads)       !== null ? closePct(leads.vw_sold, leads.vw_leads)       + "%" : "—"} change={pct(closePct(leads.vw_sold, leads.vw_leads),       closePct(lcmp.vw_sold, lcmp.vw_leads))} />
+            <KpiCard label="Overall Close %" value={closePct(leads.total_sold, leads.total_leads) !== null ? closePct(leads.total_sold, leads.total_leads) + "%" : "—"} color={C.cyanD} change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))} prior={closePct(lcmp.total_sold, lcmp.total_leads) !== null ? closePct(lcmp.total_sold, lcmp.total_leads) + "%" : null} tip="Total sold ÷ total leads" />
+            <KpiCard label="Ford Close %"    value={closePct(leads.ford_sold, leads.ford_leads)   !== null ? closePct(leads.ford_sold, leads.ford_leads)   + "%" : "—"} change={pct(closePct(leads.ford_sold, leads.ford_leads),   closePct(lcmp.ford_sold, lcmp.ford_leads))} prior={closePct(lcmp.ford_sold, lcmp.ford_leads) !== null ? closePct(lcmp.ford_sold, lcmp.ford_leads) + "%" : null} />
+            <KpiCard label="Mazda Close %"   value={closePct(leads.mazda_sold, leads.mazda_leads) !== null ? closePct(leads.mazda_sold, leads.mazda_leads) + "%" : "—"} change={pct(closePct(leads.mazda_sold, leads.mazda_leads), closePct(lcmp.mazda_sold, lcmp.mazda_leads))} prior={closePct(lcmp.mazda_sold, lcmp.mazda_leads) !== null ? closePct(lcmp.mazda_sold, lcmp.mazda_leads) + "%" : null} />
+            <KpiCard label="VW Close %"      value={closePct(leads.vw_sold, leads.vw_leads)       !== null ? closePct(leads.vw_sold, leads.vw_leads)       + "%" : "—"} change={pct(closePct(leads.vw_sold, leads.vw_leads),       closePct(lcmp.vw_sold, lcmp.vw_leads))} prior={closePct(lcmp.vw_sold, lcmp.vw_leads) !== null ? closePct(lcmp.vw_sold, lcmp.vw_leads) + "%" : null} />
           </div>
         </SecWrap>
       );
@@ -638,22 +640,22 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
       return (
         <SecWrap title="Lead Summary" sub="Total leads across all sources">
           <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total Leads"         value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} />
-            <KpiCard label="Website Leads"       value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)} tip="Leads from the dealership website." />
-            <KpiCard label={`${oemLabel} Leads`} value={fmt(leads.oem_leads)}      change={pct(leads.oem_leads,      lcmp.oem_leads)} tip={`Leads from ${oemLabel} OEM sources.`} />
-            <KpiCard label="Facebook Leads"      value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} />
+            <KpiCard label="Total Leads"         value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} prior={lcmp.total_leads} />
+            <KpiCard label="Website Leads"       value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)} prior={lcmp.website_leads} tip="Leads from the dealership website." />
+            <KpiCard label={`${oemLabel} Leads`} value={fmt(leads.oem_leads)}      change={pct(leads.oem_leads,      lcmp.oem_leads)} prior={lcmp.oem_leads} tip={`Leads from ${oemLabel} OEM sources.`} />
+            <KpiCard label="Facebook Leads"      value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} prior={lcmp.facebook_leads} />
           </div>
           <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total Sold"          value={fmt(leads.total_sold)}    color={C.g} change={pct(leads.total_sold,    lcmp.total_sold)} />
-            <KpiCard label="Website Sold"        value={fmt(leads.website_sold)}  change={pct(leads.website_sold,  lcmp.website_sold)} />
-            <KpiCard label={`${oemLabel} Sold`}  value={fmt(leads.oem_sold)}      change={pct(leads.oem_sold,      lcmp.oem_sold)} />
-            <KpiCard label="Facebook Sold"       value={fmt(leads.facebook_sold)} change={pct(leads.facebook_sold, lcmp.facebook_sold)} />
+            <KpiCard label="Total Sold"          value={fmt(leads.total_sold)}    color={C.g} change={pct(leads.total_sold,    lcmp.total_sold)} prior={lcmp.total_sold} />
+            <KpiCard label="Website Sold"        value={fmt(leads.website_sold)}  change={pct(leads.website_sold,  lcmp.website_sold)} prior={lcmp.website_sold} />
+            <KpiCard label={`${oemLabel} Sold`}  value={fmt(leads.oem_sold)}      change={pct(leads.oem_sold,      lcmp.oem_sold)} prior={lcmp.oem_sold} />
+            <KpiCard label="Facebook Sold"       value={fmt(leads.facebook_sold)} change={pct(leads.facebook_sold, lcmp.facebook_sold)} prior={lcmp.facebook_sold} />
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Overall Close %"     value={closePct(leads.total_sold, leads.total_leads)   !== null ? closePct(leads.total_sold, leads.total_leads)   + "%" : "—"} color={C.cyanD} tip="Total sold ÷ total leads" change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))} />
-            <KpiCard label="Website Close %"     value={closePct(leads.website_sold, leads.website_leads) !== null ? closePct(leads.website_sold, leads.website_leads) + "%" : "—"} change={pct(closePct(leads.website_sold, leads.website_leads), closePct(lcmp.website_sold, lcmp.website_leads))} />
-            <KpiCard label={`${oemLabel} Close %`} value={closePct(leads.oem_sold, leads.oem_leads)     !== null ? closePct(leads.oem_sold, leads.oem_leads)     + "%" : "—"} change={pct(closePct(leads.oem_sold, leads.oem_leads), closePct(lcmp.oem_sold, lcmp.oem_leads))} />
-            <KpiCard label="Facebook Close %"    value={closePct(leads.facebook_sold, leads.facebook_leads) !== null ? closePct(leads.facebook_sold, leads.facebook_leads) + "%" : "—"} change={pct(closePct(leads.facebook_sold, leads.facebook_leads), closePct(lcmp.facebook_sold, lcmp.facebook_leads))} />
+            <KpiCard label="Overall Close %"     value={closePct(leads.total_sold, leads.total_leads)   !== null ? closePct(leads.total_sold, leads.total_leads)   + "%" : "—"} color={C.cyanD} tip="Total sold ÷ total leads" change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))} prior={closePct(lcmp.total_sold, lcmp.total_leads) !== null ? closePct(lcmp.total_sold, lcmp.total_leads) + "%" : null} />
+            <KpiCard label="Website Close %"     value={closePct(leads.website_sold, leads.website_leads) !== null ? closePct(leads.website_sold, leads.website_leads) + "%" : "—"} change={pct(closePct(leads.website_sold, leads.website_leads), closePct(lcmp.website_sold, lcmp.website_leads))} prior={closePct(lcmp.website_sold, lcmp.website_leads) !== null ? closePct(lcmp.website_sold, lcmp.website_leads) + "%" : null} />
+            <KpiCard label={`${oemLabel} Close %`} value={closePct(leads.oem_sold, leads.oem_leads)     !== null ? closePct(leads.oem_sold, leads.oem_leads)     + "%" : "—"} change={pct(closePct(leads.oem_sold, leads.oem_leads), closePct(lcmp.oem_sold, lcmp.oem_leads))} prior={closePct(lcmp.oem_sold, lcmp.oem_leads) !== null ? closePct(lcmp.oem_sold, lcmp.oem_leads) + "%" : null} />
+            <KpiCard label="Facebook Close %"    value={closePct(leads.facebook_sold, leads.facebook_leads) !== null ? closePct(leads.facebook_sold, leads.facebook_leads) + "%" : "—"} change={pct(closePct(leads.facebook_sold, leads.facebook_leads), closePct(lcmp.facebook_sold, lcmp.facebook_leads))} prior={closePct(lcmp.facebook_sold, lcmp.facebook_leads) !== null ? closePct(lcmp.facebook_sold, lcmp.facebook_leads) + "%" : null} />
           </div>
         </SecWrap>
       );
@@ -662,22 +664,22 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
     return (
       <SecWrap title="Lead Summary" sub="Total leads across all channels">
         <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Total Leads"    value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} />
-          <KpiCard label="Website Leads"  value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)}  tip="Leads from the dealership website." />
-          <KpiCard label="Third Party"    value={fmt(leads.third_party)}    change={pct(leads.third_party,    lcmp.third_party)}    tip="Cars.com, AutoTrader, etc." />
-          <KpiCard label="Facebook Leads" value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} />
+          <KpiCard label="Total Leads"    value={fmt(leads.total_leads)}    change={pct(leads.total_leads,    lcmp.total_leads)} prior={lcmp.total_leads} />
+          <KpiCard label="Website Leads"  value={fmt(leads.website_leads)}  change={pct(leads.website_leads,  lcmp.website_leads)} prior={lcmp.website_leads}  tip="Leads from the dealership website." />
+          <KpiCard label="Third Party"    value={fmt(leads.third_party)}    change={pct(leads.third_party,    lcmp.third_party)} prior={lcmp.third_party}    tip="Cars.com, AutoTrader, etc." />
+          <KpiCard label="Facebook Leads" value={fmt(leads.facebook_leads)} change={pct(leads.facebook_leads, lcmp.facebook_leads)} prior={lcmp.facebook_leads} />
         </div>
         <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Total Sold"       value={fmt(leads.total_sold)}       color={C.g} change={pct(leads.total_sold,        lcmp.total_sold)} />
-          <KpiCard label="Website Sold"     value={fmt(leads.website_sold)}     change={pct(leads.website_sold,     lcmp.website_sold)} />
-          <KpiCard label="Third Party Sold" value={fmt(leads.third_party_sold)} change={pct(leads.third_party_sold, lcmp.third_party_sold)} />
-          <KpiCard label="Facebook Sold"    value={fmt(leads.facebook_sold)}    change={pct(leads.facebook_sold,    lcmp.facebook_sold)} />
+          <KpiCard label="Total Sold"       value={fmt(leads.total_sold)}       color={C.g} change={pct(leads.total_sold,        lcmp.total_sold)} prior={lcmp.total_sold} />
+          <KpiCard label="Website Sold"     value={fmt(leads.website_sold)}     change={pct(leads.website_sold,     lcmp.website_sold)} prior={lcmp.website_sold} />
+          <KpiCard label="Third Party Sold" value={fmt(leads.third_party_sold)} change={pct(leads.third_party_sold, lcmp.third_party_sold)} prior={lcmp.third_party_sold} />
+          <KpiCard label="Facebook Sold"    value={fmt(leads.facebook_sold)}    change={pct(leads.facebook_sold,    lcmp.facebook_sold)} prior={lcmp.facebook_sold} />
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Overall Close %"    value={closePct(leads.total_sold, leads.total_leads)         !== null ? closePct(leads.total_sold, leads.total_leads)         + "%" : "—"} color={C.cyanD} tip="Total sold ÷ total leads" change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))} />
-          <KpiCard label="Website Close %"    value={closePct(leads.website_sold, leads.website_leads)     !== null ? closePct(leads.website_sold, leads.website_leads)     + "%" : "—"} change={pct(closePct(leads.website_sold, leads.website_leads), closePct(lcmp.website_sold, lcmp.website_leads))} />
-          <KpiCard label="3rd Party Close %"  value={closePct(leads.third_party_sold, leads.third_party)   !== null ? closePct(leads.third_party_sold, leads.third_party)   + "%" : "—"} change={pct(closePct(leads.third_party_sold, leads.third_party), closePct(lcmp.third_party_sold, lcmp.third_party))} />
-          <KpiCard label="Facebook Close %"   value={closePct(leads.facebook_sold, leads.facebook_leads)   !== null ? closePct(leads.facebook_sold, leads.facebook_leads)   + "%" : "—"} change={pct(closePct(leads.facebook_sold, leads.facebook_leads), closePct(lcmp.facebook_sold, lcmp.facebook_leads))} />
+          <KpiCard label="Overall Close %"    value={closePct(leads.total_sold, leads.total_leads)         !== null ? closePct(leads.total_sold, leads.total_leads)         + "%" : "—"} color={C.cyanD} tip="Total sold ÷ total leads" change={pct(closePct(leads.total_sold, leads.total_leads), closePct(lcmp.total_sold, lcmp.total_leads))} prior={closePct(lcmp.total_sold, lcmp.total_leads) !== null ? closePct(lcmp.total_sold, lcmp.total_leads) + "%" : null} />
+          <KpiCard label="Website Close %"    value={closePct(leads.website_sold, leads.website_leads)     !== null ? closePct(leads.website_sold, leads.website_leads)     + "%" : "—"} change={pct(closePct(leads.website_sold, leads.website_leads), closePct(lcmp.website_sold, lcmp.website_leads))} prior={closePct(lcmp.website_sold, lcmp.website_leads) !== null ? closePct(lcmp.website_sold, lcmp.website_leads) + "%" : null} />
+          <KpiCard label="3rd Party Close %"  value={closePct(leads.third_party_sold, leads.third_party)   !== null ? closePct(leads.third_party_sold, leads.third_party)   + "%" : "—"} change={pct(closePct(leads.third_party_sold, leads.third_party), closePct(lcmp.third_party_sold, lcmp.third_party))} prior={closePct(lcmp.third_party_sold, lcmp.third_party) !== null ? closePct(lcmp.third_party_sold, lcmp.third_party) + "%" : null} />
+          <KpiCard label="Facebook Close %"   value={closePct(leads.facebook_sold, leads.facebook_leads)   !== null ? closePct(leads.facebook_sold, leads.facebook_leads)   + "%" : "—"} change={pct(closePct(leads.facebook_sold, leads.facebook_leads), closePct(lcmp.facebook_sold, lcmp.facebook_leads))} prior={closePct(lcmp.facebook_sold, lcmp.facebook_leads) !== null ? closePct(lcmp.facebook_sold, lcmp.facebook_leads) + "%" : null} />
         </div>
       </SecWrap>
     );
@@ -747,10 +749,10 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
       {services.callrail !== false && (cr.total_calls != null) && (
         <SecWrap title="Phone Calls" sub="Tracked via CallRail">
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Total Calls"          value={fmt(cr.total_calls)}   change={pct(cr.total_calls,   crcmp.total_calls)}   tip="Total tracked calls." />
-            <KpiCard label="From Website"         value={fmt(cr.website_calls)} change={pct(cr.website_calls, crcmp.website_calls)} tip="Calls from website visits." />
-            <KpiCard label="From Ads"             value={fmt(cr.ads_calls)}     change={pct(cr.ads_calls,     crcmp.ads_calls)}     tip="Calls from paid campaigns." />
-            <KpiCard label="From Google Business" value={fmt(cr.gbp_calls)}     change={pct(cr.gbp_calls,     crcmp.gbp_calls)}     tip="Calls from GBP call button." />
+            <KpiCard label="Total Calls"          value={fmt(cr.total_calls)}   change={pct(cr.total_calls,   crcmp.total_calls)}   prior={crcmp.total_calls} tip="Total tracked calls." />
+            <KpiCard label="From Website"         value={fmt(cr.website_calls)} change={pct(cr.website_calls, crcmp.website_calls)} prior={crcmp.website_calls} tip="Calls from website visits." />
+            <KpiCard label="From Ads"             value={fmt(cr.ads_calls)}     change={pct(cr.ads_calls,     crcmp.ads_calls)}     prior={crcmp.ads_calls} tip="Calls from paid campaigns." />
+            <KpiCard label="From Google Business" value={fmt(cr.gbp_calls)}     change={pct(cr.gbp_calls,     crcmp.gbp_calls)}     prior={crcmp.gbp_calls} tip="Calls from GBP call button." />
           </div>
         </SecWrap>
       )}
@@ -900,16 +902,17 @@ function SeoPage({ d: _d, cd: _cd, trend }) {
         sub={totalSessions > 0 ? `${Math.round((organic / totalSessions) * 100)}% of ${totalSessions.toLocaleString()} total sessions` : null} />
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
         <KpiCard label="Total Leads" value={fmt(totalLeads)} color={C.g}
-          change={pct(totalLeads, totalLeadsPrev)}
+          change={pct(totalLeads, totalLeadsPrev)} prior={totalLeadsPrev != null ? fmt(totalLeadsPrev) : null}
           tip="Phone calls + form submissions from organic search." />
         <KpiCard label="VDP Views" value={fmt(d.vdp_views)}
-          change={pct(d.vdp_views, cd.vdp_views)}
+          change={pct(d.vdp_views, cd.vdp_views)} prior={cd.vdp_views}
           tip="Vehicle Detail Page views — high-intent shoppers." />
         <KpiCard label="Avg Position" value={d.avg_position != null ? parseFloat(d.avg_position).toFixed(1) : "—"}
           change={pct(d.avg_position, cd.avg_position)} invert
+          prior={cd.avg_position != null ? parseFloat(cd.avg_position).toFixed(1) : null}
           tip="Average ranking across all tracked keywords." />
         <KpiCard label="Impressions" value={fmt(d.impressions)}
-          change={pct(d.impressions, cd.impressions)}
+          change={pct(d.impressions, cd.impressions)} prior={cd.impressions}
           tip="Times your site appeared in Google results." />
       </div>
 
@@ -997,9 +1000,9 @@ function SeoPage({ d: _d, cd: _cd, trend }) {
 
       <SecWrap title="Conversions & Engagement">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Phone Calls (SEO)"    value={fmt(d.phone_calls)}      color={C.g}   change={pct(d.phone_calls, cd.phone_calls)} tip="Calls attributed to organic search." />
-          <KpiCard label="Form Submissions"     value={fmt(d.form_submissions)} change={pct(d.form_submissions, cd.form_submissions)} tip="Contact, trade-in, and finance forms." />
-          <KpiCard label="Bounce Rate"          value={d.bounce_rate != null ? parseFloat(d.bounce_rate).toFixed(1) + "%" : "—"} change={pct(d.bounce_rate, cd.bounce_rate)} invert sub="Industry avg 40–55%" />
+          <KpiCard label="Phone Calls (SEO)"    value={fmt(d.phone_calls)}      color={C.g}   change={pct(d.phone_calls, cd.phone_calls)} prior={cd.phone_calls} tip="Calls attributed to organic search." />
+          <KpiCard label="Form Submissions"     value={fmt(d.form_submissions)} change={pct(d.form_submissions, cd.form_submissions)} prior={cd.form_submissions} tip="Contact, trade-in, and finance forms." />
+          <KpiCard label="Bounce Rate"          value={d.bounce_rate != null ? parseFloat(d.bounce_rate).toFixed(1) + "%" : "—"} change={pct(d.bounce_rate, cd.bounce_rate)} invert prior={cd.bounce_rate != null ? parseFloat(cd.bounce_rate).toFixed(1) + "%" : null} sub="Industry avg 40–55%" />
           <KpiCard label="Avg Session"          value={d.avg_session_duration != null ? fmtDur(d.avg_session_duration) : "—"} sub="2+ min is healthy" />
         </div>
       </SecWrap>
@@ -1042,11 +1045,11 @@ function GbpPage({ d: _d, cd: _cd, trend, clientName }) {
         change={pct(d.website_clicks, cd.website_clicks)}
         sub={listings ? "Combined totals across all listings" : "From Google Business Profile"} />
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="Calls"               value={fmt(d.phone_calls)}        change={pct(d.phone_calls,        cd.phone_calls)}        color={C.g} tip="Calls made directly from the GBP listing." />
-        <KpiCard label="Direction Requests"  value={fmt(d.direction_requests)} change={pct(d.direction_requests, cd.direction_requests)} tip="Users who requested directions." />
-        <KpiCard label="Searches"            value={fmt(d.search_appearances)} change={pct(d.search_appearances, cd.search_appearances)} tip="Times your business appeared in Google Search." />
+        <KpiCard label="Calls"               value={fmt(d.phone_calls)}        change={pct(d.phone_calls,        cd.phone_calls)}        prior={cd.phone_calls} color={C.g} tip="Calls made directly from the GBP listing." />
+        <KpiCard label="Direction Requests"  value={fmt(d.direction_requests)} change={pct(d.direction_requests, cd.direction_requests)} prior={cd.direction_requests} tip="Users who requested directions." />
+        <KpiCard label="Searches"            value={fmt(d.search_appearances)} change={pct(d.search_appearances, cd.search_appearances)} prior={cd.search_appearances} tip="Times your business appeared in Google Search." />
         <KpiCard label="Avg Rating"   value={d.avg_rating != null ? `${parseFloat(d.avg_rating).toFixed(1)} ★` : "—"} />
-        <KpiCard label="New Reviews"  value={d.new_reviews != null ? `+${d.new_reviews}` : "—"} color={C.g} change={pct(d.new_reviews, cd.new_reviews)} />
+        <KpiCard label="New Reviews"  value={d.new_reviews != null ? `+${d.new_reviews}` : "—"} color={C.g} change={pct(d.new_reviews, cd.new_reviews)} prior={cd.new_reviews} />
       </div>
 
       {listings && (
@@ -1191,15 +1194,18 @@ function GoogleAdsPage({ d: _d, cd: _cd, trend }) {
         <KpiCard label="Cost / Lead"
           value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
           color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
+          prior={cd.cost_per_lead != null ? "$" + parseFloat(cd.cost_per_lead).toFixed(2) : null}
           tip="Average cost per conversion." sub="Industry avg $25–$45" />
-        <KpiCard label="Total Clicks" value={fmt(d.clicks)} change={pct(d.clicks, cd.clicks)} />
+        <KpiCard label="Total Clicks" value={fmt(d.clicks)} change={pct(d.clicks, cd.clicks)} prior={cd.clicks} />
         <KpiCard label="CTR"
           value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"}
-          change={pct(d.ctr, cd.ctr)} tip="Click-through rate." sub="Industry avg ~8.29%" />
+          change={pct(d.ctr, cd.ctr)} prior={cd.ctr != null ? parseFloat(cd.ctr).toFixed(1) + "%" : null}
+          tip="Click-through rate." sub="Industry avg ~8.29%" />
         <KpiCard label="Avg CPC"
           value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"}
-          invert change={pct(d.cpc, cd.cpc)} tip="Average cost per click." sub="Industry avg ~$2.41" />
-        <KpiCard label="Impressions" value={fmt(d.impressions)} change={pct(d.impressions, cd.impressions)} />
+          invert change={pct(d.cpc, cd.cpc)} prior={cd.cpc != null ? "$" + parseFloat(cd.cpc).toFixed(2) : null}
+          tip="Average cost per click." sub="Industry avg ~$2.41" />
+        <KpiCard label="Impressions" value={fmt(d.impressions)} change={pct(d.impressions, cd.impressions)} prior={cd.impressions} />
       </div>
 
       <SecWrap title="Budget">
@@ -1267,10 +1273,11 @@ function MetaAdsPage({ d: _d, cd: _cd, trend }) {
         <KpiCard label="Cost / Lead"
           value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
           color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
+          prior={cd.cost_per_lead != null ? "$" + parseFloat(cd.cost_per_lead).toFixed(2) : null}
           tip="Average cost per lead." sub="Industry avg $25–$40" />
         <KpiCard label="Total Spend"
           value={spend != null ? "$" + spend.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"} />
-        <KpiCard label="Reach" value={fmt(d.reach)} change={pct(d.reach, cd.reach)} />
+        <KpiCard label="Reach" value={fmt(d.reach)} change={pct(d.reach, cd.reach)} prior={cd.reach} />
       </div>
 
       <SecWrap title="Budget">
@@ -1292,10 +1299,10 @@ function MetaAdsPage({ d: _d, cd: _cd, trend }) {
 
       <SecWrap title="Reach & Engagement">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Reach"         value={fmt(d.reach)}         change={pct(d.reach, cd.reach)} tip="Unique people who saw your ads." />
-          <KpiCard label="Impressions"   value={fmt(d.impressions)}   change={pct(d.impressions, cd.impressions)} />
-          <KpiCard label="CTR"           value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"} change={pct(d.ctr, cd.ctr)} tip="Click-through rate across Meta placements." />
-          <KpiCard label="Avg CPC"       value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"} invert change={pct(d.cpc, cd.cpc)} tip="Cost per click." sub="Industry avg ~$0.79" />
+          <KpiCard label="Reach"         value={fmt(d.reach)}         change={pct(d.reach, cd.reach)} prior={cd.reach} tip="Unique people who saw your ads." />
+          <KpiCard label="Impressions"   value={fmt(d.impressions)}   change={pct(d.impressions, cd.impressions)} prior={cd.impressions} />
+          <KpiCard label="CTR"           value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"} change={pct(d.ctr, cd.ctr)} prior={cd.ctr != null ? parseFloat(cd.ctr).toFixed(1) + "%" : null} tip="Click-through rate across Meta placements." />
+          <KpiCard label="Avg CPC"       value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"} invert change={pct(d.cpc, cd.cpc)} prior={cd.cpc != null ? "$" + parseFloat(cd.cpc).toFixed(2) : null} tip="Cost per click." sub="Industry avg ~$0.79" />
         </div>
       </SecWrap>
 
@@ -1375,8 +1382,8 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
         change={pct(totalViews, prevTotalViews)}
         sub="Combined views and reach across all platforms" />
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-        <KpiCard label="Total Published"  value={totalPublished ? fmt(totalPublished) : "—"} change={pct(totalPublished, prevPublished)} tip="Posts and videos published across all platforms." />
-        <KpiCard label="Website Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} tip="Clicks from social to your website (GA4)." />
+        <KpiCard label="Total Published"  value={totalPublished ? fmt(totalPublished) : "—"} change={pct(totalPublished, prevPublished)} prior={prevPublished} tip="Posts and videos published across all platforms." />
+        <KpiCard label="Website Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} prior={cd.web_clicks} tip="Clicks from social to your website (GA4)." />
       </div>
 
       {/* Published channel breakdown */}
@@ -1495,9 +1502,9 @@ function EmailPage({ d: _d, cd: _cd, seoData, seoDataCmp, trend }) {
       {/* This Month */}
       <SecWrap title="This Month">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <KpiCard label="Campaigns Sent" value={fmt(d.campaigns_sent)} change={pct(d.campaigns_sent, cd.campaigns_sent)} />
-          <KpiCard label="Audience Size" value={audienceSize ? fmt(audienceSize) : "—"} change={pct(audienceSize, audienceSizePrev)} tip="Total recipients across all campaigns this month." />
-          <KpiCard label="Site Visits from Email" value={fmt(siteVisits)} color={C.g} change={pct(siteVisits, siteVisitsPrev)} tip="GA4 sessions from email campaigns. Enter on SEO form." />
+          <KpiCard label="Campaigns Sent" value={fmt(d.campaigns_sent)} change={pct(d.campaigns_sent, cd.campaigns_sent)} prior={cd.campaigns_sent} />
+          <KpiCard label="Audience Size" value={audienceSize ? fmt(audienceSize) : "—"} change={pct(audienceSize, audienceSizePrev)} prior={audienceSizePrev} tip="Total recipients across all campaigns this month." />
+          <KpiCard label="Site Visits from Email" value={fmt(siteVisits)} color={C.g} change={pct(siteVisits, siteVisitsPrev)} prior={siteVisitsPrev} tip="GA4 sessions from email campaigns. Enter on SEO form." />
         </div>
       </SecWrap>
 
@@ -1860,7 +1867,7 @@ export default function App() {
           builtTrend[dept] = trendMonths.map(({ year, month }) => {
             const key = toMonthStr({ year, month });
             const d = byMonth[key]?.[dept] || {};
-            return { label: MONTHS[month - 1].slice(0, 3), year, month, ...d };
+            return { label: MONTHS[month - 1].slice(0, 3) + " " + String(year).slice(-2), year, month, ...d };
           });
         });
         setTrendData(builtTrend);
