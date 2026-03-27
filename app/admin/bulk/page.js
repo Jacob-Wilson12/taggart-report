@@ -556,30 +556,7 @@ export default function BulkEditPage() {
     return { total, filled, pct: total > 0 ? Math.round((filled / total) * 100) : 0 };
   };
 
-  if (authLoading || dataLoading) return (
-    <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ color: "#fff", fontFamily: F, fontSize: 15, marginBottom: 8 }}>Loading bulk editor...</div>
-        <div style={{ color: "rgba(255,255,255,0.4)", fontFamily: F, fontSize: 12 }}>Fetching all client data</div>
-      </div>
-    </div>
-  );
-
-  if (!session || profile?.role !== "admin") return (
-    <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F }}>
-      <div style={{ background: C.white, borderRadius: 16, padding: "48px 40px", maxWidth: 400, textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
-        <h2 style={{ color: C.navy }}>Admin Only</h2>
-        <p style={{ color: C.tl, fontSize: 13 }}>This page is for Jacob / Taggart admins only.</p>
-        <a href="/admin" style={{ display: "inline-block", marginTop: 12, padding: "10px 24px", background: C.navy, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>Back to Admin</a>
-      </div>
-    </div>
-  );
-
-  const totalDeptFields = BULK_DEPTS.reduce((sum, d) => sum + d.fields.length, 0);
-  const activeSaveCount = Object.keys(savingCells).length;
-
-  // Build flat grid indices for paste support
+  // Build flat grid indices for paste support — must be before early returns (React hooks rules)
   const allRows = useMemo(() => {
     const rows = [];
     clients.forEach(client => {
@@ -612,7 +589,6 @@ export default function BulkEditPage() {
         if (targetRow >= allRows.length || targetCol >= allCols.length) return;
         const { clientId, clientName } = allRows[targetRow];
         const { deptId, field } = allCols[targetCol];
-        // Skip disabled cells (listing-only, leads config)
         if (field.listingOnly && field.listingOnly !== clientName) return;
         if (deptId === "leads") {
           const config = getLeadsConfig(clientName);
@@ -630,6 +606,29 @@ export default function BulkEditPage() {
       setTimeout(() => setPasteToast(null), 3000);
     }
   }, [allRows, allCols, handleCellSave]);
+
+  if (authLoading || dataLoading) return (
+    <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ color: "#fff", fontFamily: F, fontSize: 15, marginBottom: 8 }}>Loading bulk editor...</div>
+        <div style={{ color: "rgba(255,255,255,0.4)", fontFamily: F, fontSize: 12 }}>Fetching all client data</div>
+      </div>
+    </div>
+  );
+
+  if (!session || profile?.role !== "admin") return (
+    <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F }}>
+      <div style={{ background: C.white, borderRadius: 16, padding: "48px 40px", maxWidth: 400, textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
+        <h2 style={{ color: C.navy }}>Admin Only</h2>
+        <p style={{ color: C.tl, fontSize: 13 }}>This page is for Jacob / Taggart admins only.</p>
+        <a href="/admin" style={{ display: "inline-block", marginTop: 12, padding: "10px 24px", background: C.navy, color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>Back to Admin</a>
+      </div>
+    </div>
+  );
+
+  const totalDeptFields = BULK_DEPTS.reduce((sum, d) => sum + d.fields.length, 0);
+  const activeSaveCount = Object.keys(savingCells).length;
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F }}>
