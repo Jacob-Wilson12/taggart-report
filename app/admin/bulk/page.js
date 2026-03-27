@@ -460,117 +460,136 @@ export default function BulkEditPage() {
     init();
   }, [session, loadData]);
 
-  const handleCellSave = useCallback(async (clientId, monthStr, deptId, fieldKey, rawValue, fieldType) => {
-    const cellKey = `${clientId}_${monthStr}_${deptId}_${fieldKey}`;
-    setSavingCells(prev => ({ ...prev, [cellKey]: true }));
+  // ── Batched save: queue field changes per row, flush after 300ms idle ──
+  const pendingChanges = useRef({}); // key: "clientId_month_dept" -> { fields: {key: val}, ... }
+  const flushTimers = useRef({});
+  const allDataRef = useRef(allData);
+  allDataRef.current = allData;
 
-    const parsed = fieldType === "decimal" ? parseFloat(rawValue) : parseInt(rawValue, 10);
-    const finalVal = rawValue === "" || rawValue === null ? null : (isNaN(parsed) ? null : parsed);
+  const flushRow = useCallback(async (rowKey) => {
+    const pending = pendingChanges.current[rowKey];
+    if (!pending) return;
+    delete pendingChanges.current[rowKey];
 
-    const buildUpdated = (existingData) => {
-      const overrides = new Set(existingData._manual_overrides || []);
-      if (finalVal !== null) overrides.add(fieldKey);
-      else overrides.delete(fieldKey);
-      return {
-        ...existingData,
-        [fieldKey]: finalVal,
-        _manual_overrides: Array.from(overrides),
-        _bulk_edited_at: new Date().toISOString(),
-      };
-    };
+    const { clientId, monthStr, deptId, fields: fieldUpdates } = pending;
+    const existing = allDataRef.current[clientId]?.[monthStr]?.[deptId] || {};
+    let updated = { ...existing, ...fieldUpdates, _bulk_edited_at: new Date().toISOString() };
 
-    // Save primary client
-    const primaryExisting = allData[clientId]?.[monthStr]?.[deptId] || {};
-    let primaryUpdated = buildUpdated(primaryExisting);
-
-    // ── Auto-compute GBP totals from per-listing data for Goode Motor Ford ──
+    // Auto-compute GBP totals for Goode Motor Ford
     const savingClient = clients.find(c => c.id === clientId);
-    if (deptId === "gbp" && savingClient?.name === "Goode Motor Ford" &&
-        (fieldKey.startsWith("gbp_ford_") || fieldKey.startsWith("gbp_overland_"))) {
-      GBP_LISTING_SUM_FIELDS.forEach(f => {
-        const fordVal    = Number(primaryUpdated[`gbp_ford_${f}`])     || 0;
-        const overlandVal= Number(primaryUpdated[`gbp_overland_${f}`]) || 0;
-        const total = fordVal + overlandVal;
-        if (total > 0) primaryUpdated[f] = total;
-      });
+    if (deptId === "gbp" && savingClient?.name === "Goode Motor Ford") {
+      const hasListingField = Object.keys(fieldUpdates).some(k => k.startsWith("gbp_ford_") || k.startsWith("gbp_overland_"));
+      if (hasListingField) {
+        GBP_LISTING_SUM_FIELDS.forEach(f => {
+          const fordVal = Number(updated[`gbp_ford_${f}`]) || 0;
+          const overlandVal = Number(updated[`gbp_overland_${f}`]) || 0;
+          const total = fordVal + overlandVal;
+          if (total > 0) updated[f] = total;
+        });
+      }
     }
 
     setAllData(prev => ({
       ...prev,
       [clientId]: {
         ...(prev[clientId] || {}),
-        [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), [deptId]: primaryUpdated }
+        [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), [deptId]: updated }
       }
     }));
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error: saveError } = await supabase.from("report_data").upsert(
-      { client_id: clientId, month: monthStr, department: deptId, data: primaryUpdated, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
-      { onConflict: "client_id,month,department" }
-    );
-
-    if (saveError) {
-      console.error("Save failed:", saveError);
-      alert(`Save failed: ${saveError.message}`);
-    }
-
-    // ── Cascade CallRail gbp_calls -> GBP phone_calls ──
-    // For Goode Motor Ford: writes to gbp_ford_phone_calls + recomputes combined total
-    // For all other clients: writes directly to phone_calls
-    if (deptId === "callrail" && fieldKey === "gbp_calls") {
-      const gbpExisting = allData[clientId]?.[monthStr]?.["gbp"] || {};
-      const gbpOverrides = new Set(gbpExisting._manual_overrides || []);
-      let updatedGbp = { ...gbpExisting, _callrail_synced_at: new Date().toISOString() };
-
-      if (savingClient?.name === "Goode Motor Ford") {
-        if (!gbpOverrides.has("gbp_ford_phone_calls")) {
-          updatedGbp.gbp_ford_phone_calls = finalVal;
-          const overland = Number(updatedGbp.gbp_overland_phone_calls) || 0;
-          updatedGbp.phone_calls = (Number(finalVal) || 0) + overland || null;
-        }
-      } else {
-        if (!gbpOverrides.has("phone_calls")) {
-          updatedGbp.phone_calls = finalVal;
-        }
-      }
-
-      setAllData(prev => ({
-        ...prev,
-        [clientId]: {
-          ...(prev[clientId] || {}),
-          [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), gbp: updatedGbp }
-        }
-      }));
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const ts = { last_updated_by: user.id, last_updated_at: new Date().toISOString() };
       await supabase.from("report_data").upsert(
-        { client_id: clientId, month: monthStr, department: "gbp", data: updatedGbp, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
+        { client_id: clientId, month: monthStr, department: deptId, data: updated, ...ts },
         { onConflict: "client_id,month,department" }
       );
-    }
 
-    // Cascade to Juneau child stores
-    if (savingClient?.name === JUNEAU_PARENT_NAME && !JUNEAU_NO_CASCADE.has(fieldKey) && (deptId === "leads" || deptId === "social")) {
-      const childClients = clients.filter(c => JUNEAU_CHILD_NAMES.includes(c.name));
-      await Promise.all(childClients.map(async (child) => {
-        const childExisting = allData[child.id]?.[monthStr]?.[deptId] || {};
-        const childUpdated = buildUpdated(childExisting);
-
+      // Cascade CallRail → GBP
+      if (deptId === "callrail" && fieldUpdates.gbp_calls !== undefined) {
+        const gbpExisting = allDataRef.current[clientId]?.[monthStr]?.["gbp"] || {};
+        let updatedGbp = { ...gbpExisting, _callrail_synced_at: new Date().toISOString() };
+        if (savingClient?.name === "Goode Motor Ford") {
+          updatedGbp.gbp_ford_phone_calls = fieldUpdates.gbp_calls;
+          const overland = Number(updatedGbp.gbp_overland_phone_calls) || 0;
+          updatedGbp.phone_calls = (Number(fieldUpdates.gbp_calls) || 0) + overland || null;
+        } else {
+          updatedGbp.phone_calls = fieldUpdates.gbp_calls;
+        }
         setAllData(prev => ({
           ...prev,
-          [child.id]: {
-            ...(prev[child.id] || {}),
-            [monthStr]: { ...(prev[child.id]?.[monthStr] || {}), [deptId]: childUpdated }
-          }
+          [clientId]: { ...(prev[clientId] || {}), [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), gbp: updatedGbp } }
         }));
-
         await supabase.from("report_data").upsert(
-          { client_id: child.id, month: monthStr, department: deptId, data: childUpdated, last_updated_by: user.id, last_updated_at: new Date().toISOString() },
+          { client_id: clientId, month: monthStr, department: "gbp", data: updatedGbp, ...ts },
           { onConflict: "client_id,month,department" }
         );
-      }));
+      }
+
+      // Cascade Juneau parent → children
+      if (savingClient?.name === JUNEAU_PARENT_NAME && (deptId === "leads" || deptId === "social")) {
+        const childClients = clients.filter(c => JUNEAU_CHILD_NAMES.includes(c.name));
+        for (const child of childClients) {
+          const childExisting = allDataRef.current[child.id]?.[monthStr]?.[deptId] || {};
+          const cascadeFields = {};
+          for (const [k, v] of Object.entries(fieldUpdates)) {
+            if (!JUNEAU_NO_CASCADE.has(k)) cascadeFields[k] = v;
+          }
+          if (Object.keys(cascadeFields).length === 0) continue;
+          const childUpdated = { ...childExisting, ...cascadeFields, _bulk_edited_at: new Date().toISOString() };
+          setAllData(prev => ({
+            ...prev,
+            [child.id]: { ...(prev[child.id] || {}), [monthStr]: { ...(prev[child.id]?.[monthStr] || {}), [deptId]: childUpdated } }
+          }));
+          await supabase.from("report_data").upsert(
+            { client_id: child.id, month: monthStr, department: deptId, data: childUpdated, ...ts },
+            { onConflict: "client_id,month,department" }
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Save failed:", err);
     }
 
-    setSavingCells(prev => { const n = { ...prev }; delete n[cellKey]; return n; });
-  }, [allData, clients]);
+    // Clear saving indicators for all fields in this batch
+    setSavingCells(prev => {
+      const n = { ...prev };
+      Object.keys(fieldUpdates).forEach(k => { delete n[`${clientId}_${monthStr}_${deptId}_${k}`]; });
+      return n;
+    });
+  }, [clients]);
+
+  const handleCellSave = useCallback((clientId, monthStr, deptId, fieldKey, rawValue, fieldType) => {
+    const parsed = fieldType === "decimal" ? parseFloat(rawValue) : parseInt(rawValue, 10);
+    const finalVal = rawValue === "" || rawValue === null ? null : (isNaN(parsed) ? null : parsed);
+
+    const cellKey = `${clientId}_${monthStr}_${deptId}_${fieldKey}`;
+    setSavingCells(prev => ({ ...prev, [cellKey]: true }));
+
+    // Update local state immediately
+    setAllData(prev => {
+      const existing = prev[clientId]?.[monthStr]?.[deptId] || {};
+      const updated = { ...existing, [fieldKey]: finalVal };
+      return {
+        ...prev,
+        [clientId]: { ...(prev[clientId] || {}), [monthStr]: { ...(prev[clientId]?.[monthStr] || {}), [deptId]: updated } }
+      };
+    });
+
+    // Queue the field change for batched save
+    const rowKey = `${clientId}_${monthStr}_${deptId}`;
+    if (!pendingChanges.current[rowKey]) {
+      pendingChanges.current[rowKey] = { clientId, monthStr, deptId, fields: {} };
+    }
+    pendingChanges.current[rowKey].fields[fieldKey] = finalVal;
+
+    // Debounce: flush after 300ms of no new changes to this row
+    if (flushTimers.current[rowKey]) clearTimeout(flushTimers.current[rowKey]);
+    flushTimers.current[rowKey] = setTimeout(() => {
+      delete flushTimers.current[rowKey];
+      flushRow(rowKey);
+    }, 300);
+  }, [flushRow]);
 
   // Completion % — numeric fields only, respects per-client leads config
   const getCompletion = (client, monthStr) => {
