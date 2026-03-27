@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "../../../supabase";
 
 const C = {
@@ -245,8 +245,8 @@ function getAllMonths() {
 
 const ALL_MONTHS = getAllMonths();
 
-// ── Inline editable cell ──────────────────────────────────────────────────────
-function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, value, isManualLocked, isApiSourced, isImported, disabled, onSave }) {
+// ── Inline editable cell with Excel column paste support ──────────────────────
+function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, value, isManualLocked, isApiSourced, isImported, disabled, onSave, rowIndex, colIndex, onPasteMulti }) {
   const [editing, setEditing] = useState(false);
   const [localVal, setLocalVal] = useState("");
   const inputRef = useRef();
@@ -276,6 +276,22 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
     }
   };
 
+  const handlePaste = (e) => {
+    const text = e.clipboardData.getData("text/plain");
+    if (!text) return;
+    // Check if pasted data has multiple lines or tabs (Excel multi-cell paste)
+    const hasMultipleRows = text.includes("\n");
+    const hasTabs = text.includes("\t");
+    if (hasMultipleRows || hasTabs) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (onPasteMulti) {
+        onPasteMulti(rowIndex, colIndex, text);
+      }
+    }
+    // Single value paste is handled normally by the input
+  };
+
   const displayVal = !hasValue ? "" : field.type === "decimal"
     ? parseFloat(value).toFixed(2)
     : String(value);
@@ -296,12 +312,13 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
         <>
           <input
             ref={inputRef}
-            type="number"
-            step={field.type === "decimal" ? "0.01" : "1"}
+            type="text"
+            inputMode="decimal"
             value={editing ? localVal : displayVal}
             onChange={e => setLocalVal(e.target.value)}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            onPaste={handlePaste}
             onKeyDown={e => {
               if (e.key === "Enter") e.target.blur();
               if (e.key === "Escape") { setLocalVal(hasValue ? String(value) : ""); setEditing(false); e.target.blur(); }
@@ -341,6 +358,7 @@ export default function BulkEditPage() {
   const [savingCells, setSavingCells] = useState({});
   const [lastRefresh, setLastRefresh] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [pasteToast, setPasteToast] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -561,6 +579,58 @@ export default function BulkEditPage() {
   const totalDeptFields = BULK_DEPTS.reduce((sum, d) => sum + d.fields.length, 0);
   const activeSaveCount = Object.keys(savingCells).length;
 
+  // Build flat grid indices for paste support
+  const allRows = useMemo(() => {
+    const rows = [];
+    clients.forEach(client => {
+      ALL_MONTHS.forEach(mon => {
+        rows.push({ clientId: client.id, clientName: client.name, monthStr: mon.str });
+      });
+    });
+    return rows;
+  }, [clients]);
+
+  const allCols = useMemo(() => {
+    const cols = [];
+    BULK_DEPTS.forEach(dept => {
+      dept.fields.forEach(f => {
+        cols.push({ deptId: dept.id, field: f });
+      });
+    });
+    return cols;
+  }, []);
+
+  // Handle multi-cell paste from Excel (column or grid paste)
+  const handlePasteMulti = useCallback((startRow, startCol, text) => {
+    const rows = text.split(/\r?\n/).filter(r => r.trim() !== "");
+    let pasteCount = 0;
+    rows.forEach((row, ri) => {
+      const cells = row.split("\t");
+      cells.forEach((cellVal, ci) => {
+        const targetRow = startRow + ri;
+        const targetCol = startCol + ci;
+        if (targetRow >= allRows.length || targetCol >= allCols.length) return;
+        const { clientId, clientName } = allRows[targetRow];
+        const { deptId, field } = allCols[targetCol];
+        // Skip disabled cells (listing-only, leads config)
+        if (field.listingOnly && field.listingOnly !== clientName) return;
+        if (deptId === "leads") {
+          const config = getLeadsConfig(clientName);
+          if (!config.active.includes(field.key)) return;
+        }
+        const trimmed = cellVal.trim().replace(/[$,%]/g, "");
+        if (trimmed !== "") {
+          handleCellSave(clientId, allRows[targetRow].monthStr, deptId, field.key, trimmed, field.type);
+          pasteCount++;
+        }
+      });
+    });
+    if (pasteCount > 0) {
+      setPasteToast(`✓ Pasted ${pasteCount} cell${pasteCount !== 1 ? "s" : ""} from clipboard`);
+      setTimeout(() => setPasteToast(null), 3000);
+    }
+  }, [allRows, allCols, handleCellSave]);
+
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F }}>
 
@@ -614,6 +684,13 @@ export default function BulkEditPage() {
           <a href="/admin" style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, textDecoration: "none", fontWeight: 600 }}>← Admin Panel</a>
         </div>
       </div>
+
+      {/* ── Paste toast ── */}
+      {pasteToast && (
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 999, background: C.g, color: "#fff", borderRadius: 10, padding: "12px 20px", fontSize: 13, fontWeight: 700, fontFamily: F, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", animation: "fadeIn 0.2s ease" }}>
+          {pasteToast}
+        </div>
+      )}
 
       {/* ── Scrollable grid ── */}
       <div style={{ overflow: "auto" }}>
@@ -689,8 +766,11 @@ export default function BulkEditPage() {
             {clients.map((client, ci) => {
               const clientBg = ci % 2 === 0 ? "#f0f4ff" : "#f5f0ff";
               const leadsConfig = getLeadsConfig(client.name);
+              let colOffset = 0; // tracks column index across depts
 
               return ALL_MONTHS.map((mon, mi) => {
+                const rowIndex = ci * ALL_MONTHS.length + mi;
+                colOffset = 0;
                 const isFirstRow = mi === 0;
                 const comp = getCompletion(client, mon.str);
                 const rowBg = mi % 2 === 0 ? C.white : "#fafafa";
@@ -734,6 +814,7 @@ export default function BulkEditPage() {
                     </td>
                     {BULK_DEPTS.map(dept =>
                       dept.fields.map((f, fi) => {
+                        const currentCol = colOffset++;
                         const deptData = allData[client.id]?.[mon.str]?.[dept.id] || {};
                         const val = deptData[f.key];
                         const isManualLocked = (deptData._manual_overrides || []).includes(f.key);
@@ -767,6 +848,9 @@ export default function BulkEditPage() {
                             isImported={isImported}
                             disabled={isDisabled}
                             onSave={handleCellSave}
+                            rowIndex={rowIndex}
+                            colIndex={currentCol}
+                            onPasteMulti={handlePasteMulti}
                           />
                         );
                       })
