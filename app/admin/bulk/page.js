@@ -246,7 +246,7 @@ function getAllMonths() {
 const ALL_MONTHS = getAllMonths();
 
 // ── Inline editable cell with Excel column paste support ──────────────────────
-function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, value, isManualLocked, isApiSourced, isImported, disabled, onSave, rowIndex, colIndex, onPasteMulti }) {
+function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, value, isManualLocked, isApiSourced, isImported, disabled, onSave, rowIndex, colIndex, onPasteMulti, selected, onCellClick }) {
   const [editing, setEditing] = useState(false);
   const [localVal, setLocalVal] = useState("");
   const inputRef = useRef();
@@ -297,12 +297,17 @@ function BulkCell({ clientId, monthStr, deptId, field, deptColor, isLastInDept, 
     : String(value);
 
   return (
-    <td style={{
+    <td
+      onClick={(e) => { if (!disabled && onCellClick) onCellClick(rowIndex, colIndex, e.shiftKey); }}
+      style={{
       backgroundImage: disabled ? "repeating-linear-gradient(45deg,#f0f0f0,#f0f0f0 3px,#e8e8e8 3px,#e8e8e8 6px)" : undefined,
-      background: disabled ? undefined : bgColor,
+      background: disabled ? undefined : selected ? "#fef3c7" : bgColor,
+      outline: selected ? "2px solid #f59e0b" : "none",
+      outlineOffset: "-1px",
       borderRight: isLastInDept ? `2px solid ${deptColor}55` : `1px solid ${C.bl2}`,
       borderBottom: `1px solid ${C.bl2}`,
       padding: 0, width: 64, minWidth: 64, position: "relative",
+      zIndex: selected ? 5 : undefined,
     }}>
       {disabled ? (
         <div style={{ width: "100%", height: "100%", padding: "5px", fontSize: 10, color: "#ccc", textAlign: "center", userSelect: "none", boxSizing: "border-box", lineHeight: "18px" }}>
@@ -359,6 +364,10 @@ export default function BulkEditPage() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [pasteToast, setPasteToast] = useState(null);
+  // Selection state for multi-cell delete
+  const [selStart, setSelStart] = useState(null); // { row, col }
+  const [selEnd, setSelEnd] = useState(null);     // { row, col }
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -607,6 +616,75 @@ export default function BulkEditPage() {
     }
   }, [allRows, allCols, handleCellSave]);
 
+  // Selection helpers
+  const getSelBounds = useCallback(() => {
+    if (!selStart) return null;
+    const end = selEnd || selStart;
+    return {
+      minRow: Math.min(selStart.row, end.row),
+      maxRow: Math.max(selStart.row, end.row),
+      minCol: Math.min(selStart.col, end.col),
+      maxCol: Math.max(selStart.col, end.col),
+    };
+  }, [selStart, selEnd]);
+
+  const isCellSelected = useCallback((row, col) => {
+    const b = getSelBounds();
+    if (!b) return false;
+    return row >= b.minRow && row <= b.maxRow && col >= b.minCol && col <= b.maxCol;
+  }, [getSelBounds]);
+
+  const handleCellClick = useCallback((row, col, shiftKey) => {
+    if (shiftKey && selStart) {
+      setSelEnd({ row, col });
+    } else {
+      setSelStart({ row, col });
+      setSelEnd(null);
+    }
+  }, [selStart]);
+
+  // Delete selected cells
+  const handleDeleteSelected = useCallback(async () => {
+    const b = getSelBounds();
+    if (!b) return;
+    setDeleting(true);
+    let deleteCount = 0;
+    for (let r = b.minRow; r <= b.maxRow; r++) {
+      for (let c = b.minCol; c <= b.maxCol; c++) {
+        if (r >= allRows.length || c >= allCols.length) continue;
+        const { clientId, clientName, monthStr } = allRows[r];
+        const { deptId, field } = allCols[c];
+        if (field.listingOnly && field.listingOnly !== clientName) continue;
+        if (deptId === "leads") {
+          const config = getLeadsConfig(clientName);
+          if (!config.active.includes(field.key)) continue;
+        }
+        handleCellSave(clientId, monthStr, deptId, field.key, "", field.type);
+        deleteCount++;
+      }
+    }
+    setSelStart(null); setSelEnd(null); setDeleting(false);
+    if (deleteCount > 0) {
+      setPasteToast(`✓ Cleared ${deleteCount} cell${deleteCount !== 1 ? "s" : ""}`);
+      setTimeout(() => setPasteToast(null), 3000);
+    }
+  }, [getSelBounds, allRows, allCols, handleCellSave]);
+
+  // Keyboard: Delete/Backspace clears selection, Escape clears selection
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.key === "Delete" || e.key === "Backspace") && selStart && !e.target.matches("input,textarea")) {
+        e.preventDefault();
+        handleDeleteSelected();
+      }
+      if (e.key === "Escape") {
+        setSelStart(null); setSelEnd(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selStart, handleDeleteSelected]);
+
   if (authLoading || dataLoading) return (
     <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ textAlign: "center" }}>
@@ -684,9 +762,26 @@ export default function BulkEditPage() {
         </div>
       </div>
 
-      {/* ── Paste toast ── */}
+      {/* ── Selection bar + toast ── */}
+      {selStart && (() => {
+        const b = getSelBounds();
+        if (!b) return null;
+        const count = (b.maxRow - b.minRow + 1) * (b.maxCol - b.minCol + 1);
+        return (
+          <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 999, background: C.navy, color: "#fff", borderRadius: 10, padding: "10px 20px", fontSize: 13, fontWeight: 600, fontFamily: F, boxShadow: "0 4px 16px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={{ color: "#fbbf24" }}>{count} cell{count !== 1 ? "s" : ""} selected</span>
+            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Click = select · Shift+Click = range · Delete = clear</span>
+            <button onClick={handleDeleteSelected} disabled={deleting} style={{ background: C.r, color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
+              {deleting ? "Clearing..." : "Delete Selected"}
+            </button>
+            <button onClick={() => { setSelStart(null); setSelEnd(null); }} style={{ background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer", fontFamily: F }}>
+              Esc
+            </button>
+          </div>
+        );
+      })()}
       {pasteToast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 999, background: C.g, color: "#fff", borderRadius: 10, padding: "12px 20px", fontSize: 13, fontWeight: 700, fontFamily: F, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", animation: "fadeIn 0.2s ease" }}>
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 999, background: C.g, color: "#fff", borderRadius: 10, padding: "12px 20px", fontSize: 13, fontWeight: 700, fontFamily: F, boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
           {pasteToast}
         </div>
       )}
@@ -850,6 +945,8 @@ export default function BulkEditPage() {
                             rowIndex={rowIndex}
                             colIndex={currentCol}
                             onPasteMulti={handlePasteMulti}
+                            selected={isCellSelected(rowIndex, currentCol)}
+                            onCellClick={handleCellClick}
                           />
                         );
                       })
