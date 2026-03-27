@@ -181,7 +181,7 @@ const SUM_FIELDS = {
   meta_ads:   ["conversions","total_spend","reach","impressions"],
   social:     ["fb_visits","ig_reach","tiktok_profile_views","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","total_published","fb_published","ig_published","yt_long_form_published","yt_shorts_published","tiktok_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments"],
   callrail:   ["total_calls","website_calls","ads_calls","gbp_calls"],
-  leads:      ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold","phone_sold",
+  leads:      ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold",
                "ford_leads","ford_sold","mazda_leads","mazda_sold","vw_leads","vw_sold","oem_leads","oem_sold"],
   email:      ["campaigns_sent","audience_size"],
   creative:   ["total_assets","videos","graphics","banners","print","ad_creative","email_headers"],
@@ -680,11 +680,6 @@ function Dashboard({ data, cd, services, clientName, leadTrend, setActiveTab, is
           <KpiCard label="3rd Party Close %"  value={closePct(leads.third_party_sold, leads.third_party)   !== null ? closePct(leads.third_party_sold, leads.third_party)   + "%" : "—"} change={pct(closePct(leads.third_party_sold, leads.third_party), closePct(lcmp.third_party_sold, lcmp.third_party))} />
           <KpiCard label="Facebook Close %"   value={closePct(leads.facebook_sold, leads.facebook_leads)   !== null ? closePct(leads.facebook_sold, leads.facebook_leads)   + "%" : "—"} change={pct(closePct(leads.facebook_sold, leads.facebook_leads), closePct(lcmp.facebook_sold, lcmp.facebook_leads))} />
         </div>
-        {leads.phone_sold != null && (
-          <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
-            <KpiCard label="Phone Sold" value={fmt(leads.phone_sold)} change={pct(leads.phone_sold, lcmp.phone_sold)} />
-          </div>
-        )}
       </SecWrap>
     );
   };
