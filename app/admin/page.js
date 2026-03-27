@@ -1586,21 +1586,53 @@ function ClientReport({ client, userRole, userDept, onBack, allClients }) {
 }
 
 /* ─── OVERVIEW ─── */
+function getDeptCompletion(deptId, data) {
+  const fields = DEPT_FIELDS[deptId] || [];
+  const required = fields.filter(f => !f.optional);
+  if (!required.length) return null;
+  let filled = 0;
+  for (const f of required) {
+    const v = data?.[f.key];
+    if (f.type === "keywords" || f.type === "links" || f.type === "campaign_list" || f.type === "top_queries") {
+      if (Array.isArray(v) && v.length > 0) filled++;
+    } else if (f.type === "textarea") {
+      if (typeof v === "string" && v.trim().length > 0) filled++;
+    } else {
+      if (v !== null && v !== undefined && String(v).trim() !== "") filled++;
+    }
+  }
+  return { filled, total: required.length };
+}
+
 function Overview({ clients, userRole, onSelectClient, onBackfill }) {
   const now = new Date();
   const lastMonth = now.getMonth() === 0 ? `${now.getFullYear() - 1}-12-01` : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}-01`;
   const [statuses, setStatuses] = useState({});
+  const [reportData, setReportData] = useState({});   // clientId_dept → data obj
+  const [serviceStates, setServiceStates] = useState({}); // clientId_dept → boolean
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase.from("monthly_reports").select("client_id, status, month").in("client_id", clients.map(c => c.id));
-      const map = {};
-      (data || []).forEach(r => { map[`${r.client_id}_${r.month}`] = r.status; });
-      setStatuses(map);
+      const [statusRes, dataRes, serviceRes] = await Promise.all([
+        supabase.from("monthly_reports").select("client_id, status, month").in("client_id", clients.map(c => c.id)),
+        supabase.from("report_data").select("client_id, department, data").in("client_id", clients.map(c => c.id)).eq("month", lastMonth),
+        supabase.from("client_services").select("client_id, department, enabled"),
+      ]);
+      const sMap = {};
+      (statusRes.data || []).forEach(r => { sMap[`${r.client_id}_${r.month}`] = r.status; });
+      setStatuses(sMap);
+
+      const dMap = {};
+      (dataRes.data || []).forEach(r => { dMap[`${r.client_id}_${r.department}`] = typeof r.data === "string" ? JSON.parse(r.data) : (r.data || {}); });
+      setReportData(dMap);
+
+      const svMap = {};
+      (serviceRes.data || []).forEach(r => { svMap[`${r.client_id}_${r.department}`] = r.enabled; });
+      setServiceStates(svMap);
     };
     if (clients.length) load();
-  }, [clients]);
+  }, [clients, lastMonth]);
 
   const groups = [...new Set(clients.map(c => c.group_name))];
   const filtered = clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
@@ -1631,15 +1663,31 @@ function Overview({ clients, userRole, onSelectClient, onBackfill }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {groupClients.map(client => {
                 const status = statuses[`${client.id}_${lastMonth}`] || "draft";
+                const deptChips = DEPARTMENTS.map(dept => {
+                  const svcKey = `${client.id}_${dept.id}`;
+                  if (serviceStates[svcKey] === false) return null;
+                  const data = reportData[svcKey] || {};
+                  const comp = getDeptCompletion(dept.id, data);
+                  if (!comp) return null;
+                  const pct = Math.round((comp.filled / comp.total) * 100);
+                  const color = pct === 100 ? C.g : pct >= 50 ? C.o : C.tl;
+                  return { dept, comp, pct, color };
+                }).filter(Boolean);
                 return (
                   <button key={client.id} onClick={() => onSelectClient(client)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "14px 20px", cursor: "pointer", textAlign: "left", boxShadow: C.sh, fontFamily: F }}
                     onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)"}
                     onMouseLeave={e => e.currentTarget.style.boxShadow = C.sh}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.t, marginBottom: 2 }}>{client.name}</div>
-                      <div style={{ fontSize: 11, color: C.tl }}>Tier {client.tier} - Click to enter data</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.t, marginBottom: 4 }}>{client.name}</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {deptChips.map(({ dept, comp, pct, color }) => (
+                          <span key={dept.id} title={`${dept.label}: ${comp.filled}/${comp.total} fields`} style={{ fontSize: 10, fontWeight: 600, color, fontFamily: F, background: pct === 100 ? "#f0fdf4" : pct >= 50 ? "#fffbeb" : "#f3f4f6", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>
+                            {dept.icon} {comp.filled}/{comp.total}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
                       <StatusBadge status={status} />
                       <span style={{ color: C.tl, fontSize: 18 }}>→</span>
                     </div>
