@@ -1790,6 +1790,141 @@ function TeamPage({ currentUserId }) {
   );
 }
 
+/* ─── HOW TO ─── */
+function HowToPage() {
+  const sectionStyle = { background: C.white, border: `1px solid ${C.bd}`, borderRadius: 12, padding: "20px 24px", marginBottom: 20, boxShadow: C.sh };
+  const h2Style = { fontSize: 16, fontWeight: 700, color: C.t, margin: "0 0 12px", fontFamily: F };
+  const h3Style = { fontSize: 13, fontWeight: 700, color: C.cyanD, margin: "16px 0 8px", fontFamily: F };
+  const pStyle = { fontSize: 13, color: C.t, lineHeight: 1.7, margin: "0 0 8px", fontFamily: F };
+  const liStyle = { fontSize: 13, color: C.t, lineHeight: 1.8, fontFamily: F };
+  const codeStyle = { background: "#f3f4f6", padding: "2px 6px", borderRadius: 4, fontSize: 12, fontFamily: "monospace", color: C.cyanD };
+
+  return (
+    <div>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: C.t, margin: "0 0 4px", fontFamily: F }}>How To Guide</h1>
+      <p style={{ fontSize: 13, color: C.tl, marginBottom: 24, fontFamily: F }}>Everything the Taggart team needs to know about entering and managing report data.</p>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Monthly Data Entry Workflow</h2>
+        <ol style={{ margin: 0, paddingLeft: 20 }}>
+          <li style={liStyle}>Select the client from the Overview page</li>
+          <li style={liStyle}>Make sure the correct month and year are selected in the top-right droppers</li>
+          <li style={liStyle}>Work through each department in the sidebar — the completion chips on the Overview show which departments still need data</li>
+          <li style={liStyle}>Fields auto-save as you type (you'll see "Auto-save enabled" at the top of each form)</li>
+          <li style={liStyle}>When all departments are complete, click <strong>Publish Report</strong> to make it visible to the client</li>
+        </ol>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Where to Find Data</h2>
+        <p style={pStyle}>Every field in the admin has a hint below the label showing exactly where to pull the number from. Here's a quick reference by department:</p>
+        <h3 style={h3Style}>Leads & CRM</h3>
+        <p style={pStyle}>Pull from the dealer's CRM system. Total leads, website leads, third-party leads (AutoTrader, Cars.com), Facebook leads, and sold counts per source.</p>
+        <h3 style={h3Style}>CallRail</h3>
+        <p style={pStyle}>Log into <strong>CallRail</strong> → select the tracking number → filter by date range. Enter total calls, and calls attributed to website, ads, and GBP. GBP calls auto-sync to the Google Business Profile department.</p>
+        <h3 style={h3Style}>SEO</h3>
+        <p style={pStyle}><strong>GA4</strong> — Acquisition → Traffic acquisition for session counts (organic, direct, paid, social, email).</p>
+        <p style={pStyle}><strong>Search Console</strong> — Performance tab for impressions, CTR, average position, and page 1 keywords.</p>
+        <h3 style={h3Style}>Google Business Profile</h3>
+        <p style={pStyle}><strong>Google Business</strong> → Performance tab for profile views, search appearances, map views, website clicks, and direction requests. Phone calls sync automatically from CallRail.</p>
+        <h3 style={h3Style}>Google Ads</h3>
+        <p style={pStyle}><strong>Google Ads</strong> → Campaigns view. Pull conversions, clicks, impressions, spend, budget, CPC, CTR, and quality score from the columns.</p>
+        <h3 style={h3Style}>Meta Ads</h3>
+        <p style={pStyle}><strong>Meta Ads Manager</strong> → Campaigns view. Pull conversions, cost per lead, reach, impressions, spend, budget, CPC, CTR, frequency, and engagement metrics.</p>
+        <h3 style={h3Style}>Organic Social</h3>
+        <p style={pStyle}>Pull from each platform's native analytics: <strong>Facebook Page Insights</strong>, <strong>Instagram Insights</strong>, <strong>YouTube Studio Analytics</strong>, and <strong>TikTok Analytics</strong>. Enter follower totals as end-of-month numbers — growth is calculated automatically.</p>
+        <h3 style={h3Style}>Email</h3>
+        <p style={pStyle}>Pull from your email CRM. Enter campaigns sent, audience size (total recipients across all campaigns), and log each campaign name + date sent.</p>
+        <h3 style={h3Style}>Creative</h3>
+        <p style={pStyle}>Count all assets delivered this month: videos, graphics, banners, print pieces, ad creative sets, and email headers/templates. Total is auto-calculated from the breakdown.</p>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Adding a New Client</h2>
+        <ol style={{ margin: 0, paddingLeft: 20 }}>
+          <li style={liStyle}>Go to <strong>Supabase</strong> → <span style={codeStyle}>clients</span> table</li>
+          <li style={liStyle}>Insert a new row with: <span style={codeStyle}>name</span> (display name), <span style={codeStyle}>group_name</span> (e.g., "Goode Motor" or "Juneau Auto"), <span style={codeStyle}>active</span> = true</li>
+          <li style={liStyle}>The client will appear on the admin Overview immediately</li>
+          <li style={liStyle}>Toggle department services on/off using the checkboxes next to each department in the sidebar</li>
+        </ol>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Adding a Team Member</h2>
+        <ol style={{ margin: 0, paddingLeft: 20 }}>
+          <li style={liStyle}>Go to the <strong>Team</strong> tab (admin only)</li>
+          <li style={liStyle}>Enter their email address, select a role, and select their department</li>
+          <li style={liStyle}>Click <strong>Invite</strong> — they'll get access after signing up</li>
+        </ol>
+        <h3 style={h3Style}>Roles</h3>
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          <li style={liStyle}><strong>Admin</strong> — full access: all clients, all departments, team management, publish/unpublish</li>
+          <li style={liStyle}><strong>Editor</strong> — can enter data for their assigned department across all clients</li>
+          <li style={liStyle}><strong>Viewer</strong> — read-only access to all data</li>
+        </ul>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Publishing a Report</h2>
+        <ol style={{ margin: 0, paddingLeft: 20 }}>
+          <li style={liStyle}>Select the client and make sure all departments have data entered</li>
+          <li style={liStyle}>Click <strong>Mark Ready for Review</strong> to flag it for review</li>
+          <li style={liStyle}>An admin clicks <strong>Publish Report</strong> to make it live — clients can see it immediately</li>
+          <li style={liStyle}>To take it down, click <strong>Unpublish</strong></li>
+        </ol>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Department Service Toggles</h2>
+        <p style={pStyle}>Each client can have departments enabled or disabled. When a department is toggled <strong>OFF</strong>:</p>
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          <li style={liStyle}>The admin sidebar shows "OFF" next to that department</li>
+          <li style={liStyle}>The client-facing dashboard hides that department entirely</li>
+          <li style={liStyle}>The completion indicators on the Overview skip disabled departments</li>
+        </ul>
+        <p style={pStyle}>Toggle services using the green/red checkboxes next to each department in the sidebar (admin only).</p>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Auto-Sync Rules</h2>
+        <p style={pStyle}>These syncs happen automatically when you save data:</p>
+        <h3 style={h3Style}>CallRail → Google Business Profile</h3>
+        <p style={pStyle}>When you save CallRail data, the "Calls from GBP" field auto-syncs to the GBP department's Phone Calls field. No need to enter it twice.</p>
+        <h3 style={h3Style}>Goode Motor Stores → Goode Motor Group</h3>
+        <p style={pStyle}>When you save leads for Goode Motor Ford, Goode Motor Mazda, or Twin Falls Volkswagen, their Total Leads and Total Sold auto-sync up to Goode Motor Group and sum into the "All Brands" totals.</p>
+        <h3 style={h3Style}>Juneau Auto Mall → Juneau Sub-Stores</h3>
+        <p style={pStyle}>When you save leads for Juneau Auto Mall, the shared fields (total, website, Facebook leads/sold) cascade down to all Juneau sub-stores (Subaru, CDJR, Toyota, Chevrolet, Honda). Each sub-store also has its own OEM-specific leads field.</p>
+        <h3 style={h3Style}>Social — Total Published</h3>
+        <p style={pStyle}>Total Published is auto-calculated from the per-channel published counts (Facebook + Instagram + YouTube Long Form + YouTube Shorts + TikTok). No need to enter a total manually.</p>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Bulk Data Entry</h2>
+        <p style={pStyle}>For entering data across multiple clients at once, use the bulk editor at <span style={codeStyle}>/admin/bulk</span>.</p>
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          <li style={liStyle}>Select a department tab at the top</li>
+          <li style={liStyle}>Each row is a client, each column is a field</li>
+          <li style={liStyle}>You can paste columns directly from Excel — copy a column, click the first cell, and paste</li>
+          <li style={liStyle}>Changes save automatically after you stop typing</li>
+          <li style={liStyle}>Use the month selector to switch between months</li>
+        </ul>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={h2Style}>Work Completed / Wins / What's Coming Next</h2>
+        <p style={pStyle}>Every department (except Creative) has three text fields at the bottom:</p>
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          <li style={liStyle}><strong>Work Completed</strong> — what the team did this month (one item per line)</li>
+          <li style={liStyle}><strong>Wins</strong> — highlights worth calling out to the client (optional)</li>
+          <li style={liStyle}><strong>What's Coming Next Month</strong> — upcoming plans and priorities</li>
+        </ul>
+        <p style={pStyle}>Creative only has Work Completed and What's Coming Next (no Wins — it's a proof-of-work tab, not a performance tab).</p>
+        <p style={pStyle}>These render on the client-facing detail pages and help tell the story behind the numbers.</p>
+      </div>
+    </div>
+  );
+}
+
 /* ─── ROOT ─── */
 export default function AdminApp() {
   const [session, setSession] = useState(null);
@@ -1872,7 +2007,7 @@ export default function AdminApp() {
         </div>
       </div>
       <div style={{ background: C.white, borderBottom: `1px solid ${C.bd}`, padding: "0 24px", display: "flex", gap: 4 }}>
-        {[{ id: "overview", label: "📊 Overview" }, { id: "team", label: "👥 Team", adminOnly: true }]
+        {[{ id: "overview", label: "📊 Overview" }, { id: "howto", label: "📖 How To" }, { id: "team", label: "👥 Team", adminOnly: true }]
           .filter(n => !n.adminOnly || profile?.role === "admin")
           .map(n => (
             <button key={n.id} onClick={() => { setActivePage(n.id); setSelectedClient(null); }}
@@ -1888,6 +2023,7 @@ export default function AdminApp() {
         {activePage === "overview" && selectedClient && (
           <ClientReport client={selectedClient} userRole={profile?.role} userDept={profile?.department} onBack={() => setSelectedClient(null)} allClients={clients} />
         )}
+        {activePage === "howto" && <HowToPage />}
         {activePage === "team" && profile?.role === "admin" && (
           <TeamPage currentUserId={session.user.id} />
         )}
