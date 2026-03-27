@@ -994,7 +994,18 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
 
 
 
-  const handleChange = (key, val) => { setData(prev => ({ ...prev, [key]: val })); setSaved(false); };
+  const autoSaveTimer = useRef(null);
+  const handleChange = (key, val) => {
+    setData(prev => ({ ...prev, [key]: val }));
+    setSaved(false);
+    // Debounced auto-save: 1.5s after last change
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      if (saveRef.current && editable && !saving) saveRef.current();
+    }, 1500);
+  };
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); }, []);
 
   if (serviceEnabled === false) {
     return (
@@ -1109,9 +1120,14 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           <CompletionBar filled={filledCount} total={requiredTotal} />
         </div>
         {editable && (
-          <button onClick={handleSave} disabled={saving} style={{ background: saved ? C.g : C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, minWidth: 100 }}>
-            {saving ? "Saving..." : saved ? "Saved" : isJuneauSource ? "Save & Sync" : "Save"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 11, color: saving ? C.o : saved ? C.g : C.tl, fontFamily: F, fontWeight: 600 }}>
+              {saving ? "⟳ Auto-saving..." : saved ? "✓ Saved" : "Auto-save enabled"}
+            </span>
+            <button onClick={handleSave} disabled={saving} style={{ background: saved ? C.g : C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F, opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Saving..." : "Save Now"}
+            </button>
+          </div>
         )}
       </div>
 
