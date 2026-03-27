@@ -1099,6 +1099,48 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       }));
     }
 
+    // ── Goode child → parent cascade: roll up total_leads/total_sold to Goode Motor Group ──
+    const GOODE_CHILDREN = {
+      "Goode Motor Ford":      { leadsKey: "ford_leads",  soldKey: "ford_sold" },
+      "Goode Motor Mazda":     { leadsKey: "mazda_leads", soldKey: "mazda_sold" },
+      "Twin Falls Volkswagen": { leadsKey: "vw_leads",    soldKey: "vw_sold" },
+    };
+    if (dept.id === "leads" && GOODE_CHILDREN[clientName] && allClients) {
+      const parentClient = allClients.find(c => c.name === GOODE_MOTOR_GROUP);
+      if (parentClient) {
+        // Fetch current data for all 3 children + parent
+        const childConfigs = Object.entries(GOODE_CHILDREN);
+        const childData = {};
+        for (const [childName, keys] of childConfigs) {
+          const child = allClients.find(c => c.name === childName);
+          if (!child) continue;
+          if (child.id === clientId) {
+            childData[childName] = { leads: Number(savePayload.total_leads) || 0, sold: Number(savePayload.total_sold) || 0 };
+          } else {
+            const { data: row } = await supabase.from("report_data").select("data")
+              .eq("client_id", child.id).eq("month", month).eq("department", "leads").single();
+            childData[childName] = { leads: Number(row?.data?.total_leads) || 0, sold: Number(row?.data?.total_sold) || 0 };
+          }
+        }
+        // Build parent update
+        const { data: parentRow } = await supabase.from("report_data").select("data")
+          .eq("client_id", parentClient.id).eq("month", month).eq("department", "leads").single();
+        const parentData = { ...(parentRow?.data || {}) };
+        for (const [childName, keys] of childConfigs) {
+          const cd = childData[childName] || { leads: 0, sold: 0 };
+          parentData[keys.leadsKey] = cd.leads || null;
+          parentData[keys.soldKey] = cd.sold || null;
+        }
+        parentData.total_leads = (childData["Goode Motor Ford"]?.leads || 0) + (childData["Goode Motor Mazda"]?.leads || 0) + (childData["Twin Falls Volkswagen"]?.leads || 0) || null;
+        parentData.total_sold = (childData["Goode Motor Ford"]?.sold || 0) + (childData["Goode Motor Mazda"]?.sold || 0) + (childData["Twin Falls Volkswagen"]?.sold || 0) || null;
+        parentData._synced_from_stores_at = new Date().toISOString();
+        await supabase.from("report_data").upsert(
+          { client_id: parentClient.id, month, department: "leads", data: parentData, ...ts },
+          { onConflict: "client_id,month,department" }
+        );
+      }
+    }
+
     setSaving(false); setSaved(true);
     if (onSaved) onSaved(dept.id);
   };
@@ -1137,6 +1179,12 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       )}
       {isJuneauSource && <InfoBanner variant="success">Saving here syncs Total, Website, Facebook & Phone leads to all Juneau stores.</InfoBanner>}
       {isJuneauChild && <InfoBanner variant="info">Total, Website, Facebook & Phone synced from Juneau Auto Mall. Enter {oemLabel} leads here.</InfoBanner>}
+      {dept.id === "leads" && ["Goode Motor Ford","Goode Motor Mazda","Twin Falls Volkswagen"].includes(clientName) && (
+        <InfoBanner variant="success">Saving leads here auto-syncs Total Leads & Total Sold up to Goode Motor Group.</InfoBanner>
+      )}
+      {dept.id === "leads" && clientName === GOODE_MOTOR_GROUP && (
+        <InfoBanner variant="info">Lead and sold totals auto-sync from Ford, Mazda, and VW stores when they save.</InfoBanner>
+      )}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
