@@ -265,15 +265,15 @@ const leadsFieldsJuneau = (oemLabel) => [
   { key: "notes",          label: "Notes",             type: "textarea", optional: true },
 ];
 const LEADS_FIELDS_GOODE = [
-  { key: "total_leads",  label: "Total Leads (All Brands)", type: "number" },
-  { key: "ford_leads",   label: "Ford Leads",               type: "number" },
-  { key: "ford_sold",    label: "Ford Sold",                type: "number" },
-  { key: "mazda_leads",  label: "Mazda Leads",              type: "number" },
-  { key: "mazda_sold",   label: "Mazda Sold",               type: "number" },
-  { key: "vw_leads",     label: "Volkswagen Leads",         type: "number" },
-  { key: "vw_sold",      label: "Volkswagen Sold",          type: "number" },
-  { key: "total_sold",   label: "Total Sold",               type: "number" },
-  { key: "notes",        label: "Notes",                    type: "textarea", optional: true },
+  { key: "total_leads",  label: "Total Leads (All Brands)", type: "number",   section: "Totals",      hint: "Auto-calculated from store totals below", readOnly: true },
+  { key: "total_sold",   label: "Total Sold (All Brands)",  type: "number",   section: "Totals",      hint: "Auto-calculated from store totals below", readOnly: true },
+  { key: "ford_leads",   label: "Ford Leads",               type: "number",   section: "Goode Motor Ford",       hint: "Synced from Goode Motor Ford → Total Leads" },
+  { key: "ford_sold",    label: "Ford Sold",                type: "number",   section: "Goode Motor Ford",       hint: "Synced from Goode Motor Ford → Total Sold" },
+  { key: "mazda_leads",  label: "Mazda Leads",              type: "number",   section: "Goode Motor Mazda",      hint: "Synced from Goode Motor Mazda → Total Leads" },
+  { key: "mazda_sold",   label: "Mazda Sold",               type: "number",   section: "Goode Motor Mazda",      hint: "Synced from Goode Motor Mazda → Total Sold" },
+  { key: "vw_leads",     label: "Volkswagen Leads",         type: "number",   section: "Twin Falls Volkswagen",  hint: "Synced from Twin Falls Volkswagen → Total Leads" },
+  { key: "vw_sold",      label: "Volkswagen Sold",          type: "number",   section: "Twin Falls Volkswagen",  hint: "Synced from Twin Falls Volkswagen → Total Sold" },
+  { key: "notes",        label: "Notes",                    type: "textarea", section: "Notes",                  optional: true },
 ];
 
 // ── Multi-listing GBP config ──────────────────────────────────────────────────
@@ -1215,15 +1215,16 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
           return (
             <React.Fragment key={field.key}>
               {showSection && <SectionHeader title={field.section} />}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto", ...(isSynced ? { background: "#e6f9fc", borderRadius: 8, padding: "10px 12px", border: "1px solid #a5f3fc" } : {}) }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: isFullWidth ? "1 / -1" : "auto", ...((isSynced || field.readOnly) ? { background: "#f3f4f6", borderRadius: 8, padding: "10px 12px", border: "1px solid #e5e7eb" } : {}) }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: C.t, fontFamily: F }}>
                   {field.label}
                   {field.optional && <span style={{ color: C.tl, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>optional</span>}
                   {isSharedField && <span style={{ color: C.cyan, fontWeight: 400, marginLeft: 6, fontSize: 11 }}>synced</span>}
                   {isSynced && <span style={{ color: C.cyanD, fontWeight: 700, marginLeft: 6, fontSize: 11 }}>🔗 from CallRail</span>}
+                  {field.readOnly && <span style={{ color: C.tl, fontWeight: 600, marginLeft: 6, fontSize: 10 }}>auto-calculated</span>}
                 </label>
                 {field.hint && <div style={{ fontSize: 11, color: C.tl, fontFamily: F, marginTop: -2 }}>{field.hint}</div>}
-                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField || isSynced} scData={data} />
+                <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField || isSynced || field.readOnly} scData={data} />
               </div>
             </React.Fragment>
           );
