@@ -1807,7 +1807,7 @@ export default function App() {
     const fetchClients = async () => {
       setClientsLoading(true);
       const { data: profile } = await supabase.from("user_profiles").select("role").eq("id", session.user.id).single();
-      const isAdmin = ["admin", "editor"].includes(profile?.role?.toLowerCase());
+      const isAdmin = ["admin", "editor", "account_manager"].includes(profile?.role?.toLowerCase());
       let data, error;
       if (isAdmin) {
         ({ data, error } = await supabase.from("clients").select("id,name,group_name").eq("active", true));

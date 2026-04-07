@@ -1715,6 +1715,7 @@ function TeamPage({ currentUserId }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState("editor");
   const [inviteDept, setInviteDept] = useState("seo");
   const [inviteMsg, setInviteMsg] = useState("");
@@ -1727,8 +1728,8 @@ function TeamPage({ currentUserId }) {
   const handleRoleChange = async (id, role) => { await supabase.from("user_profiles").update({ role }).eq("id", id); setMembers(prev => prev.map(m => m.id === id ? { ...m, role } : m)); };
   const handleDeptChange = async (id, department) => { await supabase.from("user_profiles").update({ department }).eq("id", id); setMembers(prev => prev.map(m => m.id === id ? { ...m, department } : m)); };
   const handleInvite = () => {
-    if (!inviteEmail) return;
-    setInviteMsg(`To add ${inviteEmail}:\n1. Go to Supabase Authentication - Users - Invite User\n2. Enter their email\n3. Run this SQL:\n\nINSERT INTO user_profiles (id, email, role, department, full_name)\nSELECT id, email, '${inviteRole}', '${inviteDept}', email\nFROM auth.users WHERE email = '${inviteEmail}';`);
+    if (!inviteEmail || !inviteName) return;
+    setInviteMsg(`To add ${inviteName} (${inviteEmail}):\n\n1. Go to Supabase → Authentication → Users → Invite User\n2. Enter their email: ${inviteEmail}\n3. Wait for them to accept the invite and confirm they appear in Auth → Users\n4. Then run this SQL in Supabase → SQL Editor:\n\n-- Step 1: Confirm the user exists (should return one row)\nSELECT id FROM auth.users WHERE email = '${inviteEmail}';\n\n-- Step 2: Copy the UUID from Step 1, replace <UUID> below, then run\nINSERT INTO user_profiles (id, email, role, full_name)\nVALUES ('<UUID>', '${inviteEmail}', '${inviteRole}', '${inviteName}');\n\nNote: If Step 1 returns no rows, the user hasn't accepted their invite yet.`);
   };
 
   if (loading) return <div style={{ padding: 40, textAlign: "center", color: C.tl, fontFamily: F }}>Loading...</div>;
@@ -1767,6 +1768,10 @@ function TeamPage({ currentUserId }) {
         <h4 style={{ fontSize: 14, fontWeight: 700, color: C.t, margin: "0 0 16px", fontFamily: F }}>Add Team Member</h4>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div style={{ flex: 2, minWidth: 200 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: C.tl, display: "block", marginBottom: 4, fontFamily: F }}>Full Name</label>
+            <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Jane Smith" style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box" }} />
+          </div>
+          <div style={{ flex: 2, minWidth: 200 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: C.tl, display: "block", marginBottom: 4, fontFamily: F }}>Email</label>
             <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="name@email.com" style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box" }} />
           </div>
@@ -1784,7 +1789,7 @@ function TeamPage({ currentUserId }) {
               </select>
             </div>
           )}
-          <button onClick={handleInvite} style={{ background: C.navy, color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Get Instructions</button>
+          <button onClick={handleInvite} disabled={!inviteEmail || !inviteName} style={{ background: (!inviteEmail || !inviteName) ? C.bd : C.navy, color: (!inviteEmail || !inviteName) ? C.tl : "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: (!inviteEmail || !inviteName) ? "default" : "pointer", fontFamily: F }}>Get Instructions</button>
         </div>
         {inviteMsg && <div style={{ marginTop: 16, background: "#f8fafc", border: `1px solid ${C.bd}`, borderRadius: 8, padding: "12px 16px", fontSize: 12, fontFamily: "monospace", color: C.t, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{inviteMsg}</div>}
       </div>
