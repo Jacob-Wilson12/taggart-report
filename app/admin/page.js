@@ -1955,7 +1955,7 @@ export default function AdminApp() {
       setProfile(prof);
       if (prof?.role === "viewer") return;
       let data;
-      if (prof?.role === "admin") {
+      if (["admin", "account_manager"].includes(prof?.role)) {
         ({ data } = await supabase.from("clients").select("id,name,group_name,tier").eq("active", true));
       } else {
         const { data: access } = await supabase.from("user_client_access").select("client_id").eq("user_id", session.user.id);
