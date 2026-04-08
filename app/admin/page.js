@@ -935,6 +935,25 @@ const fmtDuration = (sec) => {
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
 
+function DurationInput({ value, onChange, disabled, style }) {
+  const [raw, setRaw] = useState(() => value != null && value !== "" ? fmtDuration(value) : "");
+  const prevValue = useRef(value);
+  if (prevValue.current !== value) {
+    prevValue.current = value;
+    const formatted = value != null && value !== "" ? fmtDuration(value) : "";
+    if (formatted !== raw) setRaw(formatted);
+  }
+  return (
+    <input type="text" value={raw} placeholder="0:02:25" disabled={disabled} style={style}
+      onChange={e => setRaw(e.target.value)}
+      onBlur={() => {
+        const sec = parseDuration(raw);
+        if (sec !== null) { onChange(sec); setRaw(fmtDuration(sec)); }
+        else if (raw === "") onChange(null);
+      }} />
+  );
+}
+
 const FieldInput = ({ field, value, onChange, disabled, scData }) => {
   if (field.type === "links")         return <LinksField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
   if (field.type === "keywords")      return <TrackedKeywordsField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} scData={scData} />;
@@ -942,7 +961,7 @@ const FieldInput = ({ field, value, onChange, disabled, scData }) => {
   if (field.type === "top_queries")   return <TopQueriesField value={value} onChange={v => onChange(field.key, v)} disabled={disabled} />;
   const base = { width: "100%", padding: "10px 12px", borderRadius: 7, border: `1px solid ${field.api && value ? C.cyan + "88" : C.bd}`, fontSize: 13, fontFamily: F, outline: "none", boxSizing: "border-box", background: disabled ? "#f8fafc" : C.white, color: disabled ? C.tl : C.t, cursor: disabled ? "not-allowed" : "text" };
   if (field.type === "duration") return (
-    <input type="text" value={value != null && value !== "" ? fmtDuration(value) : ""} onChange={e => { const sec = parseDuration(e.target.value); onChange(field.key, sec); }} onBlur={e => { const sec = parseDuration(e.target.value); if (sec !== null) onChange(field.key, sec); }} disabled={disabled} placeholder="0:02:25" style={base} />
+    <DurationInput value={value} onChange={sec => onChange(field.key, sec)} disabled={disabled} style={base} />
   );
   if (field.type === "textarea") return (
     <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`} style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
