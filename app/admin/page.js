@@ -125,6 +125,7 @@ const DEPT_FIELDS = {
     { key: "avg_position",          label: "Avg Position",               type: "decimal",  section: "Search Performance",  hint: "Search Console → Performance → Average position" },
     { key: "page1_keywords",        label: "Page 1 Keywords",            type: "number",   section: "Search Performance",  hint: "Search Console → Count of queries with average position ≤ 10" },
     { key: "organic_traffic_pct",   label: "Organic % of Traffic",       type: "decimal",  section: "Search Performance",  hint: "GA4 → % of total sessions from Organic Search" },
+    { key: "phone_calls",           label: "Phone Calls",                type: "number",   section: "Conversions",         hint: "CallRail → Calls attributed to organic search (not ads, not GBP)" },
     { key: "form_submissions",      label: "Form Submissions",           type: "number",   section: "Conversions",         hint: "GA4 → Conversions or form tracking tool" },
     { key: "vdp_views",             label: "VDP Views",                  type: "number",   section: "Conversions",         hint: "Dealer website analytics → Vehicle Detail Page views" },
     { key: "bounce_rate",           label: "Bounce Rate (%)",            type: "decimal",  section: "Conversions",         hint: "GA4 → Reports → Engagement → Bounce rate %" },
