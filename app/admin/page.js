@@ -1267,7 +1267,24 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                   const pv = priorData[field.key];
                   if (pv == null || pv === "" || field.type === "textarea" || field.type === "links" || field.type === "keywords" || field.type === "campaign_list" || field.type === "top_queries") return null;
                   const display = field.type === "duration" ? fmtDuration(pv) : typeof pv === "number" ? pv.toLocaleString() : String(pv);
-                  return <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>Last month: <span style={{ fontWeight: 600, color: C.t }}>{display}</span></div>;
+                  const cv = data[field.key];
+                  let pct = null;
+                  if (cv != null && cv !== "" && pv != null && pv !== "" && Number(pv) !== 0 && field.type !== "duration" && field.type !== "text") {
+                    pct = ((Number(cv) - Number(pv)) / Math.abs(Number(pv))) * 100;
+                  }
+                  const up = pct > 0;
+                  const lowerBetter = field.lowerBetter;
+                  const pctColor = pct === null ? C.tl : (up ? (lowerBetter ? C.r : C.g) : (lowerBetter ? C.g : C.r));
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontFamily: F }}>
+                      <span style={{ color: C.tl }}>Last month: <span style={{ fontWeight: 600, color: C.t }}>{display}</span></span>
+                      {pct !== null && !isNaN(pct) && isFinite(pct) && (
+                        <span style={{ fontWeight: 700, color: pctColor }}>
+                          {up ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  );
                 })()}
               </div>
             </React.Fragment>
