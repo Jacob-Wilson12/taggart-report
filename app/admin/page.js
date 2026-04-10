@@ -1269,8 +1269,10 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                   const display = field.type === "duration" ? fmtDuration(pv) : typeof pv === "number" ? pv.toLocaleString() : String(pv);
                   const cv = data[field.key];
                   let pct = null;
-                  if (cv != null && cv !== "" && pv != null && pv !== "" && Number(pv) !== 0 && field.type !== "duration" && field.type !== "text") {
-                    pct = ((Number(cv) - Number(pv)) / Math.abs(Number(pv))) * 100;
+                  const cvNum = parseFloat(String(cv).replace(/,/g, ""));
+                  const pvNum = parseFloat(String(pv).replace(/,/g, ""));
+                  if (cv != null && cv !== "" && pv != null && pv !== "" && pvNum !== 0 && !isNaN(cvNum) && !isNaN(pvNum) && field.type !== "duration" && field.type !== "text") {
+                    pct = ((cvNum - pvNum) / Math.abs(pvNum)) * 100;
                   }
                   const up = pct > 0;
                   const lowerBetter = field.lowerBetter;
