@@ -444,7 +444,7 @@ export default function BulkEditPage() {
       const { data: prof } = await supabase
         .from("user_profiles").select("*").eq("id", session.user.id).single();
       setProfile(prof);
-      if (prof?.role !== "admin") { setDataLoading(false); return; }
+      if (!["admin","account_manager"].includes(prof?.role)) { setDataLoading(false); return; }
 
       const { data: clientData } = await supabase
         .from("clients").select("id,name,group_name,tier").eq("active", true);
@@ -741,7 +741,7 @@ export default function BulkEditPage() {
     </div>
   );
 
-  if (!session || profile?.role !== "admin") return (
+  if (!session || !["admin","account_manager"].includes(profile?.role)) return (
     <div style={{ minHeight: "100vh", background: C.navy, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F }}>
       <div style={{ background: C.white, borderRadius: 16, padding: "48px 40px", maxWidth: 400, textAlign: "center" }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>

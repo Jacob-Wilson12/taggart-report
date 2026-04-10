@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "../../supabase";
 
 const C = {
@@ -214,6 +214,7 @@ const DEPT_FIELDS = {
     { key: "tiktok_views",          label: "TikTok Video Views",       type: "number",   section: "TikTok",     hint: "TikTok → Analytics → Video views (this month)" },
     { key: "tiktok_likes",          label: "TikTok Likes",             type: "number",   section: "TikTok",     hint: "TikTok → Analytics → Likes (this month)" },
     { key: "tiktok_published",      label: "TikTok Published",         type: "number",   section: "TikTok",     hint: "Count of TikTok videos published this month" },
+    { key: "tiktok_traffic_source", label: "TikTok Traffic Source",    type: "textarea", section: "TikTok",     hint: "TikTok → Analytics → Traffic Source — e.g. For You Page: 80%, Following: 15%", optional: true },
     { key: "top_video",             label: "Top Performing Video",     type: "text",     section: "Highlights", hint: "Title or description of best-performing video this month" },
     { key: "top_video_views",       label: "Top Video Views",          type: "number",   section: "Highlights", hint: "View count of the top performing video" },
     { key: "web_clicks",            label: "Website Clicks",           type: "number",   section: "Highlights", hint: "Total clicks to website from all social platforms" },
@@ -966,7 +967,12 @@ const FieldInput = ({ field, value, onChange, disabled, scData }) => {
   if (field.type === "textarea") return (
     <textarea value={value || ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} rows={3} placeholder={field.hint || `Enter ${field.label.toLowerCase()}...`} style={{ ...base, resize: "vertical", lineHeight: 1.5 }} />
   );
-  return <input type={field.type === "number" || field.type === "decimal" ? "number" : "text"} step={field.type === "decimal" ? "0.01" : "1"} value={value ?? ""} onChange={e => onChange(field.key, e.target.value)} disabled={disabled} placeholder={field.hint || "0"} style={base} />;
+  return <input type="text" inputMode={field.type === "decimal" ? "decimal" : field.type === "number" ? "numeric" : "text"} value={value ?? ""} onChange={e => {
+    const v = e.target.value;
+    if (field.type === "number" && v !== "" && v !== "-" && !/^-?\d*$/.test(v)) return;
+    if (field.type === "decimal" && v !== "" && v !== "-" && !/^-?\d*\.?\d*$/.test(v)) return;
+    onChange(field.key, v);
+  }} disabled={disabled} placeholder={field.hint || "0"} style={base} />;
 };
 
 /* ─── DEPT FORM ─── */
@@ -995,6 +1001,7 @@ function SectionHeader({ title }) {
 
 function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole, userDept, onSaved, allClients, serviceEnabled }) {
   const [data, setData] = useState({});
+  const [priorData, setPriorData] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1012,13 +1019,22 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
   const editable   = canEdit(userRole, userDept, dept.id);
   // All fields are manual entry now
 
+  const priorMonth = useMemo(() => {
+    const d = new Date(month);
+    d.setMonth(d.getMonth() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  }, [month]);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const { data: row } = await supabase.from("report_data").select("data")
-      .eq("client_id", clientId).eq("month", month).eq("department", dept.id).single();
-    setData(row?.data || {});
+    const [cur, prior] = await Promise.all([
+      supabase.from("report_data").select("data").eq("client_id", clientId).eq("month", month).eq("department", dept.id).single(),
+      supabase.from("report_data").select("data").eq("client_id", clientId).eq("month", priorMonth).eq("department", dept.id).single(),
+    ]);
+    setData(cur.data?.data || {});
+    setPriorData(prior.data?.data || {});
     setLoading(false);
-  }, [clientId, month, dept.id]);
+  }, [clientId, month, priorMonth, dept.id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -1246,6 +1262,12 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
                 </label>
                 {field.hint && <div style={{ fontSize: 11, color: C.tl, fontFamily: F, marginTop: -2 }}>{field.hint}</div>}
                 <FieldInput field={field} value={data[field.key]} onChange={handleChange} disabled={!editable || isSharedField || isSynced || field.readOnly} scData={data} />
+                {(() => {
+                  const pv = priorData[field.key];
+                  if (pv == null || pv === "" || field.type === "textarea" || field.type === "links" || field.type === "keywords" || field.type === "campaign_list" || field.type === "top_queries") return null;
+                  const display = field.type === "duration" ? fmtDuration(pv) : typeof pv === "number" ? pv.toLocaleString() : String(pv);
+                  return <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>Last month: <span style={{ fontWeight: 600, color: C.t }}>{display}</span></div>;
+                })()}
               </div>
             </React.Fragment>
           );
