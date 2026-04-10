@@ -1386,6 +1386,39 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
         <KpiCard label="Website Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} prior={cd.web_clicks} tip="Clicks from social to your website (GA4)." />
       </div>
 
+      {/* Views by Channel breakdown */}
+      <SecWrap title="Views by Channel">
+        {(() => {
+          const viewChannels = [
+            { label: "Facebook",  value: Number(d.fb_visits)          || 0, color: "#1877F2", sub: "Visits" },
+            { label: "Instagram", value: Number(d.ig_reach)           || 0, color: "#E1306C", sub: "Reach" },
+            { label: "YouTube",   value: Number(d.yt_month_views)     || 0, color: "#FF0000", sub: "Views" },
+            { label: "TikTok",    value: Number(d.tiktok_views)       || 0, color: "#69C9D0", sub: "Video Views" },
+          ].filter(s => s.value > 0);
+          const viewsTotal = viewChannels.reduce((a, s) => a + s.value, 0);
+          return viewChannels.length > 0 ? (
+            <Card style={{ marginBottom: 0 }}>
+              <div style={{ height: 8, borderRadius: 4, overflow: "hidden", display: "flex", gap: 2, marginBottom: 16 }}>
+                {viewChannels.map(s => (
+                  <div key={s.label} style={{ width: `${Math.round((s.value / viewsTotal) * 100)}%`, background: s.color, borderRadius: 3 }} />
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                {viewChannels.map(s => (
+                  <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
+                    <div style={{ fontFamily: F }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: C.t, fontFamily: FS, lineHeight: 1.1 }}>{s.value.toLocaleString()}</div>
+                      <div style={{ fontSize: 11, color: C.tl }}>{s.label} <span style={{ opacity: 0.7 }}>({s.sub})</span></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : <EmptyPlaceholder text="No views data entered for this period." />;
+        })()}
+      </SecWrap>
+
       {/* Published channel breakdown */}
       <SecWrap title="Published by Channel">
         {publishedChannels.length > 0 ? (
