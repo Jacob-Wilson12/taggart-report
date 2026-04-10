@@ -1384,6 +1384,12 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
         <KpiCard label="Total Published"  value={totalPublished ? fmt(totalPublished) : "—"} change={pct(totalPublished, prevPublished)} prior={prevPublished} tip="Posts and videos published across all platforms." />
         <KpiCard label="Website Clicks" value={fmt(d.web_clicks)} change={pct(d.web_clicks, cd.web_clicks)} prior={cd.web_clicks} tip="Clicks from social to your website (GA4)." />
+        {d.tiktok_traffic_source && (
+          <div style={{ background: C.white, border: `1px solid ${C.bd}`, borderRadius: 10, padding: "12px 16px", flex: 1, minWidth: 130, boxShadow: C.sh }}>
+            <div style={{ fontSize: 10, color: C.tl, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F, marginBottom: 6 }}>TikTok Traffic Source</div>
+            <div style={{ fontSize: 13, color: C.t, fontFamily: F, lineHeight: 1.6, whiteSpace: "pre-line" }}>{d.tiktok_traffic_source}</div>
+          </div>
+        )}
       </div>
 
       {/* Views by Channel breakdown */}
@@ -1490,15 +1496,6 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
         </SecWrap>
       )}
 
-      {(d.yt_month_likes != null || d.yt_month_comments != null) && (
-        <SecWrap title="YouTube Highlights">
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {d.yt_total_views    != null && <KpiCard label="Total Channel Views" value={fmt(d.yt_total_views)} />}
-            {d.yt_month_likes    != null && <KpiCard label="Monthly Likes"       value={fmt(d.yt_month_likes)} />}
-            {d.yt_month_comments != null && <KpiCard label="Monthly Comments"    value={fmt(d.yt_month_comments)} />}
-          </div>
-        </SecWrap>
-      )}
 
       <WorkDone text={d.work_completed} />
       <WinsLosses wins={d.wins} losses={d.losses} />
