@@ -179,7 +179,7 @@ const SUM_FIELDS = {
   gbp:        ["profile_views","search_appearances","map_views","website_clicks","phone_calls","direction_requests","new_reviews"],
   google_ads: ["conversions","total_spend","impressions","clicks"],
   meta_ads:   ["conversions","total_spend","reach","impressions"],
-  social:     ["fb_visits","ig_reach","tiktok_profile_views","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","total_published","fb_published","ig_published","yt_long_form_published","yt_shorts_published","tiktok_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments","tiktok_traffic_source","tiktok_views","fb_followers","ig_followers","yt_followers","tiktok_followers"],
+  social:     ["fb_visits","ig_reach","tiktok_profile_views","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","total_published","fb_published","ig_published","yt_long_form_published","yt_shorts_published","tiktok_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments","tiktok_views","fb_followers","ig_followers","yt_followers","tiktok_followers"],
   callrail:   ["total_calls","website_calls","ads_calls","gbp_calls"],
   leads:      ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold",
                "ford_leads","ford_sold","mazda_leads","mazda_sold","vw_leads","vw_sold","oem_leads","oem_sold"],
