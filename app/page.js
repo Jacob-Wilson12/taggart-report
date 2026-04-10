@@ -1002,7 +1002,7 @@ function SeoPage({ d: _d, cd: _cd, trend }) {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <KpiCard label="Phone Calls (SEO)"    value={fmt(d.phone_calls)}      color={C.g}   change={pct(d.phone_calls, cd.phone_calls)} prior={cd.phone_calls} tip="Calls attributed to organic search." />
           <KpiCard label="Form Submissions"     value={fmt(d.form_submissions)} change={pct(d.form_submissions, cd.form_submissions)} prior={cd.form_submissions} tip="Contact, trade-in, and finance forms." />
-          <KpiCard label="Bounce Rate"          value={d.bounce_rate != null ? parseFloat(d.bounce_rate).toFixed(1) + "%" : "—"} change={pct(d.bounce_rate, cd.bounce_rate)} invert prior={cd.bounce_rate != null ? parseFloat(cd.bounce_rate).toFixed(1) + "%" : null} sub="Industry avg 40–55%" />
+          <KpiCard label="Bounce Rate"          value={d.bounce_rate != null ? parseFloat(d.bounce_rate).toFixed(1) + "%" : "—"} change={pct(d.bounce_rate, cd.bounce_rate)} invert prior={cd.bounce_rate != null ? parseFloat(cd.bounce_rate).toFixed(1) + "%" : null} />
           <KpiCard label="Avg Session"          value={d.avg_session_duration != null ? fmtDur(d.avg_session_duration) : "—"} sub="2+ min is healthy" />
         </div>
       </SecWrap>
@@ -1195,16 +1195,16 @@ function GoogleAdsPage({ d: _d, cd: _cd, trend }) {
           value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
           color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
           prior={cd.cost_per_lead != null ? "$" + parseFloat(cd.cost_per_lead).toFixed(2) : null}
-          tip="Average cost per conversion." sub="Industry avg $25–$45" />
+          tip="Average cost per conversion." />
         <KpiCard label="Total Clicks" value={fmt(d.clicks)} change={pct(d.clicks, cd.clicks)} prior={cd.clicks} />
         <KpiCard label="CTR"
           value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"}
           change={pct(d.ctr, cd.ctr)} prior={cd.ctr != null ? parseFloat(cd.ctr).toFixed(1) + "%" : null}
-          tip="Click-through rate." sub="Industry avg ~8.29%" />
+          tip="Click-through rate." />
         <KpiCard label="Avg CPC"
           value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"}
           invert change={pct(d.cpc, cd.cpc)} prior={cd.cpc != null ? "$" + parseFloat(cd.cpc).toFixed(2) : null}
-          tip="Average cost per click." sub="Industry avg ~$2.41" />
+          tip="Average cost per click." />
         <KpiCard label="Impressions" value={fmt(d.impressions)} change={pct(d.impressions, cd.impressions)} prior={cd.impressions} />
       </div>
 
@@ -1274,7 +1274,7 @@ function MetaAdsPage({ d: _d, cd: _cd, trend }) {
           value={d.cost_per_lead != null ? "$" + parseFloat(d.cost_per_lead).toFixed(2) : "—"}
           color={C.g} invert change={pct(d.cost_per_lead, cd.cost_per_lead)}
           prior={cd.cost_per_lead != null ? "$" + parseFloat(cd.cost_per_lead).toFixed(2) : null}
-          tip="Average cost per lead." sub="Industry avg $25–$40" />
+          tip="Average cost per lead." />
         <KpiCard label="Total Spend"
           value={spend != null ? "$" + spend.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"} />
         <KpiCard label="Reach" value={fmt(d.reach)} change={pct(d.reach, cd.reach)} prior={cd.reach} />
@@ -1302,7 +1302,7 @@ function MetaAdsPage({ d: _d, cd: _cd, trend }) {
           <KpiCard label="Reach"         value={fmt(d.reach)}         change={pct(d.reach, cd.reach)} prior={cd.reach} tip="Unique people who saw your ads." />
           <KpiCard label="Impressions"   value={fmt(d.impressions)}   change={pct(d.impressions, cd.impressions)} prior={cd.impressions} />
           <KpiCard label="CTR"           value={d.ctr != null ? parseFloat(d.ctr).toFixed(1) + "%" : "—"} change={pct(d.ctr, cd.ctr)} prior={cd.ctr != null ? parseFloat(cd.ctr).toFixed(1) + "%" : null} tip="Click-through rate across Meta placements." />
-          <KpiCard label="Avg CPC"       value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"} invert change={pct(d.cpc, cd.cpc)} prior={cd.cpc != null ? "$" + parseFloat(cd.cpc).toFixed(2) : null} tip="Cost per click." sub="Industry avg ~$0.79" />
+          <KpiCard label="Avg CPC"       value={d.cpc != null ? "$" + parseFloat(d.cpc).toFixed(2) : "—"} invert change={pct(d.cpc, cd.cpc)} prior={cd.cpc != null ? "$" + parseFloat(cd.cpc).toFixed(2) : null} tip="Cost per click." />
         </div>
       </SecWrap>
 
