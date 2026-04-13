@@ -1335,8 +1335,8 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
   const cd = _cd || {};
 
   // Views-based totals
-  const totalViews     = (Number(d.yt_month_views) || 0) + (Number(d.ig_reach) || 0) + (Number(d.fb_visits) || 0) + (Number(d.tiktok_profile_views) || 0);
-  const prevTotalViews = (Number(cd.yt_month_views) || 0) + (Number(cd.ig_reach) || 0) + (Number(cd.fb_visits) || 0) + (Number(cd.tiktok_profile_views) || 0);
+  const totalViews     = (Number(d.yt_month_views) || 0) + (Number(d.ig_reach) || 0) + (Number(d.fb_visits) || 0) + (Number(d.tiktok_views) || 0);
+  const prevTotalViews = (Number(cd.yt_month_views) || 0) + (Number(cd.ig_reach) || 0) + (Number(cd.fb_visits) || 0) + (Number(cd.tiktok_views) || 0);
 
   // Published — prefer total_published, fall back to summing channels
   const totalPublished = Number(d.total_published) || (
@@ -1356,7 +1356,7 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
 
   const viewsTrend = trend
     .map(t => {
-      const v = (Number(t.yt_month_views) || 0) + (Number(t.ig_reach) || 0) + (Number(t.fb_visits) || 0) + (Number(t.tiktok_profile_views) || 0);
+      const v = (Number(t.yt_month_views) || 0) + (Number(t.ig_reach) || 0) + (Number(t.fb_visits) || 0) + (Number(t.tiktok_views) || 0);
       return v > 0 ? { label: t.label, views: v } : null;
     }).filter(Boolean);
 
