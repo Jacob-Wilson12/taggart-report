@@ -1396,10 +1396,10 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
       <SecWrap title="Views by Channel">
         {(() => {
           const viewChannels = [
-            { label: "Facebook",  value: Number(d.fb_visits)          || 0, color: "#1877F2", sub: "Visits" },
-            { label: "Instagram", value: Number(d.ig_reach)           || 0, color: "#E1306C", sub: "Reach" },
-            { label: "YouTube",   value: Number(d.yt_month_views)     || 0, color: "#FF0000", sub: "Views" },
-            { label: "TikTok",    value: Number(d.tiktok_views)       || 0, color: "#69C9D0", sub: "Video Views" },
+            { label: "Facebook",  value: Number(d.fb_visits)      || 0, color: "#1877F2" },
+            { label: "Instagram", value: Number(d.ig_reach)       || 0, color: "#E1306C" },
+            { label: "YouTube",   value: Number(d.yt_month_views) || 0, color: "#FF0000" },
+            { label: "TikTok",    value: Number(d.tiktok_views)   || 0, color: "#69C9D0" },
           ].filter(s => s.value > 0);
           const viewsTotal = viewChannels.reduce((a, s) => a + s.value, 0);
           return viewChannels.length > 0 ? (
@@ -1415,7 +1415,7 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
                     <div style={{ width: 10, height: 10, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
                     <div style={{ fontFamily: F }}>
                       <div style={{ fontSize: 18, fontWeight: 700, color: C.t, fontFamily: FS, lineHeight: 1.1 }}>{s.value.toLocaleString()}</div>
-                      <div style={{ fontSize: 11, color: C.tl }}>{s.label} <span style={{ opacity: 0.7 }}>({s.sub})</span></div>
+                      <div style={{ fontSize: 11, color: C.tl }}>{s.label}</div>
                     </div>
                   </div>
                 ))}
