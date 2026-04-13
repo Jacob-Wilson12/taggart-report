@@ -179,7 +179,7 @@ const SUM_FIELDS = {
   gbp:        ["profile_views","search_appearances","map_views","website_clicks","phone_calls","direction_requests","new_reviews"],
   google_ads: ["conversions","total_spend","impressions","clicks"],
   meta_ads:   ["conversions","total_spend","reach","impressions"],
-  social:     ["fb_visits","ig_reach","tiktok_profile_views","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","total_published","fb_published","ig_published","yt_long_form_published","yt_shorts_published","tiktok_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments","tiktok_views","fb_followers","ig_followers","yt_followers","tiktok_followers"],
+  social:     ["fb_visits","fb_page_views","ig_reach","ig_profile_views","tiktok_profile_views","fb_engagement","ig_engagement","tiktok_likes","fb_new_followers","ig_new_followers","total_published","fb_published","ig_published","yt_long_form_published","yt_shorts_published","tiktok_published","web_clicks","yt_month_views","yt_month_videos","yt_month_likes","yt_month_comments","tiktok_views","fb_followers","ig_followers","yt_followers","tiktok_followers"],
   callrail:   ["total_calls","website_calls","ads_calls","gbp_calls"],
   leads:      ["total_leads","website_leads","third_party","facebook_leads","total_sold","website_sold","third_party_sold","facebook_sold",
                "ford_leads","ford_sold","mazda_leads","mazda_sold","vw_leads","vw_sold","oem_leads","oem_sold"],
@@ -1335,8 +1335,8 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
   const cd = _cd || {};
 
   // Views-based totals
-  const totalViews     = (Number(d.yt_month_views) || 0) + (Number(d.ig_reach) || 0) + (Number(d.fb_visits) || 0) + (Number(d.tiktok_views) || 0);
-  const prevTotalViews = (Number(cd.yt_month_views) || 0) + (Number(cd.ig_reach) || 0) + (Number(cd.fb_visits) || 0) + (Number(cd.tiktok_views) || 0);
+  const totalViews     = (Number(d.yt_month_views) || 0) + (Number(d.ig_profile_views) || 0) + (Number(d.fb_page_views) || 0) + (Number(d.tiktok_views) || 0);
+  const prevTotalViews = (Number(cd.yt_month_views) || 0) + (Number(cd.ig_profile_views) || 0) + (Number(cd.fb_page_views) || 0) + (Number(cd.tiktok_views) || 0);
 
   // Published — prefer total_published, fall back to summing channels
   const totalPublished = Number(d.total_published) || (
@@ -1356,7 +1356,7 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
 
   const viewsTrend = trend
     .map(t => {
-      const v = (Number(t.yt_month_views) || 0) + (Number(t.ig_reach) || 0) + (Number(t.fb_visits) || 0) + (Number(t.tiktok_views) || 0);
+      const v = (Number(t.yt_month_views) || 0) + (Number(t.ig_profile_views) || 0) + (Number(t.fb_page_views) || 0) + (Number(t.tiktok_views) || 0);
       return v > 0 ? { label: t.label, views: v } : null;
     }).filter(Boolean);
 
@@ -1396,8 +1396,8 @@ function SocialPage({ d: _d, cd: _cd, trend }) {
       <SecWrap title="Views by Channel">
         {(() => {
           const viewChannels = [
-            { label: "Facebook",  value: Number(d.fb_visits)      || 0, color: "#1877F2" },
-            { label: "Instagram", value: Number(d.ig_reach)       || 0, color: "#E1306C" },
+            { label: "Facebook",  value: Number(d.fb_page_views)    || 0, color: "#1877F2" },
+            { label: "Instagram", value: Number(d.ig_profile_views) || 0, color: "#E1306C" },
             { label: "YouTube",   value: Number(d.yt_month_views) || 0, color: "#FF0000" },
             { label: "TikTok",    value: Number(d.tiktok_views)   || 0, color: "#69C9D0" },
           ].filter(s => s.value > 0);
