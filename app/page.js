@@ -6,6 +6,7 @@ import {
   ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
 import { supabase } from "../supabase";
+import { getCached, setCached } from "../lib/queryCache";
 
 /* ─── CONSTANTS ─── */
 const C = {
@@ -1876,10 +1877,23 @@ export default function App() {
         const unique = [...new Map(allMonths.map(m => [toMonthStr(m), m])).values()];
         const monthStrs = unique.map(toMonthStr);
 
-        const [{ data: allRows }, { data: svcRows }] = await Promise.all([
-          supabase.from("report_data").select("department, data, month").eq("client_id", selectedClient.id).in("month", monthStrs),
-          supabase.from("client_services").select("department, enabled").eq("client_id", selectedClient.id),
-        ]);
+        // Cache key encodes everything that affects the result. Sort months so
+        // semantically-equivalent ranges hit the same entry.
+        const cacheKey = `report:${selectedClient.id}:${[...monthStrs].sort().join(",")}`;
+        const cached = getCached(cacheKey);
+
+        let allRows, svcRows;
+        if (cached) {
+          ({ allRows, svcRows } = cached);
+        } else {
+          const [r1, r2] = await Promise.all([
+            supabase.from("report_data").select("department, data, month").eq("client_id", selectedClient.id).in("month", monthStrs),
+            supabase.from("client_services").select("department, enabled").eq("client_id", selectedClient.id),
+          ]);
+          allRows = r1.data; svcRows = r2.data;
+          // Only cache successful results — never cache an error state.
+          if (!r1.error && !r2.error) setCached(cacheKey, { allRows, svcRows });
+        }
 
         const byMonth = {};
         (allRows || []).forEach(r => {
