@@ -2,15 +2,39 @@
 
 import { colors, font } from '../lib/theme';
 
+// Subtle brick-wall texture — same aesthetic as the Taggart Badge logo.
+// 220×110 tile with offset courses; dark navy base + low-opacity blue grout.
+// Encoded as a URL-safe inline SVG so no network hop + no public asset.
+const BRICK_SVG = `
+<svg xmlns='http://www.w3.org/2000/svg' width='220' height='110' viewBox='0 0 220 110'>
+  <rect width='220' height='110' fill='%231a2540'/>
+  <g stroke='%232d7df6' stroke-opacity='0.14' stroke-width='1' fill='none'>
+    <path d='M0 0 L220 0 M0 55 L220 55 M0 110 L220 110'/>
+    <path d='M0 0 L0 55 M110 0 L110 55 M220 0 L220 55'/>
+    <path d='M55 55 L55 110 M165 55 L165 110'/>
+  </g>
+</svg>
+`.trim();
+const BRICK_URL = `data:image/svg+xml;utf8,${BRICK_SVG.replace(/\n/g, '').replace(/\s{2,}/g, ' ')}`;
+
 /**
  * Dark gradient hero at the top of Overview. Three stat tiles alongside a
  * headline. Pass children for the stat slots or use the HeroStat helper.
+ *
+ * Uses a subtle brick-wall SVG pattern as texture — the same aesthetic as
+ * the Taggart Badge logo, giving the header brand presence without
+ * competing with the content.
  */
 export function Hero({ kicker, title, subtitle, children }) {
   return (
     <div
       style={{
-        background: 'linear-gradient(135deg, #0d1524 0%, #1a2540 100%)',
+        background: `
+          linear-gradient(135deg, rgba(13,21,36,0.92) 0%, rgba(26,37,64,0.92) 100%),
+          url("${BRICK_URL}")
+        `,
+        backgroundSize: 'auto, 220px 110px',
+        backgroundRepeat: 'no-repeat, repeat',
         color: 'white',
         borderRadius: 12,
         padding: '24px 28px',
@@ -31,7 +55,7 @@ export function Hero({ kicker, title, subtitle, children }) {
           right: '-10%',
           width: 400,
           height: 400,
-          background: 'radial-gradient(circle, rgba(45,125,246,0.15), transparent 70%)',
+          background: 'radial-gradient(circle, rgba(45,125,246,0.22), transparent 70%)',
           pointerEvents: 'none',
         }}
       />
