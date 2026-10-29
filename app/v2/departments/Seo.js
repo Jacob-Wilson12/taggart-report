@@ -143,6 +143,36 @@ export function Seo({ client, monthLabel, dept = {}, prevDept = {}, trend = [], 
       </div>
 
       <Card
+        title="Website Conversions"
+        subtitle="How many sessions it takes to drive each conversion type · NCM-style breakdown"
+        tag="GA4 · CallRail"
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <ConversionTile
+            label="Phone Calls"
+            source="Website click-to-calls"
+            count={dept.phone_calls}
+            sessions={Number(dept.total_sessions) || Number(dept.organic_sessions)}
+            accent={colors.brand}
+          />
+          <ConversionTile
+            label="Chats & Texts"
+            source="Chat and SMS widgets"
+            count={dept.chat_conversations}
+            sessions={Number(dept.total_sessions) || Number(dept.organic_sessions)}
+            accent={colors.purple}
+          />
+          <ConversionTile
+            label="Lead Forms"
+            source="On-site form submissions"
+            count={dept.form_submissions}
+            sessions={Number(dept.total_sessions) || Number(dept.organic_sessions)}
+            accent={colors.positive}
+          />
+        </div>
+      </Card>
+
+      <Card
         title={`Top queries · ${monthLabel}`}
         subtitle="Ranked by impressions"
         tag="Search Console"
@@ -185,6 +215,122 @@ export function Seo({ client, monthLabel, dept = {}, prevDept = {}, trend = [], 
 function hasSummary(dept) {
   return [dept.work_completed, dept.wins, dept.losses, dept.next_month]
     .some((v) => (v || '').trim());
+}
+
+/**
+ * Three-row conversion tile matching Toyota NCM composite layout:
+ *   Count → Conv Rate (% of sessions) → Session Ratio (1:N)
+ */
+function ConversionTile({ label, source, count, sessions, accent }) {
+  const c = Number(count) || 0;
+  const s = Number(sessions) || 0;
+  const convRate = s > 0 && c > 0 ? (c / s) * 100 : null;
+  const ratio = c > 0 && s > 0 ? Math.round(s / c) : null;
+
+  return (
+    <div
+      style={{
+        background: colors.surface,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 10,
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: accent,
+        }}
+      />
+      <div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: colors.textMuted,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            marginBottom: 2,
+          }}
+        >
+          {label}
+        </div>
+        {source && (
+          <div style={{ fontSize: 10, color: colors.textDim, fontWeight: 500 }}>
+            {source}
+          </div>
+        )}
+      </div>
+      <div
+        style={{
+          fontSize: 32,
+          fontWeight: 700,
+          letterSpacing: '-0.02em',
+          lineHeight: 1,
+          color: colors.text,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {c > 0 ? c.toLocaleString() : '—'}
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 10,
+          paddingTop: 10,
+          borderTop: `1px solid ${colors.border}`,
+        }}
+      >
+        <MiniStat
+          label="Conv. Rate"
+          value={convRate != null ? `${convRate.toFixed(2)}%` : '—'}
+        />
+        <MiniStat
+          label="Session Ratio"
+          value={ratio != null ? `1:${ratio.toLocaleString()}` : '—'}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 9,
+          fontWeight: 700,
+          color: colors.textMuted,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          marginBottom: 3,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: colors.text,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
 }
 
 function EmptyMsg({ children }) {

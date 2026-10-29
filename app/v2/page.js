@@ -18,6 +18,9 @@ import { Overview } from './departments/Overview';
 import { Seo } from './departments/Seo';
 import { GoogleAds } from './departments/GoogleAds';
 import { MetaAds } from './departments/MetaAds';
+import { Gbp } from './departments/Gbp';
+import { Social } from './departments/Social';
+import { Leads } from './departments/Leads';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -278,6 +281,33 @@ function renderDept({
           dept={curr.meta_ads || {}}
           prevDept={prev.meta_ads || {}}
           trend={trendFor('meta_ads', 'total_spend')}
+        />
+      );
+    case 'gbp':
+      return (
+        <Gbp
+          {...common}
+          dept={curr.gbp || {}}
+          prevDept={prev.gbp || {}}
+          trend={trendFor('gbp', 'profile_views')}
+        />
+      );
+    case 'social':
+      return (
+        <Social
+          {...common}
+          dept={curr.social || {}}
+          prevDept={prev.social || {}}
+          trend={trendFor('social', 'fb_followers')}
+        />
+      );
+    case 'leads':
+      return (
+        <Leads
+          {...common}
+          dept={curr.leads || {}}
+          prevDept={prev.leads || {}}
+          trend={trendFor('leads', 'total_leads')}
         />
       );
     default:
