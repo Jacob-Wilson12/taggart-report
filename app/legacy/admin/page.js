@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { supabase } from "../../supabase";
+import { supabase } from "../../../supabase";
 
 const C = {
   white: "#fff", navy: "#0c1a2e", cyan: "#00c9e8", cyanD: "#00a5bf",
@@ -93,7 +93,7 @@ const DEPT_BENCH_LABELS = {
 };
 
 
-const UPLOAD_DEPTS = ["email", "creative", "social", "seo", "meta_ads", "google_ads"];
+const LINK_DEPTS = ["email", "creative", "social", "seo", "meta_ads", "google_ads"];
 
 const DEPT_FIELDS = {
   leads: [
@@ -694,118 +694,87 @@ function TrackedKeywordsField({ value, onChange, disabled, scData }) {
   );
 }
 
-/* ─── UPLOAD SECTION ─── */
-function UploadSection({ clientId, deptId, month }) {
+/* ─── LINKS SECTION ─── */
+// Links-only: paste URLs to externally-hosted assets (Google Drive, Dropbox, etc.).
+// We deliberately don't upload binaries to Supabase Storage to avoid eating the free-tier quota.
+function LinksSection({ clientId, deptId, month }) {
   const [uploads, setUploads] = useState([]);
-  const [uploading, setUploading] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkLabel, setLinkLabel] = useState("");
   const [addingLink, setAddingLink] = useState(false);
-  const fileRef = useRef();
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from("report_uploads")
+    const { data, error: loadErr } = await supabase.from("report_uploads")
       .select("*").eq("client_id", clientId).eq("department", deptId).eq("month", month)
       .order("uploaded_at", { ascending: false });
+    if (loadErr) { console.error("Load links failed:", loadErr); setError(loadErr.message || "Failed to load links"); return; }
     setUploads(data || []);
+    setError("");
   }, [clientId, deptId, month]);
 
   useEffect(() => { load(); }, [load]);
 
-  const handleFileUpload = async (files) => {
-    if (!files?.length) return;
-    setUploading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    for (const file of Array.from(files)) {
-      const path = `${clientId}/${deptId}/${month}/${Date.now()}_${file.name}`;
-      const { error: uploadErr } = await supabase.storage.from("report-uploads").upload(path, file);
-      if (uploadErr) { console.error(uploadErr); continue; }
-      const { data: { publicUrl } } = supabase.storage.from("report-uploads").getPublicUrl(path);
-      await supabase.from("report_uploads").insert({
-        client_id: clientId, department: deptId, month,
-        file_name: file.name, file_url: publicUrl,
-        file_type: file.type, label: file.name, uploaded_by: user.id,
-      });
-    }
-    setUploading(false);
-    await load();
-  };
-
   const handleLinkSave = async () => {
     if (!linkUrl) return;
+    setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("report_uploads").insert({
+    if (!user) { setError("You must be signed in to add a link."); setSaving(false); return; }
+    const { error: insertErr } = await supabase.from("report_uploads").insert({
       client_id: clientId, department: deptId, month,
       file_name: linkLabel || linkUrl, file_url: linkUrl,
       file_type: "link", label: linkLabel || linkUrl, uploaded_by: user.id,
     });
-    setLinkUrl(""); setLinkLabel(""); setAddingLink(false);
+    setSaving(false);
+    if (insertErr) { console.error("Insert link failed:", insertErr); setError(insertErr.message || "Failed to save link"); return; }
+    setLinkUrl(""); setLinkLabel(""); setAddingLink(false); setError("");
     await load();
   };
 
-  const handleDelete = async (id, fileUrl, fileType) => {
-    if (fileType !== "link") {
-      const path = fileUrl.split("/report-uploads/")[1];
-      if (path) await supabase.storage.from("report-uploads").remove([path]);
-    }
-    await supabase.from("report_uploads").delete().eq("id", id);
+  const handleDelete = async (id) => {
+    const { error: deleteErr } = await supabase.from("report_uploads").delete().eq("id", id);
+    if (deleteErr) { console.error("Delete link failed:", deleteErr); setError(deleteErr.message || "Failed to delete link"); return; }
+    setError("");
     await load();
-  };
-
-  const getFileIcon = (type) => {
-    if (!type) return "📄";
-    if (type === "link") return "🔗";
-    if (type.includes("image")) return "🖼️";
-    if (type.includes("video")) return "🎬";
-    if (type.includes("pdf")) return "📕";
-    return "📄";
   };
 
   return (
     <div style={{ marginTop: 28, borderTop: `1px solid ${C.bd}`, paddingTop: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.t, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F }}>📎 Content & Uploads</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setAddingLink(v => !v)} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}33`, borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F }}>+ Add Link</button>
-          <button onClick={() => fileRef.current?.click()} style={{ background: C.cyanL, color: C.cyanD, border: `1px solid ${C.cyan}33`, borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F }}>Upload File</button>
-        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.t, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: F }}>🔗 Links</div>
+        <button onClick={() => { setAddingLink(v => !v); setError(""); }} style={{ background: C.pL, color: C.p, border: `1px solid ${C.p}33`, borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: F }}>+ Add Link</button>
       </div>
+      {error && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 6, padding: "8px 12px", fontSize: 12, marginBottom: 10, fontFamily: F }}>{error}</div>
+      )}
       {addingLink && (
         <div style={{ background: C.pL, border: `1px solid ${C.p}33`, borderRadius: 8, padding: 14, marginBottom: 12 }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label" style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
+            <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="Label (e.g. SEO Audit PDF)" style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} />
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://..." style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} onKeyDown={e => e.key === "Enter" && handleLinkSave()} />
-            <button onClick={handleLinkSave} style={{ background: C.p, color: "#fff", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Save</button>
-            <button onClick={() => setAddingLink(false)} style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 6, padding: "8px 12px", fontSize: 12, cursor: "pointer", fontFamily: F, color: C.tl }}>Cancel</button>
+            <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://..." style={{ flex: 1, padding: "8px 10px", borderRadius: 6, border: `1px solid ${C.bd}`, fontSize: 12, fontFamily: F, outline: "none" }} onKeyDown={e => e.key === "Enter" && !saving && handleLinkSave()} />
+            <button onClick={handleLinkSave} disabled={saving || !linkUrl} style={{ background: C.p, color: "#fff", border: "none", borderRadius: 6, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: saving || !linkUrl ? "not-allowed" : "pointer", opacity: saving || !linkUrl ? 0.5 : 1, fontFamily: F }}>{saving ? "Saving..." : "Save"}</button>
+            <button onClick={() => { setAddingLink(false); setError(""); setLinkUrl(""); setLinkLabel(""); }} style={{ background: "none", border: `1px solid ${C.bd}`, borderRadius: 6, padding: "8px 12px", fontSize: 12, cursor: "pointer", fontFamily: F, color: C.tl }}>Cancel</button>
           </div>
         </div>
       )}
-      <input ref={fileRef} type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
-      <div onDrop={e => { e.preventDefault(); handleFileUpload(e.dataTransfer.files); }} onDragOver={e => e.preventDefault()}
-        style={{ border: `2px dashed ${C.bd}`, borderRadius: 10, padding: "20px", textAlign: "center", cursor: "pointer", background: "#fafafa", marginBottom: uploads.length ? 14 : 0 }}
-        onClick={() => fileRef.current?.click()}>
-        {uploading ? <div style={{ fontSize: 13, color: C.tl, fontFamily: F }}>Uploading...</div> : (
-          <div style={{ fontSize: 12, color: C.tl, fontFamily: F }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>📁</div>
-            Drag & drop files here, or click to browse
-          </div>
-        )}
-      </div>
-      {uploads.length > 0 && (
+      {uploads.length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {uploads.map(u => (
             <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.white, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "10px 14px" }}>
-              <span style={{ fontSize: 18 }}>{getFileIcon(u.file_type)}</span>
+              <span style={{ fontSize: 18 }}>🔗</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <a href={u.file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: C.t, fontFamily: F, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.label || u.file_name}</a>
                 <div style={{ fontSize: 11, color: C.tl, fontFamily: F }}>{new Date(u.uploaded_at).toLocaleDateString()}</div>
               </div>
-              <button onClick={() => handleDelete(u.id, u.file_url, u.file_type)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 16, padding: 4 }}>🗑</button>
+              <button onClick={() => handleDelete(u.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tl, fontSize: 16, padding: 4 }} title="Delete link">🗑</button>
             </div>
           ))}
         </div>
+      ) : !addingLink && (
+        <div style={{ fontSize: 12, color: C.tl, fontFamily: F, fontStyle: "italic" }}>No links added yet. Click "+ Add Link" to paste a URL (Google Drive, Dropbox, etc.).</div>
       )}
     </div>
   );
@@ -1297,8 +1266,8 @@ function DeptForm({ dept, clientId, clientName, month, monthIdx, year, userRole,
       {dept.id === "seo" && <TrafficChannelPreview data={data} />}
       {dept.id === "social" && <PublishedBreakdownPreview data={data} />}
 
-      {UPLOAD_DEPTS.includes(dept.id) && editable && (
-        <UploadSection clientId={clientId} deptId={dept.id} month={month} />
+      {LINK_DEPTS.includes(dept.id) && editable && (
+        <LinksSection clientId={clientId} deptId={dept.id} month={month} />
       )}
 
       {/* ── Multi-listing GBP entry ── */}
