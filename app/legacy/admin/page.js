@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { supabase } from "../../supabase";
+import { supabase } from "../../../supabase";
 
 const C = {
   white: "#fff", navy: "#0c1a2e", cyan: "#00c9e8", cyanD: "#00a5bf",

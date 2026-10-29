@@ -10,6 +10,12 @@ import { TopBar } from '../components/TopBar';
 import { Icon } from '../components/Icons';
 import { BrandMark } from '../components/BrandMark';
 import { RoleToggle } from '../components/RoleToggle';
+import {
+  TopQueriesEditor,
+  TrackedKeywordsEditor,
+  PageLinksEditor,
+  DurationEditor,
+} from '../components/AdvancedEditors';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -23,9 +29,10 @@ function labelMonth(m) {
 }
 
 export default function AdminPage() {
-  // ─── Auth ───
+  // ─── Auth + role ───
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [role, setRole] = useState(null); // null until loaded
   useEffect(() => {
     supabase.auth
       .getSession()
@@ -39,6 +46,16 @@ export default function AdminPage() {
     });
     return () => subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    if (!session) return;
+    supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => setRole((data?.role || 'user').toLowerCase()));
+  }, [session]);
+  const isTeam = role != null && ['admin', 'editor', 'account_manager'].includes(role);
 
   // ─── Clients ───
   const [clients, setClients] = useState([]);
@@ -169,6 +186,57 @@ export default function AdminPage() {
         </div>
       </FullScreenMsg>
     );
+  }
+  if (role != null && !isTeam) {
+    return (
+      <FullScreenMsg>
+        <div style={{ textAlign: 'center', maxWidth: 420, padding: 32 }}>
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              margin: '0 auto 20px',
+              background: colors.brandTint,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: colors.brand,
+            }}
+          >
+            <Icon name="circleBan" size={26} />
+          </div>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Team only</h2>
+          <p style={{ fontSize: 13, color: colors.textMuted, marginBottom: 22, lineHeight: 1.55 }}>
+            The admin is for internal Taggart team members. If you&rsquo;re looking for
+            your performance report, head to the main report.
+          </p>
+          <a
+            href="/v2"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '7px 14px',
+              borderRadius: 7,
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: 'none',
+              background: colors.brand,
+              color: 'white',
+              boxShadow: '0 1px 2px rgba(45,125,246,0.25)',
+            }}
+          >
+            <Icon name="arrowLeft" size={13} />
+            Go to the report
+          </a>
+        </div>
+      </FullScreenMsg>
+    );
+  }
+  if (role == null) {
+    // Role query in flight — avoid flashing the admin UI
+    return <FullScreenMsg>Checking access…</FullScreenMsg>;
   }
 
   return (
@@ -564,15 +632,7 @@ function FieldRow({ field, currentValue, pastValues, monthLabel, onSave }) {
       </div>
 
       {isAdvanced ? (
-        <div
-          style={{
-            fontSize: 12,
-            color: colors.textDim,
-            fontStyle: 'italic',
-          }}
-        >
-          Manage in <a href="/admin" style={{ color: colors.brand }}>legacy admin</a> for now
-        </div>
+        <AdvancedField field={field} value={currentValue} onSave={onSave} />
       ) : (
         <FieldInput
           type={field.type}
@@ -591,6 +651,38 @@ function FieldRow({ field, currentValue, pastValues, monthLabel, onSave }) {
       <SourceBadge value={currentValue} synced={field.synced} />
     </div>
   );
+}
+
+/**
+ * Dispatch to the right advanced editor based on field.key.
+ */
+function AdvancedField({ field, value, onSave }) {
+  switch (field.key) {
+    case 'top_queries':
+      return <TopQueriesEditor value={value} onSave={onSave} />;
+    case 'tracked_keywords':
+      return <TrackedKeywordsEditor value={value} onSave={onSave} />;
+    case 'page_links':
+      return <PageLinksEditor value={value} onSave={onSave} />;
+    case 'avg_session_duration':
+      return <DurationEditor value={value} onSave={onSave} />;
+    default:
+      return (
+        <div
+          style={{
+            fontSize: 12,
+            color: colors.textDim,
+            fontStyle: 'italic',
+          }}
+        >
+          No editor yet for <code>{field.key}</code> —{' '}
+          <a href="/admin" style={{ color: colors.brand }}>
+            edit in legacy admin
+          </a>
+          .
+        </div>
+      );
+  }
 }
 
 function FieldInput({ type, value, disabled, onChange, onBlur, currentLabel }) {

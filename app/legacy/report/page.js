@@ -5,8 +5,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
-import { supabase } from "../supabase";
-import { getCached, setCached } from "../lib/queryCache";
+import { supabase } from "../../../supabase";
+import { getCached, setCached } from "../../../lib/queryCache";
 
 /* ─── CONSTANTS ─── */
 const C = {
