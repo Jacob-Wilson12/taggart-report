@@ -14,7 +14,7 @@ import { WorkCompleted } from '../components/WorkCompleted';
  * surface followers + reach + engagement at a glance, then platform
  * breakdowns.
  */
-export function Social({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn }) {
+export function Social({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn, lastSynced }) {
   const fbFollowersDelta = fmtDelta(dept.fb_followers, prevDept.fb_followers);
   const igFollowersDelta = fmtDelta(dept.ig_followers, prevDept.ig_followers);
 
@@ -72,6 +72,7 @@ export function Social({ client, monthLabel, dept = {}, prevDept = {}, trend = [
         title="Organic Social"
         client={client?.name}
         monthLabel={monthLabel}
+        lastSynced={lastSynced}
         onShare={() => alert('Share flow coming in next pass')}
         onDownload={() => window.print()}
       />

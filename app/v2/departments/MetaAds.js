@@ -9,7 +9,7 @@ import { LineChart } from '../components/LineChart';
 import { BarBreakdown } from '../components/BarBreakdown';
 import { WorkCompleted } from '../components/WorkCompleted';
 
-export function MetaAds({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn }) {
+export function MetaAds({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn, lastSynced }) {
   const spendDelta = fmtDelta(dept.total_spend, prevDept.total_spend);
   const reachDelta = fmtDelta(dept.reach, prevDept.reach);
   const conversionsDelta = fmtDelta(dept.conversions, prevDept.conversions);
@@ -35,6 +35,7 @@ export function MetaAds({ client, monthLabel, dept = {}, prevDept = {}, trend = 
         title="Meta Ads"
         client={client?.name}
         monthLabel={monthLabel}
+        lastSynced={lastSynced}
         onShare={() => alert('Share flow coming in next pass')}
         onDownload={() => window.print()}
       />

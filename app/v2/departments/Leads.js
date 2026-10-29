@@ -12,7 +12,7 @@ import { LineChart } from '../components/LineChart';
  *
  *   trend = [{ label, value, sold }] 12-month totals
  */
-export function Leads({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn }) {
+export function Leads({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn, lastSynced }) {
   const closePct = (sold, leads) => {
     const s = Number(sold);
     const l = Number(leads);
@@ -41,6 +41,7 @@ export function Leads({ client, monthLabel, dept = {}, prevDept = {}, trend = []
         title="Lead Summary"
         client={client?.name}
         monthLabel={monthLabel}
+        lastSynced={lastSynced}
         onShare={() => alert('Share flow coming in next pass')}
         onDownload={() => window.print()}
       />

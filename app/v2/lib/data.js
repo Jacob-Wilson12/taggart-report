@@ -103,23 +103,32 @@ export async function loadClients(session) {
 
 /**
  * Load the raw report_data rows for a client across a list of months.
- * Returns { byMonth: { 'yyyy-mm-01': { seo: {...}, gbp: {...}, ... } } }.
+ * Returns:
+ *   {
+ *     byMonth:    { 'yyyy-mm-01': { seo: {...}, gbp: {...}, ... } },
+ *     lastSynced: Date | null  — latest last_updated_at across all rows
+ *   }
  */
 export async function loadReportData(clientId, months) {
   const monthStrs = months.map(toMonthStr);
   const { data, error } = await supabase
     .from('report_data')
-    .select('department, data, month')
+    .select('department, data, month, last_updated_at')
     .eq('client_id', clientId)
     .in('month', monthStrs);
   if (error) throw error;
   const byMonth = {};
+  let lastSynced = null;
   (data || []).forEach((r) => {
     const key = typeof r.month === 'string' ? r.month.substring(0, 10) : toMonthStr(r);
     if (!byMonth[key]) byMonth[key] = {};
     byMonth[key][r.department] = r.data || {};
+    if (r.last_updated_at) {
+      const d = new Date(r.last_updated_at);
+      if (!lastSynced || d > lastSynced) lastSynced = d;
+    }
   });
-  return byMonth;
+  return { byMonth, lastSynced };
 }
 
 /**

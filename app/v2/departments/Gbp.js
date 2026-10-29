@@ -13,7 +13,7 @@ import { WorkCompleted } from '../components/WorkCompleted';
  * Google Business Profile department page.
  *   dept = curr.gbp
  */
-export function Gbp({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn }) {
+export function Gbp({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn, lastSynced }) {
   const viewsDelta = fmtDelta(dept.profile_views, prevDept.profile_views);
   const callsDelta = fmtDelta(dept.phone_calls, prevDept.phone_calls);
   const directionsDelta = fmtDelta(dept.direction_requests, prevDept.direction_requests);
@@ -44,6 +44,7 @@ export function Gbp({ client, monthLabel, dept = {}, prevDept = {}, trend = [], 
         title="Google Business Profile"
         client={client?.name}
         monthLabel={monthLabel}
+        lastSynced={lastSynced}
         onShare={() => alert('Share flow coming in next pass')}
         onDownload={() => window.print()}
       />

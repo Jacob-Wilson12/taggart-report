@@ -16,7 +16,7 @@ import { WorkCompleted } from '../components/WorkCompleted';
  *   prevDept = prev.seo (prior month)
  *   trend    = [{ label, value }, …] rolling 12 months of organic_sessions
  */
-export function Seo({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn }) {
+export function Seo({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn, lastSynced }) {
   const sessionsDelta = fmtDelta(dept.organic_sessions, prevDept.organic_sessions);
   const positionDelta = dept.avg_position && prevDept.avg_position
     ? Number(prevDept.avg_position) - Number(dept.avg_position) // smaller is better
@@ -62,6 +62,7 @@ export function Seo({ client, monthLabel, dept = {}, prevDept = {}, trend = [], 
         title="SEO"
         client={client?.name}
         monthLabel={monthLabel}
+        lastSynced={lastSynced}
         onShare={() => alert('Share flow coming in next pass')}
         onDownload={() => window.print()}
       />

@@ -21,6 +21,8 @@ import { MetaAds } from './departments/MetaAds';
 import { Gbp } from './departments/Gbp';
 import { Social } from './departments/Social';
 import { Leads } from './departments/Leads';
+import { NotTracked } from './components/NotTracked';
+import { PrintStyles } from './components/PrintStyles';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -83,6 +85,7 @@ export default function OverviewPage() {
   // ─── Data ───
   const [byMonth, setByMonth] = useState({});
   const [services, setServices] = useState({});
+  const [lastSynced, setLastSynced] = useState(null);
   const [loading, setLoading] = useState(false);
   const [compareOn, setCompareOn] = useState(true);
 
@@ -97,8 +100,9 @@ export default function OverviewPage() {
       loadReportData(selectedClient.id, months),
       loadServices(selectedClient.id),
     ])
-      .then(([bm, svc]) => {
-        setByMonth(bm);
+      .then(([reportResult, svc]) => {
+        setByMonth(reportResult.byMonth);
+        setLastSynced(reportResult.lastSynced);
         setServices(svc);
       })
       .finally(() => setLoading(false));
@@ -215,9 +219,11 @@ export default function OverviewPage() {
             services,
             compareOn,
             loading,
+            lastSynced,
             onNavDept: setActivePage,
           })}
         </div>
+        <PrintStyles />
       </main>
     </div>
   );
@@ -239,9 +245,26 @@ function renderDept({
   services,
   compareOn,
   loading,
+  lastSynced,
   onNavDept,
 }) {
-  const common = { client: selectedClient, monthLabel, compareOn };
+  const common = { client: selectedClient, monthLabel, compareOn, lastSynced };
+
+  // Guard: if the user navigated to a dept the current client doesn't run,
+  // show the friendly "not tracked" card instead of empty metrics.
+  const alwaysOn = ['overview', 'leads'];
+  if (
+    !alwaysOn.includes(activePage) &&
+    services[activePage] === false
+  ) {
+    return (
+      <NotTracked
+        dept={activePage}
+        clientName={selectedClient?.name}
+        onBack={() => onNavDept('overview')}
+      />
+    );
+  }
 
   switch (activePage) {
     case 'overview':

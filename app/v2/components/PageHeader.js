@@ -7,7 +7,7 @@ import { Icon } from './Icons';
  * Standard header used on every department page — title + client/month
  * subtitle + action buttons (share, download PDF).
  */
-export function PageHeader({ title, client, monthLabel, onShare, onDownload }) {
+export function PageHeader({ title, client, monthLabel, lastSynced, onShare, onDownload }) {
   return (
     <div
       style={{
@@ -44,7 +44,7 @@ export function PageHeader({ title, client, monthLabel, onShare, onDownload }) {
           {monthLabel && <span>{monthLabel}</span>}
           {monthLabel && client && <span>·</span>}
           {client && <span>{client}</span>}
-          <DataThrough />
+          <DataThrough lastSynced={lastSynced} />
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -63,7 +63,10 @@ export function PageHeader({ title, client, monthLabel, onShare, onDownload }) {
   );
 }
 
-function DataThrough() {
+function DataThrough({ lastSynced }) {
+  const label = lastSynced
+    ? `Synced ${formatSyncTime(lastSynced)}`
+    : 'Data through today';
   return (
     <span
       style={{
@@ -87,9 +90,22 @@ function DataThrough() {
           display: 'inline-block',
         }}
       />
-      Data through today
+      {label}
     </span>
   );
+}
+
+function formatSyncTime(d) {
+  if (!(d instanceof Date)) return '—';
+  const diffMs = Date.now() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `${diffDay}d ago`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function ActionBtn({ tone, onClick, icon, children }) {

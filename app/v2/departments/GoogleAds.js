@@ -9,7 +9,7 @@ import { LineChart } from '../components/LineChart';
 import { BarBreakdown } from '../components/BarBreakdown';
 import { WorkCompleted } from '../components/WorkCompleted';
 
-export function GoogleAds({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn }) {
+export function GoogleAds({ client, monthLabel, dept = {}, prevDept = {}, trend = [], compareOn, lastSynced }) {
   const spendDelta = fmtDelta(dept.total_spend, prevDept.total_spend);
   const clicksDelta = fmtDelta(dept.clicks, prevDept.clicks);
   const conversionsDelta = fmtDelta(dept.conversions, prevDept.conversions);
@@ -36,6 +36,7 @@ export function GoogleAds({ client, monthLabel, dept = {}, prevDept = {}, trend 
         title="Google Ads"
         client={client?.name}
         monthLabel={monthLabel}
+        lastSynced={lastSynced}
         onShare={() => alert('Share flow coming in next pass')}
         onDownload={() => window.print()}
       />
