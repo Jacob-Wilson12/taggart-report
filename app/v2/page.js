@@ -23,6 +23,7 @@ import { Social } from './departments/Social';
 import { Leads } from './departments/Leads';
 import { NotTracked } from './components/NotTracked';
 import { PrintStyles } from './components/PrintStyles';
+import { RoleToggle } from './components/RoleToggle';
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -188,6 +189,7 @@ export default function OverviewPage() {
         services={services}
       />
       <TopBar
+        leading={<RoleToggle current="report" />}
         title={depTitle(activePage)}
         subtitle={selectedClient?.name}
         clients={clients}

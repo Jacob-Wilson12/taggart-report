@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { colors, font, radius, topbarHeight } from '../lib/theme';
 import { Icon } from './Icons';
 
-export function TopBar({ title, subtitle, clients, selectedClient, onClientChange, monthLabel, months, selectedMonth, onMonthChange, compareOn, onToggleCompare }) {
+export function TopBar({ leading, title, subtitle, clients, selectedClient, onClientChange, monthLabel, months, selectedMonth, onMonthChange, compareOn, onToggleCompare }) {
   return (
     <header
       style={{
@@ -19,6 +19,7 @@ export function TopBar({ title, subtitle, clients, selectedClient, onClientChang
         height: topbarHeight,
       }}
     >
+      {leading}
       <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.005em', color: colors.text }}>
         {title}
         {subtitle && (
