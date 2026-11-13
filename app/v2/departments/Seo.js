@@ -52,7 +52,7 @@ export function Seo({ client, monthLabel, dept = {}, prevDept = {}, trend = [], 
       position: row.position != null ? Number(row.position).toFixed(1) : '—',
       impressions: row.impressions != null ? Number(row.impressions).toLocaleString() : '—',
       clicks: row.clicks != null ? Number(row.clicks).toLocaleString() : '—',
-      ctr: row.ctr != null ? `${(Number(row.ctr) * 100).toFixed(1)}%` : '—',
+      ctr: row.ctr != null ? `${Number(row.ctr).toFixed(1)}%` : '—',
     }));
   }, [dept.top_queries]);
 
