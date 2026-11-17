@@ -2,22 +2,23 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  // Flip the switch: redirect the live routes to /v2.
+  // The /v2 design is served at the clean URLs:
   //
-  // /          → /v2          (main client-facing report)
-  // /admin     → /v2/admin    (team data-entry UI)
+  // /          → serves /v2          (main client-facing report)
+  // /admin     → serves /v2/admin    (team data-entry UI)
   //
-  // Legacy pages are intentionally LEFT on disk for rollback:
-  //   /legacy/report  → the old / page.js  (rendered as-is)
-  //   /legacy/admin   → the old /admin page.js
+  // rewrites() keeps the browser URL clean (looks like / and /admin) while
+  // Next renders the /v2 pages. Legacy pages stay on disk for rollback:
+  //   /legacy/report  → the old / page.js (unchanged)
+  //   /legacy/admin   → the old /admin page.js (unchanged)
   //   /admin/bulk, /admin/import — unchanged, still useful for bulk flows
   //
-  // To roll back fast: delete the two entries in this redirects() block
+  // To roll back fast: delete the two entries in this rewrites() block
   // and the live site reverts to the previous design on next deploy.
-  async redirects() {
+  async rewrites() {
     return [
-      { source: '/', destination: '/v2', permanent: false },
-      { source: '/admin', destination: '/v2/admin', permanent: false },
+      { source: '/', destination: '/v2' },
+      { source: '/admin', destination: '/v2/admin' },
     ];
   },
 };
